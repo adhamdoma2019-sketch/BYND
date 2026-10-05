@@ -1,0 +1,6 @@
+{
+    "hosting": {
+        "site": "erp-website-a2ae1",
+        "public": "dist"
+    }
+}

@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function userTenantId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId;
+    }
+
+    match /tenants/{tenantId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && userTenantId() == tenantId;
+    }
+
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update, delete: if false;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.tenantId == userTenantId();
+      allow update, delete: if request.auth != null && resource.data.tenantId == userTenantId();
+    }
+
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null && resource.data.tenantId == userTenantId();
+    }
+
+    match /expenses/{expenseId} {
+      allow create: if request.auth != null && request.resource.data.tenantId == userTenantId();
+      allow read, update, delete: if request.auth != null && resource.data.tenantId == userTenantId();
+    }
+
+    match /counters/{counterId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

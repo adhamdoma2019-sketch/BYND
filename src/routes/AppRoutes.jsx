@@ -1,0 +1,71 @@
+import { Routes, Route } from 'react-router-dom';
+import Landing from '../pages/Landing';
+import StorefrontLayout from '../pages/storefront/StorefrontLayout';
+import StorefrontHome from '../pages/storefront/StorefrontHome';
+import Checkout from '../pages/storefront/Checkout';
+import OrderConfirmation from '../pages/storefront/OrderConfirmation';
+import Signup from '../pages/admin/Signup';
+import Login from '../pages/admin/Login';
+import Dashboard from '../pages/admin/Dashboard';
+import Products from '../pages/admin/Products';
+import Orders from '../pages/admin/Orders';
+import Expenses from '../pages/admin/Expenses';
+import PnL from '../pages/admin/PnL';
+import ProtectedRoute from './ProtectedRoute';
+
+export default function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+
+      <Route path="/store/:slug" element={<StorefrontLayout />}>
+        <Route index element={<StorefrontHome />} />
+        <Route path="checkout" element={<Checkout />} />
+        <Route path="thank-you" element={<OrderConfirmation />} />
+      </Route>
+
+      <Route path="/admin/signup" element={<Signup />} />
+      <Route path="/admin/login" element={<Login />} />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/products"
+        element={
+          <ProtectedRoute>
+            <Products />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/orders"
+        element={
+          <ProtectedRoute>
+            <Orders />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/expenses"
+        element={
+          <ProtectedRoute>
+            <Expenses />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/pnl"
+        element={
+          <ProtectedRoute>
+            <PnL />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}

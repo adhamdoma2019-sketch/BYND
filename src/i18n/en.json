@@ -1,0 +1,62 @@
+{
+  "nav": {
+    "home": "Shop",
+    "cart": "Cart",
+    "admin": "Partners"
+  },
+  "storefront": {
+    "heroTagline": "Made by hand, one piece at a time",
+    "addToCart": "Add to cart",
+    "outOfStock": "Out of stock",
+    "price": "Price",
+    "viewDetails": "View details",
+    "yourCart": "Your cart",
+    "emptyCart": "Your cart is empty.",
+    "checkout": "Checkout",
+    "quantity": "Quantity",
+    "remove": "Remove",
+    "subtotal": "Subtotal"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "name": "Full name",
+    "phone": "Phone number",
+    "address": "Delivery address",
+    "notes": "Order notes (optional)",
+    "paymentMethod": "Payment method",
+    "cod": "Cash on delivery",
+    "placeOrder": "Place order",
+    "placingOrder": "Placing your order...",
+    "orderPlaced": "Order placed!",
+    "orderPlacedBody": "We've received your order and will contact you shortly to confirm delivery.",
+    "orderNumber": "Order number"
+  },
+  "admin": {
+    "login": "Partner login",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "products": "Products",
+    "expenses": "Expenses",
+    "revenue": "Revenue",
+    "totalExpenses": "Total expenses",
+    "netProfit": "Net profit",
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete"
+  }
+}

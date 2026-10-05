@@ -1,0 +1,62 @@
+{
+  "nav": {
+    "home": "المتجر",
+    "cart": "السلة",
+    "admin": "الشركاء"
+  },
+  "storefront": {
+    "heroTagline": "صناعة يدوية، قطعة قطعة",
+    "addToCart": "أضف إلى السلة",
+    "outOfStock": "غير متوفر حاليًا",
+    "price": "السعر",
+    "viewDetails": "عرض التفاصيل",
+    "yourCart": "سلتك",
+    "emptyCart": "سلتك فارغة.",
+    "checkout": "إتمام الطلب",
+    "quantity": "الكمية",
+    "remove": "إزالة",
+    "subtotal": "الإجمالي الفرعي"
+  },
+  "checkout": {
+    "title": "إتمام الطلب",
+    "name": "الاسم الكامل",
+    "phone": "رقم الهاتف",
+    "address": "عنوان التوصيل",
+    "notes": "ملاحظات على الطلب (اختياري)",
+    "paymentMethod": "طريقة الدفع",
+    "cod": "الدفع عند الاستلام",
+    "placeOrder": "تأكيد الطلب",
+    "placingOrder": "جارٍ تسجيل طلبك...",
+    "orderPlaced": "تم تسجيل طلبك!",
+    "orderPlacedBody": "استلمنا طلبك وسنتواصل معك قريبًا لتأكيد التوصيل.",
+    "orderNumber": "رقم الطلب"
+  },
+  "admin": {
+    "login": "دخول الشركاء",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "dashboard": "لوحة التحكم",
+    "orders": "الطلبات",
+    "products": "المنتجات",
+    "expenses": "المصروفات",
+    "revenue": "الإيرادات",
+    "totalExpenses": "إجمالي المصروفات",
+    "netProfit": "صافي الربح",
+    "status": {
+      "pending": "قيد الانتظار",
+      "processing": "قيد التجهيز",
+      "shipped": "تم الشحن",
+      "delivered": "تم التوصيل",
+      "cancelled": "ملغي"
+    }
+  },
+  "common": {
+    "loading": "جارٍ التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "edit": "تعديل",
+    "delete": "حذف"
+  }
+}

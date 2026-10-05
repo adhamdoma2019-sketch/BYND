@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink font-body-en;
+}
+
+/* When the document is Arabic/RTL, swap the font stack. We key off the
+   `dir` attribute on <html>, which LanguageContext keeps in sync with
+   the active language — this is what makes the RTL switch "real"
+   layout mirroring, not just translated text. */
+html[dir='rtl'] body {
+  @apply font-body-ar;
+}
+
+.font-display {
+  @apply font-display-en;
+}
+html[dir='rtl'] .font-display {
+  @apply font-display-ar;
+}
+
+/* Visible keyboard focus everywhere — accessibility floor, not optional. */
+:focus-visible {
+  outline: 2px solid theme('colors.brass.DEFAULT');
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
