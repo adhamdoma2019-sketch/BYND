@@ -40,14 +40,19 @@ export default function Checkout() {
 
     setSubmitting(true);
     try {
-      const orderId = await createOrder({
+      const result = await createOrder({
         tenantId: tenant.id,
         customer: form,
         items,
         paymentMethod: 'COD',
       });
       clearCart();
-      navigate(`/store/${slug}/thank-you`, { state: { orderId } });
+      navigate(`/store/${slug}/thank-you`, {
+        state: {
+          orderId: result.orderId,
+          orderNumberLabel: result.orderNumberLabel,
+        },
+      });
     } catch (err) {
       setError(
         err.message ||

@@ -2,41 +2,97 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function userTenantId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId;
+    // ---------- Helpers ----------
+
+    function isSignedIn() {
+      return request.auth != null;
     }
+
+    // True only if the signed-in person belongs to this shop.
+    // "Belongs" is decided by their record in users/{uid}.
+    function belongsTo(tenantId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+    }
+
+    function tenantIdUnchanged() {
+      return request.resource.data.tenantId == resource.data.tenantId;
+    }
+
+    // ---------- Shops ----------
 
     match /tenants/{tenantId} {
+      // The storefront needs the shop name publicly.
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && userTenantId() == tenantId;
+
+      // You can only create a shop that names YOU as its owner,
+      // and the shop id must equal its slug. (Create never overwrites.)
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.slug == tenantId;
+
+      // Only people in that shop can edit it, and ownership can't be changed.
+      allow update: if belongsTo(tenantId)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.slug == resource.data.slug;
+
+      allow delete: if false;
     }
 
+    // ---------- Who belongs to which shop ----------
+
     match /users/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow create: if request.auth != null && request.auth.uid == uid;
+      allow read: if isSignedIn() && request.auth.uid == uid;
+
+      // You can only link yourself to a shop that YOU own.
+      // This stops anyone from adding themselves to someone else's shop.
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'owner'
+        && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.ownerUid == request.auth.uid;
+
       allow update, delete: if false;
     }
 
+    // ---------- Products ----------
+
     match /products/{productId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenantId == userTenantId();
-      allow update, delete: if request.auth != null && resource.data.tenantId == userTenantId();
+      // Customers see only active, non-deleted products.
+      // Shop staff see all products of their own shop.
+      allow read: if (resource.data.isActive == true && resource.data.deleted == false)
+        || belongsTo(resource.data.tenantId);
+
+      allow create: if belongsTo(request.resource.data.tenantId);
+      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow delete: if false; // products are hidden (soft delete), never erased
     }
+
+    // ---------- Orders ----------
 
     match /orders/{orderId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null && resource.data.tenantId == userTenantId();
+      // Orders are created ONLY by the secure server function (/api/create-order),
+      // which checks real prices and stock. Browsers can never create orders.
+      allow create: if false;
+
+      allow read: if belongsTo(resource.data.tenantId);
+      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow delete: if false; // orders are permanent business records
     }
+
+    // ---------- Expenses ----------
 
     match /expenses/{expenseId} {
-      allow create: if request.auth != null && request.resource.data.tenantId == userTenantId();
-      allow read, update, delete: if request.auth != null && resource.data.tenantId == userTenantId();
+      allow read: if belongsTo(resource.data.tenantId);
+      allow create: if belongsTo(request.resource.data.tenantId);
+      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow delete: if false; // use the "deleted" flag instead
     }
 
+    // ---------- Order-number counters ----------
+    // Only the secure server function touches these.
     match /counters/{counterId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if false;
     }
   }
 }

@@ -218,7 +218,7 @@ export default function Orders() {
                 >
                   <div>
                     <span className="font-medium">
-                      Order #{order.orderNumber}
+                      Order {order.orderNumberLabel || `#${order.orderNumber}`}
                     </span>
                     <span className="ml-3 text-sm text-ink-soft">
                       {order.customer?.name}

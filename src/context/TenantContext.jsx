@@ -8,6 +8,8 @@ export function TenantProvider({ children }) {
   const { user } = useAuth();
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Bumping this number makes the shop reload (used right after signup).
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,10 +33,14 @@ export function TenantProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, reloadKey]);
+
+  function reloadTenant() {
+    setReloadKey((n) => n + 1);
+  }
 
   return (
-    <TenantContext.Provider value={{ tenant, loading, setTenant }}>
+    <TenantContext.Provider value={{ tenant, loading, setTenant, reloadTenant }}>
       {children}
     </TenantContext.Provider>
   );

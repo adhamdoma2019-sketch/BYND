@@ -4,9 +4,11 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { createTenant, isSlugAvailable } from '../../firebase/tenants.service';
 import { slugify } from '../../utils/slugify';
+import { useTenant } from '../../context/TenantContext';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { reloadTenant } = useTenant();
 
   const [shopName, setShopName] = useState('');
   const [email, setEmail] = useState('');
@@ -42,6 +44,8 @@ export default function Signup() {
       );
       await createTenant({ slug, shopName, ownerUid: credential.user.uid });
 
+      // The shop record now exists, so reload it before opening the dashboard.
+      reloadTenant();
       navigate('/admin');
     } catch (err) {
       console.error('Signup error:', err);

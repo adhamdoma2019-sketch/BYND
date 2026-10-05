@@ -14,9 +14,9 @@ export default function OrderConfirmation() {
       <p className="mt-3 max-w-sm text-ink-soft">
         {t('checkout.orderPlacedBody')}
       </p>
-      {state?.orderId && (
-        <p className="mt-4 text-sm text-ink-faint">
-          {t('checkout.orderNumber')}: {state.orderId}
+      {state?.orderNumberLabel && (
+        <p className="mt-4 text-lg font-medium text-ink">
+          {t('checkout.orderNumber')}: {state.orderNumberLabel}
         </p>
       )}
       <Link to={`/store/${slug}`} className="mt-8 text-brass hover:underline">

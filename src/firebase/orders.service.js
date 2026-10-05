@@ -11,85 +11,35 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 
-export async function createOrder({
-  tenantId,
-  customer,
-  items,
-  paymentMethod,
-}) {
-  const counterRef = doc(db, 'counters', tenantId);
-  const orderRef = doc(collection(db, 'orders'));
-
-  await runTransaction(db, async (transaction) => {
-    const productRefs = items.map((item) =>
-      doc(db, 'products', item.productId)
-    );
-    const productSnaps = await Promise.all(
-      productRefs.map((ref) => transaction.get(ref))
-    );
-    const counterSnap = await transaction.get(counterRef);
-
-    productSnaps.forEach((snap, index) => {
-      const item = items[index];
-      if (!snap.exists()) {
-        throw new Error(
-          `Product ${item.name?.en || item.productId} no longer exists.`
-        );
-      }
-      const currentStock = snap.data().stock;
-      if (currentStock < item.quantity) {
-        throw new Error(
-          `Sorry, only ${currentStock} of "${item.name?.en}" left in stock.`
-        );
-      }
-    });
-
-    const nextOrderNumber = counterSnap.exists()
-      ? counterSnap.data().current + 1
-      : 1;
-
-    productSnaps.forEach((snap, index) => {
-      const item = items[index];
-      transaction.update(productRefs[index], {
-        stock: snap.data().stock - item.quantity,
-      });
-    });
-
-    const totalAmount = items.reduce(
-      (sum, i) => sum + i.unitPrice * i.quantity,
-      0
-    );
-
-    transaction.set(orderRef, {
+// Orders are created by a secure server function (api/create-order.js),
+// NOT directly from the browser. We only send product ids and quantities;
+// the server looks up the real prices and stock itself.
+export async function createOrder({ tenantId, customer, items }) {
+  const response = await fetch('/api/create-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       tenantId,
-      orderNumber: nextOrderNumber,
       customer,
       items: items.map((i) => ({
         productId: i.productId,
-        name: i.name,
         quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        subtotal: i.unitPrice * i.quantity,
       })),
-      totalAmount,
-      paymentMethod,
-      status: 'pending',
-      statusHistory: [
-        {
-          status: 'pending',
-          timestamp: new Date().toISOString(),
-          updatedBy: 'system',
-        },
-      ],
-      deleted: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    transaction.set(counterRef, { current: nextOrderNumber }, { merge: true });
+    }),
   });
 
-  return orderRef.id;
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    // ignore: handled below
+  }
+  if (!response.ok) {
+    throw new Error(
+      data.error || 'Something went wrong placing your order. Please try again.'
+    );
+  }
+  return data; // { orderId, orderNumber, orderNumberLabel, totalAmount }
 }
 
 export async function listOrders(tenantId) {
