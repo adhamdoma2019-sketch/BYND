@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { getTenant } from '../../firebase/tenants.service';
 import { createOrder } from '../../firebase/orders.service';
 import { useCart } from '../../context/CartContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { formatPrice } from '../../utils/format';
 
 export default function Checkout() {
   const { slug } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { language } = useLanguage();
   const { items, subtotal, clearCart } = useCart();
 
   const [tenant, setTenant] = useState(null);
@@ -51,6 +54,7 @@ export default function Checkout() {
         state: {
           orderId: result.orderId,
           orderNumberLabel: result.orderNumberLabel,
+          orderType: result.orderType,
         },
       });
     } catch (err) {
@@ -68,7 +72,7 @@ export default function Checkout() {
       <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
         <p className="text-ink-soft">{t('storefront.emptyCart')}</p>
         <Link to={`/store/${slug}`} className="mt-4 text-brass hover:underline">
-          ← Back to shop
+          {t('storefront.backToShop')}
         </Link>
       </div>
     );
@@ -87,16 +91,27 @@ export default function Checkout() {
             className="flex justify-between py-1 text-sm"
           >
             <span>
-              {item.name?.en} × {item.quantity}
+              {item.name?.[language] || item.name?.en} × {item.quantity}
+              {item.isPreorder && (
+                <span className="ms-2 rounded bg-ink px-1.5 py-0.5 text-xs text-paper">
+                  {t('storefront.preorder')}
+                </span>
+              )}
             </span>
-            <span>{item.unitPrice * item.quantity} EGP</span>
+            <span>{formatPrice(item.unitPrice * item.quantity, language)}</span>
           </div>
         ))}
         <div className="mt-2 flex justify-between border-t border-ink/10 pt-2 font-medium">
           <span>{t('storefront.subtotal')}</span>
-          <span>{subtotal} EGP</span>
+          <span>{formatPrice(subtotal, language)}</span>
         </div>
       </div>
+
+      {items.some((i) => i.isPreorder) && (
+        <p className="mt-4 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
+          {t('storefront.preorderCartNotice')}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block text-sm text-ink-soft">

@@ -92,6 +92,8 @@ export async function cancelOrder(orderId) {
     productSnaps.forEach((snap, index) => {
       if (!snap.exists()) return;
       const item = order.items[index];
+      // Preorder lines never reduced stock, so there is nothing to give back.
+      if (item.isPreorder) return;
       transaction.update(productRefs[index], {
         stock: snap.data().stock + item.quantity,
       });

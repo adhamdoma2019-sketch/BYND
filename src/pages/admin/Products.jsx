@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
+import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import {
   listProducts,
+  listProductCosts,
   createProduct,
   updateProduct,
   deleteProduct,
 } from '../../firebase/products.service';
 
-const LOW_STOCK_THRESHOLD = 3;
 
 const emptyForm = {
   nameEn: '',
@@ -16,10 +17,14 @@ const emptyForm = {
   descriptionEn: '',
   descriptionAr: '',
   price: '',
+  costPrice: '',
   stock: '',
   sku: '',
   imageUrl: '',
   isActive: true,
+  isPreorder: false,
+  preorderMessageEn: '',
+  preorderMessageAr: '',
 };
 
 export default function Products() {
@@ -27,6 +32,7 @@ export default function Products() {
   const { tenant } = useTenant();
 
   const [products, setProducts] = useState([]);
+  const [costs, setCosts] = useState({}); // private cost prices by product id
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -36,7 +42,11 @@ export default function Products() {
   async function refresh() {
     if (!tenant) return;
     setLoading(true);
-    const data = await listProducts(tenant.id);
+    const [data, costMap] = await Promise.all([
+      listProducts(tenant.id),
+      listProductCosts(tenant.id),
+    ]);
+    setCosts(costMap);
     setProducts(
       data.sort(
         (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
@@ -63,10 +73,14 @@ export default function Products() {
       descriptionEn: p.description?.en || '',
       descriptionAr: p.description?.ar || '',
       price: p.price,
+      costPrice: costs[p.id] ?? '',
       stock: p.stock,
       sku: p.sku || '',
       imageUrl: p.imageUrl || '',
       isActive: p.isActive,
+      isPreorder: p.isPreorder === true,
+      preorderMessageEn: p.preorderMessage?.en || '',
+      preorderMessageAr: p.preorderMessage?.ar || '',
     });
     setEditingId(p.id);
     setError('');
@@ -88,7 +102,11 @@ export default function Products() {
       setError('Enter a valid price.');
       return;
     }
-    if (form.stock === '' || Number(form.stock) < 0) {
+    if (form.costPrice !== '' && Number(form.costPrice) < 0) {
+      setError('Enter a valid cost price (or leave it empty).');
+      return;
+    }
+    if (!form.isPreorder && (form.stock === '' || Number(form.stock) < 0)) {
       setError('Enter a valid stock quantity.');
       return;
     }
@@ -99,7 +117,7 @@ export default function Products() {
       if (editingId === 'new') {
         await createProduct(tenant.id, form);
       } else {
-        await updateProduct(editingId, form);
+        await updateProduct(tenant.id, editingId, form);
       }
       cancelForm();
       await refresh();
@@ -206,6 +224,30 @@ export default function Products() {
           </label>
 
           <label className="text-sm text-ink-soft">
+            Cost price (EGP)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.costPrice}
+              onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
+              className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+            />
+            <span className="mt-1 block text-xs text-ink-faint">
+              Private: what one unit costs you. Customers never see this.
+              {form.price !== '' && form.costPrice !== '' && (
+                <>
+                  {' '}
+                  Profit per unit:{' '}
+                  <strong>
+                    {Number(form.price) - Number(form.costPrice)} EGP
+                  </strong>
+                </>
+              )}
+            </span>
+          </label>
+
+          <label className="text-sm text-ink-soft">
             Stock quantity
             <input
               type="number"
@@ -236,6 +278,49 @@ export default function Products() {
               className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
             />
           </label>
+
+          <div className="col-span-full rounded border border-ink/10 bg-white p-3">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={form.isPreorder}
+                onChange={(e) =>
+                  setForm({ ...form, isPreorder: e.target.checked })
+                }
+              />
+              This is a preorder product (customers can order it even when
+              stock is 0)
+            </label>
+            {form.isPreorder && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-ink-soft">
+                  Preorder message (English)
+                  <input
+                    type="text"
+                    placeholder="Preorder now. Shipping starts from..."
+                    value={form.preorderMessageEn}
+                    onChange={(e) =>
+                      setForm({ ...form, preorderMessageEn: e.target.value })
+                    }
+                    className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                  />
+                </label>
+                <label className="text-sm text-ink-soft">
+                  رسالة الحجز المسبق (Arabic)
+                  <input
+                    type="text"
+                    dir="rtl"
+                    placeholder="احجز الآن. يبدأ الشحن من..."
+                    value={form.preorderMessageAr}
+                    onChange={(e) =>
+                      setForm({ ...form, preorderMessageAr: e.target.value })
+                    }
+                    className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
 
           {editingId !== 'new' && (
             <label className="col-span-full flex items-center gap-2 text-sm text-ink-soft">
@@ -271,9 +356,9 @@ export default function Products() {
         </form>
       )}
 
-      {!loading && products.some((p) => p.stock <= LOW_STOCK_THRESHOLD) && (
+      {!loading && products.some((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD) && (
         <p className="mb-4 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
-          {products.filter((p) => p.stock <= LOW_STOCK_THRESHOLD).length}{' '}
+          {products.filter((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD).length}{' '}
           product(s) low or out of stock — check the badges below.
         </p>
       )}
@@ -308,6 +393,13 @@ export default function Products() {
                   <p className="text-sm text-ink-soft">
                     {p.price} EGP · stock: {p.stock}
                   </p>
+                  <p className="text-xs text-ink-faint">
+                    {costs[p.id] !== null && costs[p.id] !== undefined
+                      ? `Cost: ${costs[p.id]} EGP · profit/unit: ${
+                          p.price - costs[p.id]
+                        } EGP`
+                      : 'No cost set yet'}
+                  </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   {!p.isActive && (
@@ -315,12 +407,17 @@ export default function Products() {
                       Hidden
                     </span>
                   )}
-                  {p.stock <= 0 && (
+                  {p.isPreorder && (
+                    <span className="rounded bg-ink/10 px-2 py-0.5 text-xs text-ink-soft">
+                      Preorder
+                    </span>
+                  )}
+                  {!p.isPreorder && p.stock <= 0 && (
                     <span className="rounded bg-rust/15 px-2 py-0.5 text-xs text-rust">
                       Out of stock
                     </span>
                   )}
-                  {p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD && (
+                  {!p.isPreorder && p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD && (
                     <span className="rounded bg-brass/15 px-2 py-0.5 text-xs text-brass-dark">
                       Low stock
                     </span>

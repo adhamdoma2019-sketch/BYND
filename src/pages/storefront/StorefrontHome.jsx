@@ -4,14 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { getTenant } from '../../firebase/tenants.service';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { useCart } from '../../context/CartContext';
-import LanguageSwitch from '../../components/shared/LanguageSwitch';
+import StorefrontHeader from '../../components/storefront/StorefrontHeader';
+import { useLanguage } from '../../context/LanguageContext';
+import { usePageMeta } from '../../utils/usePageMeta';
 import ProductCard from '../../components/storefront/ProductCard';
 import CartDrawer from '../../components/storefront/CartDrawer';
 
 export default function StorefrontHome() {
   const { slug } = useParams();
   const { t } = useTranslation();
-  const { addItem, itemCount } = useCart();
+  const { addItem } = useCart();
+  const { language } = useLanguage();
 
   const [tenant, setTenant] = useState(null);
   const [products, setProducts] = useState([]);
@@ -40,6 +43,11 @@ export default function StorefrontHome() {
     };
   }, [slug]);
 
+  const shopName = tenant
+    ? tenant.name?.[language] || tenant.name?.en || tenant.slug
+    : undefined;
+  usePageMeta(shopName, shopName ? `${shopName} — ${t('storefront.heroTagline')}` : undefined);
+
   if (status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center text-ink-soft">
@@ -53,7 +61,7 @@ export default function StorefrontHome() {
       <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
         <h1 className="font-display text-2xl font-semibold">Shop not found</h1>
         <p className="mt-2 max-w-sm text-ink-soft">
-          There's no shop at yourapp.com/store/{slug}. Double-check the link.
+          There's no shop at this address. Double-check the link.
         </p>
       </div>
     );
@@ -61,25 +69,7 @@ export default function StorefrontHome() {
 
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-ink/10 px-6 py-4">
-        <span className="font-display text-lg font-medium tracking-wide">
-          {tenant.name?.en || tenant.slug}
-        </span>
-        <div className="flex items-center gap-3">
-          <LanguageSwitch />
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative rounded border border-ink/15 px-3 py-1.5 text-sm hover:border-brass"
-          >
-            {t('nav.cart')}
-            {itemCount > 0 && (
-              <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brass text-xs text-paper">
-                {itemCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </header>
+      <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
       <main className="px-6 py-12">
         <h1 className="mb-8 text-center font-display text-3xl font-semibold sm:text-4xl">

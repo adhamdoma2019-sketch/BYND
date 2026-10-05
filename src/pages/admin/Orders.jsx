@@ -7,8 +7,9 @@ import {
   cancelOrder,
   updateOrderCustomer,
 } from '../../firebase/orders.service';
+import { orderCost } from '../../utils/profit';
 
-const STATUS_FLOW = ['pending', 'processing', 'shipped', 'delivered'];
+const STATUS_FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 const ALL_STATUSES = [...STATUS_FLOW, 'cancelled'];
 
 function nextStatus(current) {
@@ -21,6 +22,7 @@ function statusBadgeClass(status) {
   if (status === 'delivered') return 'bg-sage/15 text-sage-dark';
   if (status === 'cancelled') return 'bg-rust/15 text-rust';
   if (status === 'shipped') return 'bg-brass/15 text-brass-dark';
+  if (status === 'confirmed') return 'bg-sage/10 text-sage-dark';
   return 'bg-paper-dim text-ink-soft';
 }
 
@@ -223,6 +225,11 @@ export default function Orders() {
                     <span className="ml-3 text-sm text-ink-soft">
                       {order.customer?.name}
                     </span>
+                    {order.orderType === 'preorder' && (
+                      <span className="ml-3 rounded bg-ink px-2 py-0.5 text-xs text-paper">
+                        Preorder
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm text-ink-soft">
@@ -353,6 +360,19 @@ export default function Orders() {
                             <span>{item.subtotal} EGP</span>
                           </div>
                         ))}
+                        {(() => {
+                          const c = orderCost(order);
+                          return c.complete ? (
+                            <p className="mt-2 border-t border-ink/10 pt-2 text-xs text-ink-faint">
+                              Cost of goods: {c.cogs} EGP · Gross profit:{' '}
+                              {(order.totalAmount || 0) - c.cogs} EGP
+                            </p>
+                          ) : (
+                            <p className="mt-2 border-t border-ink/10 pt-2 text-xs text-ink-faint">
+                              No cost was recorded for this order.
+                            </p>
+                          );
+                        })()}
                       </div>
                     </div>
 

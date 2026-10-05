@@ -81,13 +81,18 @@ export async function placeOrder(db, { tenantId, customer, items }) {
   const counterRef = db.collection('counters').doc(tenantId);
   const orderRef = db.collection('orders').doc();
   const productRefs = items.map((i) => db.collection('products').doc(i.productId));
+  // Private cost prices live in their own collection (customers can't read it).
+  const costRefs = items.map((i) => db.collection('productCosts').doc(i.productId));
 
   return db.runTransaction(async (tx) => {
-    const [tenantSnap, counterSnap, ...productSnaps] = await tx.getAll(
+    const [tenantSnap, counterSnap, ...rest] = await tx.getAll(
       tenantRef,
       counterRef,
-      ...productRefs
+      ...productRefs,
+      ...costRefs
     );
+    const productSnaps = rest.slice(0, items.length);
+    const costSnaps = rest.slice(items.length);
 
     if (!tenantSnap.exists || tenantSnap.data().isActive === false) {
       throw new OrderError(404, 'NO_SHOP', 'This shop is not available.');
@@ -112,8 +117,11 @@ export async function placeOrder(db, { tenantId, customer, items }) {
         );
       }
 
+      // Preorder products can be ordered even with no stock, so they skip the
+      // stock check and never change the stock number.
+      const isPreorder = product.isPreorder === true;
       const stock = Number(product.stock) || 0;
-      if (stock < item.quantity) {
+      if (!isPreorder && stock < item.quantity) {
         const name = product.name?.en || 'this item';
         throw new OrderError(
           409,
@@ -125,13 +133,29 @@ export async function placeOrder(db, { tenantId, customer, items }) {
       }
 
       const unitPrice = Number(product.price) || 0;
+
+      // Cost snapshot: copied into the order so later cost changes never
+      // rewrite past profit. null means "no cost was set for this product".
+      const costDoc = costSnaps[index];
+      const costData = costDoc.exists ? costDoc.data() : null;
+      const unitCost =
+        costData &&
+        costData.tenantId === tenantId &&
+        costData.costPrice !== null &&
+        costData.costPrice !== undefined &&
+        Number.isFinite(Number(costData.costPrice))
+          ? Number(costData.costPrice)
+          : null;
+
       return {
         productId: item.productId,
         name: product.name, // snapshot: old orders keep the old name/price
         quantity: item.quantity,
         unitPrice,
+        unitCost,
         subtotal: unitPrice * item.quantity,
-        _newStock: stock - item.quantity,
+        isPreorder,
+        _newStock: isPreorder ? null : stock - item.quantity,
       };
     });
 
@@ -146,7 +170,11 @@ export async function placeOrder(db, { tenantId, customer, items }) {
     const orderNumberLabel = `${prefix}-${orderNumber}`;
 
     // Writes (all-or-nothing).
+    // An order containing any preorder item is a "preorder" order.
+    const orderType = orderItems.some((i) => i.isPreorder) ? 'preorder' : 'normal';
+
     orderItems.forEach((line, index) => {
+      if (line.isPreorder) return; // preorders don't use stock
       tx.update(productRefs[index], {
         stock: line._newStock,
         updatedAt: FieldValue.serverTimestamp(),
@@ -157,7 +185,7 @@ export async function placeOrder(db, { tenantId, customer, items }) {
       tenantId,
       orderNumber,
       orderNumberLabel,
-      orderType: 'normal', // 'preorder' will be added later
+      orderType,
       customer,
       items: orderItems.map(({ _newStock, ...line }) => line),
       subtotal,
@@ -175,6 +203,6 @@ export async function placeOrder(db, { tenantId, customer, items }) {
 
     tx.set(counterRef, { current: orderNumber }, { merge: true });
 
-    return { orderId: orderRef.id, orderNumber, orderNumberLabel, totalAmount };
+    return { orderId: orderRef.id, orderNumber, orderNumberLabel, totalAmount, orderType };
   });
 }

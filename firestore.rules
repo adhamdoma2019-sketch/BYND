@@ -68,6 +68,20 @@ service cloud.firestore {
       allow delete: if false; // products are hidden (soft delete), never erased
     }
 
+    // ---------- Product costs (PRIVATE) ----------
+    // What a product costs you. Kept apart from products so customers
+    // (who can read products) can never see it.
+    match /productCosts/{productId} {
+      allow read: if belongsTo(resource.data.tenantId);
+
+      // Can only be created for a product that belongs to the same shop.
+      allow create: if belongsTo(request.resource.data.tenantId)
+        && getAfter(/databases/$(database)/documents/products/$(productId)).data.tenantId == request.resource.data.tenantId;
+
+      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow delete: if false;
+    }
+
     // ---------- Orders ----------
 
     match /orders/{orderId} {

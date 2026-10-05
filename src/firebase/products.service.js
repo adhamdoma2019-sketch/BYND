@@ -1,9 +1,8 @@
 import {
   collection,
   doc,
-  addDoc,
   updateDoc,
-  deleteDoc,
+  writeBatch,
   getDocs,
   getDoc,
   query,
@@ -40,40 +39,78 @@ export async function getProduct(productId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-export async function createProduct(tenantId, data) {
-  const ref = await addDoc(collection(db, PRODUCTS), {
-    tenantId,
+// Fields shared by "create" and "update".
+function productFields(data) {
+  const isPreorder = data.isPreorder === true;
+  return {
     name: { en: data.nameEn, ar: data.nameAr || data.nameEn },
     description: {
       en: data.descriptionEn || '',
       ar: data.descriptionAr || data.descriptionEn || '',
     },
     price: Number(data.price),
-    stock: Number(data.stock),
+    // Preorder products don't need stock.
+    stock: data.stock === '' || data.stock === undefined ? 0 : Number(data.stock),
     sku: data.sku || '',
     imageUrl: data.imageUrl || '',
+    isPreorder,
+    preorderMessage: {
+      en: isPreorder ? data.preorderMessageEn || '' : '',
+      ar: isPreorder ? data.preorderMessageAr || data.preorderMessageEn || '' : '',
+    },
+  };
+}
+
+// What the product costs us. Stored in a SEPARATE private collection
+// (productCosts/{productId}) because products are readable by customers.
+function costFields(tenantId, data) {
+  const hasCost = data.costPrice !== '' && data.costPrice !== undefined && data.costPrice !== null;
+  return {
+    tenantId,
+    costPrice: hasCost ? Number(data.costPrice) : null,
+    updatedAt: serverTimestamp(),
+  };
+}
+
+// Returns { [productId]: costPrice } for the admin screens.
+export async function listProductCosts(tenantId) {
+  const q = query(collection(db, 'productCosts'), where('tenantId', '==', tenantId));
+  const snap = await getDocs(q);
+  const costs = {};
+  snap.docs.forEach((d) => {
+    costs[d.id] = d.data().costPrice;
+  });
+  return costs;
+}
+
+export async function createProduct(tenantId, data) {
+  const productRef = doc(collection(db, PRODUCTS));
+  const costRef = doc(db, 'productCosts', productRef.id);
+  const batch = writeBatch(db); // both saved together, or neither
+  batch.set(productRef, {
+    tenantId,
+    ...productFields(data),
     isActive: true,
     deleted: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  return ref.id;
+  batch.set(costRef, costFields(tenantId, data));
+  await batch.commit();
+  return productRef.id;
 }
 
-export async function updateProduct(productId, data) {
-  await updateDoc(doc(db, PRODUCTS, productId), {
-    name: { en: data.nameEn, ar: data.nameAr || data.nameEn },
-    description: {
-      en: data.descriptionEn || '',
-      ar: data.descriptionAr || data.descriptionEn || '',
-    },
-    price: Number(data.price),
-    stock: Number(data.stock),
-    sku: data.sku || '',
-    imageUrl: data.imageUrl || '',
+export async function updateProduct(tenantId, productId, data) {
+  const productRef = doc(db, PRODUCTS, productId);
+  const costRef = doc(db, 'productCosts', productId);
+  const batch = writeBatch(db);
+  batch.update(productRef, {
+    ...productFields(data),
     isActive: data.isActive,
     updatedAt: serverTimestamp(),
   });
+  batch.set(costRef, costFields(tenantId, data));
+  await batch.commit();
 }
 
 export async function deleteProduct(productId) {

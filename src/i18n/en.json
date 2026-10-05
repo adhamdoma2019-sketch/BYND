@@ -15,7 +15,14 @@
     "checkout": "Checkout",
     "quantity": "Quantity",
     "remove": "Remove",
-    "subtotal": "Subtotal"
+    "subtotal": "Subtotal",
+    "preorder": "Preorder",
+    "preorderNow": "Preorder now",
+    "inStock": "In stock",
+    "onlyLeft": "Only {{n}} left",
+    "backToShop": "← Back to shop",
+    "productNotFound": "Product not found",
+    "preorderCartNotice": "Your cart has a preorder item. It will ship once it's ready, and we'll contact you with the date."
   },
   "checkout": {
     "title": "Checkout",
@@ -29,7 +36,8 @@
     "placingOrder": "Placing your order...",
     "orderPlaced": "Order placed!",
     "orderPlacedBody": "We've received your order and will contact you shortly to confirm delivery.",
-    "orderNumber": "Order number"
+    "orderNumber": "Order number",
+    "preorderPlacedBody": "This is a preorder. We'll contact you to confirm the shipping date."
   },
   "admin": {
     "login": "Partner login",
@@ -49,7 +57,8 @@
       "processing": "Processing",
       "shipped": "Shipped",
       "delivered": "Delivered",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "confirmed": "Confirmed"
     }
   },
   "common": {
@@ -58,5 +67,21 @@
     "cancel": "Cancel",
     "edit": "Edit",
     "delete": "Delete"
+  },
+  "pnl": {
+    "title": "Profit & Loss",
+    "period": "Period",
+    "allTime": "All time",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "revenue": "Revenue (delivered orders)",
+    "cogs": "Cost of goods sold",
+    "grossProfit": "Gross profit",
+    "expenses": "Operating expenses",
+    "netProfit": "Net profit",
+    "openOrders": "Open orders (not delivered yet)",
+    "openOrdersNote": "Not counted as profit until they are delivered.",
+    "missingCost": "{{n}} delivered order(s) have no cost recorded, so profit may look higher than it really is. Add a cost price to your products.",
+    "note": "Revenue counts delivered orders only. Expenses come from the Expenses screen."
   }
 }

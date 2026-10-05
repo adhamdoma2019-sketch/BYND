@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { MAX_ORDER_QTY } from '../utils/constants';
 
 const CartContext = createContext(null);
 
@@ -27,12 +28,18 @@ export function CartProvider({ slug, children }) {
   }, [slug, items]);
 
   function addItem(product, quantity = 1) {
+    // Most we allow in the cart: the stock (preorders have no stock limit),
+    // and never more than the server accepts per order.
+    const max = product.isPreorder
+      ? MAX_ORDER_QTY
+      : Math.min(Number(product.stock) || 0, MAX_ORDER_QTY);
+
     setItems((prev) => {
       const existing = prev.find((i) => i.productId === product.id);
       if (existing) {
         return prev.map((i) =>
           i.productId === product.id
-            ? { ...i, quantity: i.quantity + quantity }
+            ? { ...i, quantity: Math.min(i.quantity + quantity, max) }
             : i
         );
       }
@@ -42,8 +49,9 @@ export function CartProvider({ slug, children }) {
           productId: product.id,
           name: product.name,
           unitPrice: product.price,
-          quantity,
-          maxStock: product.stock,
+          quantity: Math.min(quantity, max),
+          maxStock: max,
+          isPreorder: product.isPreorder === true,
         },
       ];
     });
