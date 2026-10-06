@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { listProducts } from '../../firebase/products.service';
 import { updateTenantSettings } from '../../firebase/tenants.service';
+import AdminTopBar from '../../components/admin/AdminTopBar';
+import {
+  HERO_DEFAULT_SECONDS,
+  HERO_MIN_SECONDS,
+  HERO_MAX_SECONDS,
+  HERO_FADE_MS,
+} from '../../utils/constants';
 
-// The colour choices. To add a new one: add it here AND in src/index.css.
+// The colour choices. To add a new one: add it here, in the texts
+// (settingsPage.<id>) AND in src/index.css.
 const ACCENTS = [
-  { id: 'copper', label: 'Copper', color: '#D98B4A' },
-  { id: 'lime', label: 'Lime', color: '#C8F03C' },
-  { id: 'ice', label: 'Ice blue', color: '#6CB8F5' },
-  { id: 'white', label: 'White (monochrome)', color: '#FFFFFF' },
+  { id: 'copper', color: '#D98B4A' },
+  { id: 'lime', color: '#C8F03C' },
+  { id: 'ice', color: '#6CB8F5' },
+  { id: 'white', color: '#FFFFFF' },
 ];
 
 const MAX_SLIDES = 5;
@@ -52,11 +61,15 @@ const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
 
 export default function Settings() {
+  const { t } = useTranslation();
+  const { language } = useLanguage();
   const { tenant, reloadTenant } = useTenant();
 
   const [accent, setAccent] = useState('copper');
   const [logoUrl, setLogoUrl] = useState('');
   const [slides, setSlides] = useState([]);
+  const [seconds, setSeconds] = useState(HERO_DEFAULT_SECONDS);
+  const [fade, setFade] = useState('normal');
   const [products, setProducts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -67,6 +80,8 @@ export default function Settings() {
     setAccent(tenant.theme?.accent || 'copper');
     setLogoUrl(tenant.brand?.logoUrl || '');
     setSlides((tenant.hero?.slides || []).map(slideToForm));
+    setSeconds(tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS);
+    setFade(tenant.hero?.fade || 'normal');
     listProducts(tenant.id).then(setProducts);
   }, [tenant]);
 
@@ -95,21 +110,32 @@ export default function Settings() {
 
     const urls = [logoUrl, ...slides.map((s) => s.imageUrl)].filter((u) => u.trim());
     if (urls.some((u) => !/^https:\/\//i.test(u.trim()))) {
-      setError('Image links must start with https://');
+      setError(t('settingsPage.errHttps'));
       return;
     }
+
+    // Keep the timing inside safe limits.
+    const safeSeconds = Math.min(
+      HERO_MAX_SECONDS,
+      Math.max(HERO_MIN_SECONDS, Number(seconds) || HERO_DEFAULT_SECONDS)
+    );
 
     setSaving(true);
     try {
       await updateTenantSettings(tenant.id, {
         theme: { accent },
         brand: { logoUrl: logoUrl.trim() },
-        hero: { slides: slides.map(formToSlide) },
+        hero: {
+          slides: slides.map(formToSlide),
+          intervalSeconds: safeSeconds,
+          fade,
+        },
       });
+      setSeconds(safeSeconds);
       reloadTenant();
-      setMessage('Saved. Open your storefront to see the changes.');
+      setMessage(t('settingsPage.saved'));
     } catch {
-      setError('Could not save. Please try again.');
+      setError(t('settingsPage.errSave'));
     } finally {
       setSaving(false);
     }
@@ -119,21 +145,18 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen px-6 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-semibold">Settings</h1>
-        <Link to="/admin" className="text-sm text-brass hover:underline">
-          ← Dashboard
-        </Link>
-      </div>
+      <AdminTopBar />
+      <h1 className="mb-8 font-display text-2xl font-semibold">
+        {t('admin.settings')}
+      </h1>
 
       <form onSubmit={handleSave} className="max-w-3xl space-y-10">
         {/* ---------- Colour ---------- */}
         <section>
-          <h2 className="font-display text-lg font-medium">Accent color</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            Used for buttons, highlights and links on your shop. The shop is
-            always dark; only this color changes.
-          </p>
+          <h2 className="font-display text-lg font-medium">
+            {t('settingsPage.accentTitle')}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.accentHelp')}</p>
           <div className="mt-4 flex flex-wrap gap-3">
             {ACCENTS.map((a) => (
               <label
@@ -155,7 +178,7 @@ export default function Settings() {
                   className="h-6 w-6 rounded-full border border-ink/20"
                   style={{ backgroundColor: a.color }}
                 />
-                {a.label}
+                {t(`settingsPage.${a.id}`)}
               </label>
             ))}
           </div>
@@ -163,15 +186,15 @@ export default function Settings() {
 
         {/* ---------- Logo ---------- */}
         <section>
-          <h2 className="font-display text-lg font-medium">Logo (optional)</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            Paste a link to your logo image (a transparent PNG or SVG works
-            best). Until you add one, the shop name is shown as text.
-          </p>
+          <h2 className="font-display text-lg font-medium">
+            {t('settingsPage.logoTitle')}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.logoHelp')}</p>
           <label className="mt-3 block text-sm text-ink-soft">
-            Logo image link
+            {t('settingsPage.logoLink')}
             <input
               type="url"
+              dir="ltr"
               placeholder="https://..."
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
@@ -183,23 +206,60 @@ export default function Settings() {
         {/* ---------- Banner slides ---------- */}
         <section>
           <h2 className="font-display text-lg font-medium">
-            Home page banner
+            {t('settingsPage.bannerTitle')}
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
-            The big picture at the top of your shop. Add one slide for a still
-            banner, or up to {MAX_SLIDES} for a slideshow that changes by
-            itself. Change the pictures here whenever you like. If you add
-            none, the first product photo is used.
+            {t('settingsPage.bannerHelp', { max: MAX_SLIDES })}
           </p>
 
-          <div className="mt-4 space-y-5">
+          {/* Timing */}
+          <div className="mt-4 rounded-md border border-ink/10 bg-paper-soft p-4">
+            <p className="text-sm font-medium">{t('settingsPage.timingTitle')}</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="text-sm text-ink-soft">
+                {t('settingsPage.stayFor')}
+                <input
+                  type="number"
+                  min={HERO_MIN_SECONDS}
+                  max={HERO_MAX_SECONDS}
+                  step="1"
+                  value={seconds}
+                  onChange={(e) => setSeconds(e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+              <label className="text-sm text-ink-soft">
+                {t('settingsPage.fadeSpeed')}
+                <select
+                  value={fade}
+                  onChange={(e) => setFade(e.target.value)}
+                  className={inputClass}
+                >
+                  {Object.keys(HERO_FADE_MS).map((key) => (
+                    <option key={key} value={key}>
+                      {t(
+                        `settingsPage.fade${key.charAt(0).toUpperCase() + key.slice(1)}`
+                      )}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-ink-faint">
+              {t('settingsPage.timingNote')}
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-5">
             {slides.map((s, i) => (
               <div
                 key={i}
                 className="rounded-md border border-ink/10 bg-paper-soft p-4"
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-medium">Slide {i + 1}</p>
+                  <p className="text-sm font-medium">
+                    {t('settingsPage.slide', { n: i + 1 })}
+                  </p>
                   <div className="flex gap-3 text-sm">
                     <button
                       type="button"
@@ -207,7 +267,7 @@ export default function Settings() {
                       disabled={i === 0}
                       className="text-brass hover:underline disabled:opacity-40"
                     >
-                      ↑ Up
+                      {t('settingsPage.up')}
                     </button>
                     <button
                       type="button"
@@ -215,23 +275,24 @@ export default function Settings() {
                       disabled={i === slides.length - 1}
                       className="text-brass hover:underline disabled:opacity-40"
                     >
-                      ↓ Down
+                      {t('settingsPage.down')}
                     </button>
                     <button
                       type="button"
                       onClick={() => removeSlide(i)}
                       className="text-rust hover:underline"
                     >
-                      Remove
+                      {t('common.remove')}
                     </button>
                   </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="col-span-full text-sm text-ink-soft">
-                    Picture link
+                    {t('settingsPage.picLink')}
                     <input
                       type="url"
+                      dir="ltr"
                       placeholder="https://..."
                       value={s.imageUrl}
                       onChange={(e) => updateSlide(i, 'imageUrl', e.target.value)}
@@ -247,16 +308,17 @@ export default function Settings() {
                   )}
 
                   <label className="text-sm text-ink-soft">
-                    Headline (English)
+                    {t('settingsPage.headEn')}
                     <input
                       type="text"
+                      dir="ltr"
                       value={s.headlineEn}
                       onChange={(e) => updateSlide(i, 'headlineEn', e.target.value)}
                       className={inputClass}
                     />
                   </label>
                   <label className="text-sm text-ink-soft">
-                    العنوان (Arabic)
+                    {t('settingsPage.headAr')}
                     <input
                       type="text"
                       dir="rtl"
@@ -266,16 +328,17 @@ export default function Settings() {
                     />
                   </label>
                   <label className="text-sm text-ink-soft">
-                    Small text (English, optional)
+                    {t('settingsPage.subEn')}
                     <input
                       type="text"
+                      dir="ltr"
                       value={s.subtextEn}
                       onChange={(e) => updateSlide(i, 'subtextEn', e.target.value)}
                       className={inputClass}
                     />
                   </label>
                   <label className="text-sm text-ink-soft">
-                    النص الصغير (Arabic)
+                    {t('settingsPage.subAr')}
                     <input
                       type="text"
                       dir="rtl"
@@ -285,37 +348,40 @@ export default function Settings() {
                     />
                   </label>
                   <label className="text-sm text-ink-soft">
-                    Button text (English)
+                    {t('settingsPage.ctaEn')}
                     <input
                       type="text"
-                      placeholder="Shop now"
+                      dir="ltr"
+                      placeholder={t('settingsPage.ctaPhEn')}
                       value={s.ctaEn}
                       onChange={(e) => updateSlide(i, 'ctaEn', e.target.value)}
                       className={inputClass}
                     />
                   </label>
                   <label className="text-sm text-ink-soft">
-                    نص الزر (Arabic)
+                    {t('settingsPage.ctaAr')}
                     <input
                       type="text"
                       dir="rtl"
-                      placeholder="تسوّق الآن"
+                      placeholder={t('settingsPage.ctaPhAr')}
                       value={s.ctaAr}
                       onChange={(e) => updateSlide(i, 'ctaAr', e.target.value)}
                       className={inputClass}
                     />
                   </label>
                   <label className="col-span-full text-sm text-ink-soft">
-                    Where the button goes
+                    {t('settingsPage.goes')}
                     <select
                       value={s.productId}
                       onChange={(e) => updateSlide(i, 'productId', e.target.value)}
                       className={inputClass}
                     >
-                      <option value="">Scroll down to all products</option>
+                      <option value="">{t('settingsPage.goesAll')}</option>
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
-                          Open product: {p.name?.en}
+                          {t('settingsPage.goesProduct', {
+                            name: p.name?.[language] || p.name?.en,
+                          })}
                         </option>
                       ))}
                     </select>
@@ -331,7 +397,7 @@ export default function Settings() {
               onClick={() => setSlides((prev) => [...prev, emptySlide()])}
               className="mt-4 rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass"
             >
-              + Add slide
+              {t('settingsPage.addSlide')}
             </button>
           )}
         </section>
@@ -346,7 +412,7 @@ export default function Settings() {
               rel="noreferrer"
               className="underline"
             >
-              Open storefront ↗
+              {t('settingsPage.openStore')}
             </a>
           </p>
         )}
@@ -356,7 +422,7 @@ export default function Settings() {
           disabled={saving}
           className="rounded bg-ink px-6 py-2.5 text-sm text-paper transition hover:bg-brass disabled:opacity-60"
         >
-          {saving ? 'Saving...' : 'Save settings'}
+          {saving ? t('common.saving') : t('settingsPage.saveBtn')}
         </button>
       </form>
     </div>

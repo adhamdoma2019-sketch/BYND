@@ -42,7 +42,9 @@ export default async function handler(req, res) {
     return res.status(200).json(result);
   } catch (err) {
     if (err instanceof OrderError) {
-      return res.status(err.status).json({ error: err.message, code: err.code });
+      return res
+        .status(err.status)
+        .json({ error: err.message, code: err.code, meta: err.meta });
     }
     console.error('create-order failed:', err);
     return res

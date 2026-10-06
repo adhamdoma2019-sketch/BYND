@@ -35,11 +35,20 @@ export async function createOrder({ tenantId, customer, items }) {
     // ignore: handled below
   }
   if (!response.ok) {
-    throw new Error(
-      data.error || 'Something went wrong placing your order. Please try again.'
-    );
+    // `code` and `meta` let the screen show the message in Arabic or English.
+    const error = new Error(data.error || 'Order failed');
+    error.code = data.code;
+    error.meta = data.meta;
+    throw error;
   }
   return data; // { orderId, orderNumber, orderNumberLabel, totalAmount }
+}
+
+// Errors with a `code` so the screen can translate them.
+function codedError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
 }
 
 export async function listOrders(tenantId) {
@@ -71,13 +80,14 @@ export async function cancelOrder(orderId) {
 
   await runTransaction(db, async (transaction) => {
     const orderSnap = await transaction.get(orderRef);
-    if (!orderSnap.exists()) throw new Error('Order not found.');
+    if (!orderSnap.exists()) throw codedError('NOT_FOUND', 'Order not found.');
 
     const order = orderSnap.data();
     if (order.status === 'cancelled')
-      throw new Error('This order is already cancelled.');
+      throw codedError('ALREADY_CANCELLED', 'This order is already cancelled.');
     if (order.status === 'delivered') {
-      throw new Error(
+      throw codedError(
+        'ALREADY_DELIVERED',
         'This order was already delivered and cannot be cancelled.'
       );
     }

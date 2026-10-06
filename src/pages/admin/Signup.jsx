@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { createTenant, isSlugAvailable } from '../../firebase/tenants.service';
 import { slugify } from '../../utils/slugify';
 import { useTenant } from '../../context/TenantContext';
+import LanguageSwitch from '../../components/shared/LanguageSwitch';
 
 export default function Signup() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { reloadTenant } = useTenant();
 
@@ -22,7 +25,7 @@ export default function Signup() {
 
     const slug = slugify(shopName);
     if (!slug) {
-      setError('Please enter a shop name.');
+      setError(t('signup.noName'));
       return;
     }
 
@@ -30,9 +33,7 @@ export default function Signup() {
     try {
       const available = await isSlugAvailable(slug);
       if (!available) {
-        setError(
-          `The shop name "${shopName}" is already taken (someone is using yourapp.com/store/${slug}). Try a more specific name.`
-        );
+        setError(t('signup.taken', { name: shopName }));
         setSubmitting(false);
         return;
       }
@@ -50,15 +51,15 @@ export default function Signup() {
     } catch (err) {
       console.error('Signup error:', err);
       if (err.code === 'auth/email-already-in-use') {
-        setError('That email already has an account. Try signing in instead.');
+        setError(t('signup.emailInUse'));
       } else if (err.code === 'auth/weak-password') {
-        setError('Password should be at least 6 characters.');
+        setError(t('signup.weakPassword'));
       } else if (err.code === 'auth/invalid-email') {
-        setError('Please enter a valid email address.');
+        setError(t('signup.invalidEmail'));
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Network error — please check your connection and try again.');
+        setError(t('signup.network'));
       } else {
-        setError('Something went wrong creating your shop. Please try again.');
+        setError(t('signup.generic'));
       }
     } finally {
       setSubmitting(false);
@@ -68,35 +69,39 @@ export default function Signup() {
   const previewSlug = slugify(shopName) || 'your-shop-name';
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+      <div className="mb-4 w-full max-w-sm text-end">
+        <LanguageSwitch />
+      </div>
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-sm rounded-md border border-ink/10 bg-paper-soft p-8"
       >
         <h1 className="font-display text-2xl font-semibold">
-          Create your shop
+          {t('signup.title')}
         </h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          This sets up your storefront and your partner login in one step.
-        </p>
+        <p className="mt-1 text-sm text-ink-soft">{t('signup.intro')}</p>
 
         <label className="mt-6 block text-sm text-ink-soft">
-          Shop name
+          {t('signup.shopName')}
           <input
             type="text"
             required
             value={shopName}
             onChange={(e) => setShopName(e.target.value)}
-            placeholder="e.g. Adham's Workshop"
+            placeholder={t('signup.shopPlaceholder')}
             className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
           />
-          <span className="mt-1 block text-xs text-ink-faint">
-            Your storefront address: yourapp.com/store/{previewSlug}
+          <span className="mt-1 block text-xs text-ink-faint" dir="ltr">
+            {t('signup.address', {
+              host: window.location.host,
+              slug: previewSlug,
+            })}
           </span>
         </label>
 
         <label className="mt-4 block text-sm text-ink-soft">
-          Your email
+          {t('signup.yourEmail')}
           <input
             type="email"
             required
@@ -107,7 +112,7 @@ export default function Signup() {
         </label>
 
         <label className="mt-4 block text-sm text-ink-soft">
-          Password
+          {t('admin.password')}
           <input
             type="password"
             required
@@ -125,7 +130,7 @@ export default function Signup() {
           disabled={submitting}
           className="mt-6 w-full rounded bg-ink py-2.5 text-paper transition hover:bg-brass disabled:opacity-60"
         >
-          {submitting ? 'Creating your shop...' : 'Create shop'}
+          {submitting ? t('signup.creating') : t('signup.create')}
         </button>
       </form>
     </div>

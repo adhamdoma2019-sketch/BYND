@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
+import { useLanguage } from '../../context/LanguageContext';
+import AdminTopBar from '../../components/admin/AdminTopBar';
+import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import {
   listProducts,
@@ -29,6 +32,7 @@ const emptyForm = {
 
 export default function Products() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const { tenant } = useTenant();
 
   const [products, setProducts] = useState([]);
@@ -95,19 +99,19 @@ export default function Products() {
   async function handleSave(e) {
     e.preventDefault();
     if (!form.nameEn.trim()) {
-      setError('Product name (English) is required.');
+      setError(t('products.nameRequired'));
       return;
     }
     if (form.price === '' || Number(form.price) < 0) {
-      setError('Enter a valid price.');
+      setError(t('products.badPrice'));
       return;
     }
     if (form.costPrice !== '' && Number(form.costPrice) < 0) {
-      setError('Enter a valid cost price (or leave it empty).');
+      setError(t('products.badCost'));
       return;
     }
     if (!form.isPreorder && (form.stock === '' || Number(form.stock) < 0)) {
-      setError('Enter a valid stock quantity.');
+      setError(t('products.badStock'));
       return;
     }
 
@@ -122,7 +126,7 @@ export default function Products() {
       cancelForm();
       await refresh();
     } catch (err) {
-      setError('Could not save the product. Please try again.');
+      setError(t('products.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -130,9 +134,7 @@ export default function Products() {
 
   async function handleDelete(id) {
     if (
-      !window.confirm(
-        'Remove this product? It will disappear from the storefront but past orders stay intact.'
-      )
+      !window.confirm(t('products.confirmDelete'))
     ) {
       return;
     }
@@ -142,6 +144,7 @@ export default function Products() {
 
   return (
     <div className="min-h-screen px-6 py-10">
+      <AdminTopBar />
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-display text-2xl font-semibold">
           {t('admin.products')}
@@ -151,7 +154,7 @@ export default function Products() {
             onClick={startAdd}
             className="rounded bg-ink px-4 py-2 text-sm text-paper transition hover:bg-brass"
           >
-            + Add product
+            {t('products.add')}
           </button>
         )}
       </div>
@@ -162,11 +165,11 @@ export default function Products() {
           className="mb-8 grid max-w-2xl gap-4 rounded-md border border-ink/10 bg-paper-soft p-6 sm:grid-cols-2"
         >
           <h2 className="col-span-full font-display text-lg font-medium">
-            {editingId === 'new' ? 'Add product' : 'Edit product'}
+            {editingId === 'new' ? t('products.addTitle') : t('products.editTitle')}
           </h2>
 
           <label className="text-sm text-ink-soft">
-            Name (English)
+            {t('products.nameEn')}
             <input
               type="text"
               value={form.nameEn}
@@ -176,7 +179,7 @@ export default function Products() {
           </label>
 
           <label className="text-sm text-ink-soft">
-            الاسم (Arabic)
+            {t('products.nameAr')}
             <input
               type="text"
               dir="rtl"
@@ -187,7 +190,7 @@ export default function Products() {
           </label>
 
           <label className="col-span-full text-sm text-ink-soft">
-            Description (English)
+            {t('products.descEn')}
             <textarea
               rows={2}
               value={form.descriptionEn}
@@ -199,7 +202,7 @@ export default function Products() {
           </label>
 
           <label className="col-span-full text-sm text-ink-soft">
-            الوصف (Arabic)
+            {t('products.descAr')}
             <textarea
               rows={2}
               dir="rtl"
@@ -212,7 +215,7 @@ export default function Products() {
           </label>
 
           <label className="text-sm text-ink-soft">
-            Price (EGP)
+            {t('products.price')}
             <input
               type="number"
               min="0"
@@ -224,7 +227,7 @@ export default function Products() {
           </label>
 
           <label className="text-sm text-ink-soft">
-            Cost price (EGP)
+            {t('products.cost')}
             <input
               type="number"
               min="0"
@@ -234,13 +237,13 @@ export default function Products() {
               className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
             />
             <span className="mt-1 block text-xs text-ink-faint">
-              Private: what one unit costs you. Customers never see this.
+              {t('products.costHint')}
               {form.price !== '' && form.costPrice !== '' && (
                 <>
                   {' '}
-                  Profit per unit:{' '}
+                  {t('products.profitPerUnit')}{' '}
                   <strong>
-                    {Number(form.price) - Number(form.costPrice)} EGP
+                    {formatPrice(Number(form.price) - Number(form.costPrice), language)}
                   </strong>
                 </>
               )}
@@ -248,7 +251,7 @@ export default function Products() {
           </label>
 
           <label className="text-sm text-ink-soft">
-            Stock quantity
+            {t('products.stock')}
             <input
               type="number"
               min="0"
@@ -259,7 +262,7 @@ export default function Products() {
           </label>
 
           <label className="text-sm text-ink-soft">
-            SKU (optional)
+            {t('products.sku')}
             <input
               type="text"
               value={form.sku}
@@ -269,7 +272,7 @@ export default function Products() {
           </label>
 
           <label className="text-sm text-ink-soft">
-            Image URL
+            {t('products.imageUrl')}
             <input
               type="url"
               placeholder="https://..."
@@ -288,16 +291,15 @@ export default function Products() {
                   setForm({ ...form, isPreorder: e.target.checked })
                 }
               />
-              This is a preorder product (customers can order it even when
-              stock is 0)
+              {t('products.preorderCheck')}
             </label>
             {form.isPreorder && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label className="text-sm text-ink-soft">
-                  Preorder message (English)
+                  {t('products.preorderMsgEn')}
                   <input
                     type="text"
-                    placeholder="Preorder now. Shipping starts from..."
+                    placeholder={t('products.preorderPhEn')}
                     value={form.preorderMessageEn}
                     onChange={(e) =>
                       setForm({ ...form, preorderMessageEn: e.target.value })
@@ -306,11 +308,11 @@ export default function Products() {
                   />
                 </label>
                 <label className="text-sm text-ink-soft">
-                  رسالة الحجز المسبق (Arabic)
+                  {t('products.preorderMsgAr')}
                   <input
                     type="text"
                     dir="rtl"
-                    placeholder="احجز الآن. يبدأ الشحن من..."
+                    placeholder={t('products.preorderPhAr')}
                     value={form.preorderMessageAr}
                     onChange={(e) =>
                       setForm({ ...form, preorderMessageAr: e.target.value })
@@ -331,7 +333,7 @@ export default function Products() {
                   setForm({ ...form, isActive: e.target.checked })
                 }
               />
-              Visible on storefront
+              {t('products.visible')}
             </label>
           )}
 
@@ -343,7 +345,7 @@ export default function Products() {
               disabled={saving}
               className="rounded bg-ink px-4 py-2 text-sm text-paper transition hover:bg-brass disabled:opacity-60"
             >
-              {saving ? 'Saving...' : t('common.save')}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
             <button
               type="button"
@@ -358,8 +360,10 @@ export default function Products() {
 
       {!loading && products.some((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD) && (
         <p className="mb-4 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
-          {products.filter((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD).length}{' '}
-          product(s) low or out of stock — check the badges below.
+          {t('products.lowBanner', {
+            n: products.filter((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD)
+              .length,
+          })}
         </p>
       )}
 
@@ -367,7 +371,7 @@ export default function Products() {
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : products.length === 0 ? (
         <p className="text-ink-soft">
-          No products yet. Add your first one above.
+          {t('products.none')}
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -379,47 +383,51 @@ export default function Products() {
               {p.imageUrl ? (
                 <img
                   src={p.imageUrl}
-                  alt={p.name?.en}
+                  alt={p.name?.[language] || p.name?.en}
                   className="mb-3 h-40 w-full rounded object-cover"
                 />
               ) : (
                 <div className="mb-3 flex h-40 w-full items-center justify-center rounded bg-paper-dim text-sm text-ink-faint">
-                  No image
+                  {t('products.noImage')}
                 </div>
               )}
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-medium">{p.name?.en}</p>
+                  <p className="font-medium">{p.name?.[language] || p.name?.en}</p>
                   <p className="text-sm text-ink-soft">
-                    {p.price} EGP · stock: {p.stock}
+                    {t('products.priceStock', {
+                      price: formatPrice(p.price, language),
+                      stock: p.stock,
+                    })}
                   </p>
                   <p className="text-xs text-ink-faint">
                     {costs[p.id] !== null && costs[p.id] !== undefined
-                      ? `Cost: ${costs[p.id]} EGP · profit/unit: ${
-                          p.price - costs[p.id]
-                        } EGP`
-                      : 'No cost set yet'}
+                      ? t('products.costLine', {
+                          cost: formatPrice(costs[p.id], language),
+                          profit: formatPrice(p.price - costs[p.id], language),
+                        })
+                      : t('products.noCost')}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   {!p.isActive && (
                     <span className="rounded bg-paper-dim px-2 py-0.5 text-xs text-ink-faint">
-                      Hidden
+                      {t('products.hidden')}
                     </span>
                   )}
                   {p.isPreorder && (
                     <span className="rounded bg-ink/10 px-2 py-0.5 text-xs text-ink-soft">
-                      Preorder
+                      {t('storefront.preorder')}
                     </span>
                   )}
                   {!p.isPreorder && p.stock <= 0 && (
                     <span className="rounded bg-rust/15 px-2 py-0.5 text-xs text-rust">
-                      Out of stock
+                      {t('storefront.outOfStock')}
                     </span>
                   )}
                   {!p.isPreorder && p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD && (
                     <span className="rounded bg-brass/15 px-2 py-0.5 text-xs text-brass-dark">
-                      Low stock
+                      {t('products.lowStockBadge')}
                     </span>
                   )}
                 </div>

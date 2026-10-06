@@ -39,7 +39,7 @@ export async function getUserTenantId(uid) {
 // Look & feel settings edited in Admin > Settings:
 //   theme: { accent }                 colour choice
 //   brand: { logoUrl }                optional logo image
-//   hero:  { slides: [...] }          home page banner slides
+//   hero:  { slides: [...], intervalSeconds, fade }   home page banner
 export async function updateTenantSettings(tenantId, { theme, brand, hero }) {
   await updateDoc(doc(db, 'tenants', tenantId), {
     theme,

@@ -10,6 +10,12 @@ import Hero from '../../components/storefront/Hero';
 import ProductCard from '../../components/storefront/ProductCard';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { usePageMeta } from '../../utils/usePageMeta';
+import {
+  HERO_DEFAULT_SECONDS,
+  HERO_MIN_SECONDS,
+  HERO_MAX_SECONDS,
+  HERO_FADE_MS,
+} from '../../utils/constants';
 
 const MAX_SLIDES = 5;
 
@@ -68,11 +74,18 @@ export default function StorefrontHome() {
     ];
   }, [tenant, products, language, t]);
 
+  // Slideshow timing chosen in Admin > Settings (with safe limits).
+  const seconds = Math.min(
+    HERO_MAX_SECONDS,
+    Math.max(HERO_MIN_SECONDS, Number(tenant.hero?.intervalSeconds) || HERO_DEFAULT_SECONDS)
+  );
+  const fadeMs = HERO_FADE_MS[tenant.hero?.fade] || HERO_FADE_MS.normal;
+
   return (
     <div className="min-h-screen">
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
-      <Hero slides={slides} />
+      <Hero slides={slides} intervalMs={seconds * 1000} fadeMs={fadeMs} />
 
       <main className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <h2

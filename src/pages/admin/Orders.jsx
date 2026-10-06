@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
+import { useLanguage } from '../../context/LanguageContext';
+import AdminTopBar from '../../components/admin/AdminTopBar';
+import { formatPrice } from '../../utils/format';
 import {
   listOrders,
   updateOrderStatus,
@@ -33,6 +36,7 @@ function orderDateStr(order) {
 
 export default function Orders() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const { tenant } = useTenant();
 
   const [orders, setOrders] = useState([]);
@@ -98,9 +102,7 @@ export default function Orders() {
 
   async function handleCancel(order) {
     if (
-      !window.confirm(
-        'Cancel this order? Stock for its items will be restored automatically.'
-      )
+      !window.confirm(t('orders.confirmCancel'))
     )
       return;
     setUpdatingId(order.id);
@@ -109,7 +111,11 @@ export default function Orders() {
       await cancelOrder(order.id);
       await refresh();
     } catch (err) {
-      setActionError(err.message || 'Could not cancel this order.');
+      setActionError(
+        err.code
+          ? t(`orders.err.${err.code}`, { defaultValue: t('orders.cancelFailed') })
+          : t('orders.cancelFailed')
+      );
     } finally {
       setUpdatingId(null);
     }
@@ -135,6 +141,7 @@ export default function Orders() {
 
   return (
     <div className="min-h-screen px-6 py-10">
+      <AdminTopBar />
       <h1 className="mb-6 font-display text-2xl font-semibold">
         {t('admin.orders')}
       </h1>
@@ -145,7 +152,7 @@ export default function Orders() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus-visible:border-brass"
         >
-          <option value="all">All statuses</option>
+          <option value="all">{t('orders.allStatuses')}</option>
           {ALL_STATUSES.map((s) => (
             <option key={s} value={s}>
               {t('admin.status.' + s)}
@@ -155,7 +162,7 @@ export default function Orders() {
 
         <input
           type="text"
-          placeholder="Search name or phone..."
+          placeholder={t('orders.searchPh')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus-visible:border-brass"
@@ -167,7 +174,7 @@ export default function Orders() {
           onChange={(e) => setDateFrom(e.target.value)}
           className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus-visible:border-brass"
         />
-        <span className="self-center text-sm text-ink-faint">to</span>
+        <span className="self-center text-sm text-ink-faint">{t('orders.to')}</span>
         <input
           type="date"
           value={dateTo}
@@ -185,7 +192,7 @@ export default function Orders() {
             }}
             className="rounded border border-ink/15 px-3 py-2 text-sm text-ink-soft hover:border-rust hover:text-rust"
           >
-            Clear filters
+            {t('orders.clear')}
           </button>
         )}
       </div>
@@ -196,9 +203,7 @@ export default function Orders() {
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : filteredOrders.length === 0 ? (
         <p className="text-ink-soft">
-          {orders.length === 0
-            ? 'No orders yet.'
-            : 'No orders match these filters.'}
+          {orders.length === 0 ? t('orders.none') : t('orders.noMatch')}
         </p>
       ) : (
         <div className="space-y-3">
@@ -216,24 +221,26 @@ export default function Orders() {
               >
                 <button
                   onClick={() => setExpandedId(isOpen ? null : order.id)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left"
+                  className="flex w-full items-center justify-between px-4 py-3 text-start"
                 >
                   <div>
                     <span className="font-medium">
-                      Order {order.orderNumberLabel || `#${order.orderNumber}`}
+                      {t('orders.orderLabel', {
+                        label: order.orderNumberLabel || `#${order.orderNumber}`,
+                      })}
                     </span>
-                    <span className="ml-3 text-sm text-ink-soft">
+                    <span className="ms-3 text-sm text-ink-soft">
                       {order.customer?.name}
                     </span>
                     {order.orderType === 'preorder' && (
-                      <span className="ml-3 rounded bg-ink px-2 py-0.5 text-xs text-paper">
-                        Preorder
+                      <span className="ms-3 rounded bg-ink px-2 py-0.5 text-xs text-paper">
+                        {t('orders.preorder')}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm text-ink-soft">
-                      {order.totalAmount} EGP
+                      {formatPrice(order.totalAmount, language)}
                     </span>
                     <span
                       className={
@@ -252,7 +259,7 @@ export default function Orders() {
                       <div>
                         <div className="mb-1 flex items-center justify-between">
                           <p className="text-sm font-medium text-ink-soft">
-                            Customer
+                            {t('orders.customer')}
                           </p>
                           {!isEditingCustomer && (
                             <button
@@ -275,7 +282,7 @@ export default function Orders() {
                                   name: e.target.value,
                                 })
                               }
-                              placeholder="Name"
+                              placeholder={t('orders.namePh')}
                               className="w-full rounded border border-ink/15 px-2 py-1 text-sm"
                             />
                             <input
@@ -287,7 +294,7 @@ export default function Orders() {
                                   phone: e.target.value,
                                 })
                               }
-                              placeholder="Phone"
+                              placeholder={t('orders.phonePh')}
                               className="w-full rounded border border-ink/15 px-2 py-1 text-sm"
                             />
                             <textarea
@@ -298,7 +305,7 @@ export default function Orders() {
                                   address: e.target.value,
                                 })
                               }
-                              placeholder="Address"
+                              placeholder={t('orders.addressPh')}
                               rows={2}
                               className="w-full rounded border border-ink/15 px-2 py-1 text-sm"
                             />
@@ -310,7 +317,7 @@ export default function Orders() {
                                   notes: e.target.value,
                                 })
                               }
-                              placeholder="Notes"
+                              placeholder={t('orders.notesPh')}
                               rows={2}
                               className="w-full rounded border border-ink/15 px-2 py-1 text-sm"
                             />
@@ -350,26 +357,32 @@ export default function Orders() {
 
                       <div>
                         <p className="text-sm font-medium text-ink-soft">
-                          Items
+                          {t('orders.items')}
                         </p>
                         {order.items?.map((item, i) => (
                           <div key={i} className="flex justify-between text-sm">
                             <span>
-                              {item.name?.en} × {item.quantity}
+                              {item.name?.[language] || item.name?.en} ×{' '}
+                              {item.quantity}
                             </span>
-                            <span>{item.subtotal} EGP</span>
+                            <span>{formatPrice(item.subtotal, language)}</span>
                           </div>
                         ))}
                         {(() => {
                           const c = orderCost(order);
                           return c.complete ? (
                             <p className="mt-2 border-t border-ink/10 pt-2 text-xs text-ink-faint">
-                              Cost of goods: {c.cogs} EGP · Gross profit:{' '}
-                              {(order.totalAmount || 0) - c.cogs} EGP
+                              {t('orders.costLine', {
+                                cogs: formatPrice(c.cogs, language),
+                                profit: formatPrice(
+                                  (order.totalAmount || 0) - c.cogs,
+                                  language
+                                ),
+                              })}
                             </p>
                           ) : (
                             <p className="mt-2 border-t border-ink/10 pt-2 text-xs text-ink-faint">
-                              No cost was recorded for this order.
+                              {t('orders.noCostRecorded')}
                             </p>
                           );
                         })()}
@@ -383,7 +396,9 @@ export default function Orders() {
                           disabled={updatingId === order.id}
                           className="rounded bg-ink px-3 py-1.5 text-sm text-paper transition hover:bg-brass disabled:opacity-60"
                         >
-                          Mark as {t('admin.status.' + next)}
+                          {t('orders.markAs', {
+                            status: t('admin.status.' + next),
+                          })}
                         </button>
                       )}
                       {canCancel && (
@@ -392,7 +407,7 @@ export default function Orders() {
                           disabled={updatingId === order.id}
                           className="rounded border border-ink/15 px-3 py-1.5 text-sm text-rust hover:border-rust disabled:opacity-60"
                         >
-                          Cancel order
+                          {t('orders.cancelOrder')}
                         </button>
                       )}
                     </div>

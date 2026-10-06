@@ -29,11 +29,11 @@ export default function Checkout() {
     setError('');
 
     if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
-      setError('Please fill in your name, phone, and address.');
+      setError(t('errors.fillAll'));
       return;
     }
     if (items.length === 0) {
-      setError('Your cart is empty.');
+      setError(t('errors.EMPTY_CART'));
       return;
     }
 
@@ -54,9 +54,16 @@ export default function Checkout() {
         },
       });
     } catch (err) {
+      // Show the server's reason in the customer's language.
+      const key =
+        err.code === 'OUT_OF_STOCK' && err.meta?.stock > 0
+          ? 'OUT_OF_STOCK_PARTIAL'
+          : err.code;
       setError(
-        err.message ||
-          'Something went wrong placing your order. Please try again.'
+        t(`errors.${key}`, {
+          ...err.meta,
+          defaultValue: t('errors.generic'),
+        })
       );
     } finally {
       setSubmitting(false);

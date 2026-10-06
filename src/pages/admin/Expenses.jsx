@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   listExpenses,
   createExpense,
   deleteExpense,
 } from '../../firebase/expenses.service';
+import AdminTopBar from '../../components/admin/AdminTopBar';
+import { formatPrice } from '../../utils/format';
 
+// Categories offered for NEW expenses. Older records may use others
+// (printing, ads...), which still display correctly.
 const CATEGORIES = [
+  'manufacturing',
   'materials',
-  'printing',
   'packaging',
+  'marketing',
   'shipping',
-  'ads',
+  'software',
   'other',
 ];
 
@@ -20,20 +26,26 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const inputClass =
+  'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
+
 export default function Expenses() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const { tenant } = useTenant();
 
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    category: 'materials',
+    category: 'manufacturing',
     description: '',
     amount: '',
     date: todayStr(),
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const categoryLabel = (c) => t(`expenses.cat.${c}`, { defaultValue: c });
 
   async function refresh() {
     if (!tenant) return;
@@ -53,11 +65,11 @@ export default function Expenses() {
     setError('');
 
     if (!form.amount || Number(form.amount) <= 0) {
-      setError('Enter a valid amount.');
+      setError(t('expenses.badAmount'));
       return;
     }
     if (!form.date) {
-      setError('Pick a date.');
+      setError(t('expenses.pickDate'));
       return;
     }
 
@@ -65,21 +77,21 @@ export default function Expenses() {
     try {
       await createExpense(tenant.id, form);
       setForm({
-        category: 'materials',
+        category: 'manufacturing',
         description: '',
         amount: '',
         date: todayStr(),
       });
       await refresh();
     } catch {
-      setError('Could not save the expense. Please try again.');
+      setError(t('expenses.saveFailed'));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Remove this expense?')) return;
+    if (!window.confirm(t('expenses.confirmDelete'))) return;
     await deleteExpense(id);
     await refresh();
   }
@@ -88,6 +100,7 @@ export default function Expenses() {
 
   return (
     <div className="min-h-screen px-6 py-10">
+      <AdminTopBar />
       <h1 className="mb-8 font-display text-2xl font-semibold">
         {t('admin.expenses')}
       </h1>
@@ -97,50 +110,50 @@ export default function Expenses() {
         className="mb-8 grid max-w-2xl gap-4 rounded-md border border-ink/10 bg-paper-soft p-6 sm:grid-cols-2"
       >
         <label className="text-sm text-ink-soft">
-          Category
+          {t('expenses.category')}
           <select
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+            className={inputClass}
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c.charAt(0).toUpperCase() + c.slice(1)}
+                {categoryLabel(c)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="text-sm text-ink-soft">
-          Amount (EGP)
+          {t('expenses.amount')}
           <input
             type="number"
             min="0"
             step="0.01"
             value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+            className={inputClass}
           />
         </label>
 
         <label className="text-sm text-ink-soft">
-          Date
+          {t('expenses.date')}
           <input
             type="date"
             value={form.date}
             onChange={(e) => setForm({ ...form, date: e.target.value })}
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+            className={inputClass}
           />
         </label>
 
         <label className="text-sm text-ink-soft">
-          Description (optional)
+          {t('expenses.description')}
           <input
             type="text"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="e.g. 2 boxes of paper"
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+            placeholder={t('expenses.descPh')}
+            className={inputClass}
           />
         </label>
 
@@ -152,7 +165,7 @@ export default function Expenses() {
             disabled={saving}
             className="rounded bg-ink px-4 py-2 text-sm text-paper transition hover:bg-brass disabled:opacity-60"
           >
-            {saving ? 'Saving...' : t('common.save')}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </form>
@@ -163,10 +176,10 @@ export default function Expenses() {
         <>
           <div className="mb-4 flex justify-between text-lg font-medium">
             <span>{t('admin.totalExpenses')}</span>
-            <span>{total} EGP</span>
+            <span>{formatPrice(total, language)}</span>
           </div>
           {expenses.length === 0 ? (
-            <p className="text-ink-soft">No expenses logged yet.</p>
+            <p className="text-ink-soft">{t('expenses.none')}</p>
           ) : (
             <div className="divide-y divide-ink/10 rounded-md border border-ink/10 bg-white">
               {expenses.map((exp) => (
@@ -175,13 +188,13 @@ export default function Expenses() {
                   className="flex items-center justify-between px-4 py-3"
                 >
                   <div>
-                    <p className="font-medium capitalize">{exp.category}</p>
+                    <p className="font-medium">{categoryLabel(exp.category)}</p>
                     <p className="text-sm text-ink-soft">
                       {exp.date} {exp.description && '· ' + exp.description}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span>{exp.amount} EGP</span>
+                    <span>{formatPrice(exp.amount, language)}</span>
                     <button
                       onClick={() => handleDelete(exp.id)}
                       className="text-sm text-rust hover:underline"

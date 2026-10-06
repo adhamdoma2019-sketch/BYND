@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import LanguageSwitch from '../../components/shared/LanguageSwitch';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -21,14 +22,17 @@ export default function Login() {
       await login(email, password);
       navigate('/admin');
     } catch (err) {
-      setError('Invalid email or password.');
+      setError(t('login.invalid'));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+      <div className="mb-4 w-full max-w-sm text-end">
+        <LanguageSwitch />
+      </div>
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-sm rounded-md border border-ink/10 bg-paper-soft p-8"

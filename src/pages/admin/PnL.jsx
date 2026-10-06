@@ -6,6 +6,7 @@ import { listOrders } from '../../firebase/orders.service';
 import { listExpenses } from '../../firebase/expenses.service';
 import { calcProfit } from '../../utils/profit';
 import { formatPrice } from '../../utils/format';
+import AdminTopBar from '../../components/admin/AdminTopBar';
 
 // One line of the report. `strong` lines are the totals (gross / net profit).
 function Row({ label, value, tone, strong }) {
@@ -59,6 +60,7 @@ export default function PnL() {
 
   return (
     <div className="min-h-screen px-6 py-10">
+      <AdminTopBar />
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-semibold">{t('pnl.title')}</h1>
         <label className="text-sm text-ink-soft">

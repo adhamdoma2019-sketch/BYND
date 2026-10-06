@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
@@ -10,6 +11,7 @@ import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 
 export default function Dashboard() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const { logout } = useAuth();
   const { tenant, loading } = useTenant();
   const storefrontUrl = tenant ? '/store/' + tenant.slug : '';
@@ -38,7 +40,8 @@ export default function Dashboard() {
           </span>
           {tenant && (
             <p className="text-xs text-ink-faint">
-              {tenant.name?.en} · {window.location.host}/store/{tenant.slug}
+              {tenant.name?.[language] || tenant.name?.en} ·{' '}
+              <span dir="ltr">{window.location.host}/store/{tenant.slug}</span>
             </p>
           )}
         </div>
@@ -59,7 +62,11 @@ export default function Dashboard() {
         ) : (
           <>
             <p className="text-ink-soft">
-              Managing <strong>{tenant?.name?.en}</strong>.
+              <Trans
+                i18nKey="dash.managing"
+                values={{ name: tenant?.name?.[language] || tenant?.name?.en }}
+                components={{ b: <strong /> }}
+              />
             </p>
 
             {lowStockCount > 0 && (
@@ -67,8 +74,7 @@ export default function Dashboard() {
                 to="/admin/products"
                 className="mt-4 block max-w-3xl rounded border border-brass/30 bg-brass/10 px-4 py-3 text-sm text-brass-dark transition hover:border-brass"
               >
-                ⚠ {lowStockCount} product(s) low or out of stock — review
-                Products
+                {t('dash.lowStock', { n: lowStockCount })}
               </Link>
             )}
 
@@ -81,7 +87,7 @@ export default function Dashboard() {
                   {t('admin.orders')}
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
-                  See and update incoming orders.
+                  {t('dash.ordersDesc')}
                 </p>
               </Link>
 
@@ -93,7 +99,7 @@ export default function Dashboard() {
                   {t('admin.products')}
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
-                  Add, edit, and manage what's for sale.
+                  {t('dash.productsDesc')}
                 </p>
               </Link>
 
@@ -105,7 +111,7 @@ export default function Dashboard() {
                   {t('admin.expenses')}
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
-                  Log costs like materials and shipping.
+                  {t('dash.expensesDesc')}
                 </p>
               </Link>
 
@@ -114,10 +120,10 @@ export default function Dashboard() {
                 className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
               >
                 <h2 className="font-display text-lg font-medium">
-                  Profit &amp; Loss
+                  {t('pnl.title')}
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
-                  Sales, cost and profit at a glance.
+                  {t('dash.pnlDesc')}
                 </p>
               </Link>
 
@@ -129,7 +135,7 @@ export default function Dashboard() {
                   {t('admin.settings')}
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
-                  Colors, logo and the home page banner.
+                  {t('dash.settingsDesc')}
                 </p>
               </Link>
 
@@ -141,10 +147,10 @@ export default function Dashboard() {
                   className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
                 >
                   <h2 className="font-display text-lg font-medium">
-                    View storefront ↗
+                    {t('dash.viewStore')}
                   </h2>
                   <p className="mt-1 text-sm text-ink-soft">
-                    See what customers see.
+                    {t('dash.viewStoreDesc')}
                   </p>
                 </a>
               )}

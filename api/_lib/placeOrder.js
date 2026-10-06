@@ -12,11 +12,14 @@ const MAX_LINES = 20; // different products in one order
 const MAX_QTY = 20; // quantity of one product in one order
 const FIRST_ORDER_NUMBER = 1001;
 
+// `code` lets the website show the message in the customer's language;
+// `meta` carries numbers/names the message needs (e.g. how many are left).
 export class OrderError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, meta) {
     super(message);
     this.status = status;
     this.code = code;
+    this.meta = meta;
   }
 }
 
@@ -42,13 +45,13 @@ export function validateInput(body) {
     notes: cleanText(c.notes, 500),
   };
   if (customer.name.length < 2) {
-    throw new OrderError(400, 'BAD_CUSTOMER', 'Please enter your name.');
+    throw new OrderError(400, 'BAD_NAME', 'Please enter your name.');
   }
   if (!/^[0-9+\s()-]{7,30}$/.test(customer.phone)) {
-    throw new OrderError(400, 'BAD_CUSTOMER', 'Please enter a valid phone number.');
+    throw new OrderError(400, 'BAD_PHONE', 'Please enter a valid phone number.');
   }
   if (customer.address.length < 5) {
-    throw new OrderError(400, 'BAD_CUSTOMER', 'Please enter your address.');
+    throw new OrderError(400, 'BAD_ADDRESS', 'Please enter your address.');
   }
 
   if (!Array.isArray(body.items) || body.items.length === 0) {
@@ -70,7 +73,9 @@ export function validateInput(body) {
   }
   const items = [...merged].map(([productId, quantity]) => ({ productId, quantity }));
   if (items.some((i) => i.quantity > MAX_QTY)) {
-    throw new OrderError(400, 'BAD_ITEM', `You can order up to ${MAX_QTY} of each item.`);
+    throw new OrderError(400, 'TOO_MANY', `You can order up to ${MAX_QTY} of each item.`, {
+      max: MAX_QTY,
+    });
   }
 
   return { tenantId, customer, items };
@@ -128,7 +133,8 @@ export async function placeOrder(db, { tenantId, customer, items }) {
           'OUT_OF_STOCK',
           stock > 0
             ? `Sorry, only ${stock} of "${name}" left in stock.`
-            : `Sorry, "${name}" is out of stock.`
+            : `Sorry, "${name}" is out of stock.`,
+          { name, stock }
         );
       }
 

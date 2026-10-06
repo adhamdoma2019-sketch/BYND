@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const ROTATE_MS = 6000;
-
 // The big banner at the top of the shop.
 // `slides` = [{ imageUrl, headline, subtext, ctaLabel, to }]
 // One slide = a still banner. Several slides = a slideshow that changes by
 // itself (and has dots to jump). The shop edits slides in Admin > Settings.
-export default function Hero({ slides }) {
+export default function Hero({ slides, intervalMs = 6000, fadeMs = 1000 }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = slides.length;
@@ -20,9 +18,9 @@ export default function Hero({ slides }) {
     if (count < 2 || paused) return undefined;
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (reduceMotion) return undefined;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % count), ROTATE_MS);
+    const timer = setInterval(() => setIndex((i) => (i + 1) % count), intervalMs);
     return () => clearInterval(timer);
-  }, [count, paused]);
+  }, [count, paused, intervalMs]);
 
   if (count === 0) return null;
 
@@ -39,9 +37,10 @@ export default function Hero({ slides }) {
           <div
             key={i}
             className={
-              'absolute inset-0 transition-opacity duration-1000 ' +
+              'absolute inset-0 transition-opacity ' +
               (active ? 'opacity-100' : 'pointer-events-none opacity-0')
             }
+            style={{ transitionDuration: `${fadeMs}ms` }}
             aria-hidden={!active}
           >
             {slide.imageUrl && (
