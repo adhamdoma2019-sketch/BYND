@@ -12,6 +12,7 @@ import Products from '../pages/admin/Products';
 import Orders from '../pages/admin/Orders';
 import Expenses from '../pages/admin/Expenses';
 import PnL from '../pages/admin/PnL';
+import Settings from '../pages/admin/Settings';
 import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRoutes() {
@@ -57,6 +58,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <Expenses />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         }
       />

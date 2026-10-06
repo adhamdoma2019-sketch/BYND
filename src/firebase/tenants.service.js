@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './config';
 
 export async function getTenant(slug) {
@@ -34,4 +34,17 @@ export async function createTenant({ slug, shopName, ownerUid }) {
 export async function getUserTenantId(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
   return snap.exists() ? snap.data().tenantId : null;
+}
+
+// Look & feel settings edited in Admin > Settings:
+//   theme: { accent }                 colour choice
+//   brand: { logoUrl }                optional logo image
+//   hero:  { slides: [...] }          home page banner slides
+export async function updateTenantSettings(tenantId, { theme, brand, hero }) {
+  await updateDoc(doc(db, 'tenants', tenantId), {
+    theme,
+    brand,
+    hero,
+    updatedAt: serverTimestamp(),
+  });
 }

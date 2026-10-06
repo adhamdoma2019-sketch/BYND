@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getTenant } from '../../firebase/tenants.service';
 import { createOrder } from '../../firebase/orders.service';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
 
 export default function Checkout() {
@@ -14,7 +14,7 @@ export default function Checkout() {
   const { language } = useLanguage();
   const { items, subtotal, clearCart } = useCart();
 
-  const [tenant, setTenant] = useState(null);
+  const { tenant } = useStorefront();
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -23,10 +23,6 @@ export default function Checkout() {
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    getTenant(slug).then(setTenant);
-  }, [slug]);
 
   async function handleSubmit(e) {
     e.preventDefault();

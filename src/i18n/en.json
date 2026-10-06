@@ -22,7 +22,18 @@
     "onlyLeft": "Only {{n}} left",
     "backToShop": "← Back to shop",
     "productNotFound": "Product not found",
-    "preorderCartNotice": "Your cart has a preorder item. It will ship once it's ready, and we'll contact you with the date."
+    "preorderCartNotice": "Your cart has a preorder item. It will ship once it's ready, and we'll contact you with the date.",
+    "heroDefaultHeadline": "Every achievement deserves a place",
+    "shopNow": "Shop now",
+    "collection": "The collection",
+    "noProducts": "No products available yet.",
+    "footerNote": "Cash on delivery",
+    "step1Title": "Choose your piece",
+    "step1Body": "Browse the collection and pick what fits your story.",
+    "step2Title": "Order and pay on delivery",
+    "step2Body": "Send your details. No online payment needed.",
+    "step3Title": "We bring it to your door",
+    "step3Body": "We confirm your order and deliver it to you."
   },
   "checkout": {
     "title": "Checkout",
@@ -59,7 +70,8 @@
       "delivered": "Delivered",
       "cancelled": "Cancelled",
       "confirmed": "Confirmed"
-    }
+    },
+    "settings": "Settings"
   },
   "common": {
     "loading": "Loading...",

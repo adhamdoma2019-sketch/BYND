@@ -18,7 +18,7 @@ export default function CartDrawer({ onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-end bg-ink/30"
+      className="fixed inset-0 z-40 flex justify-end bg-black/60"
       onClick={onClose}
     >
       <div

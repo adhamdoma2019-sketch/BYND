@@ -1,34 +1,40 @@
 /** @type {import('tailwindcss').Config} */
+const themeColor = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   darkMode: false,
   theme: {
     extend: {
+      // Colours are CSS variables (defined in src/index.css) so the whole look
+      // can be re-themed in one place: the admin uses the light values, the
+      // storefront uses the dark values + the accent colour the shop picked.
       colors: {
-        // "Workshop" palette — warm stone paper, near-black ink, brass accent.
-        // Deliberately avoiding the common cream/terracotta AI-default pairing.
         paper: {
-          DEFAULT: '#EDEAE3',
-          soft: '#F5F3EE',
-          dim: '#E1DCD1',
+          DEFAULT: themeColor('paper'),
+          soft: themeColor('paper-soft'),
+          dim: themeColor('paper-dim'),
         },
         ink: {
-          DEFAULT: '#20222B',
-          soft: '#4A4D57',
-          faint: '#8A8D97',
+          DEFAULT: themeColor('ink'),
+          soft: themeColor('ink-soft'),
+          faint: themeColor('ink-faint'),
         },
+        // "brass" = the ACCENT colour (name kept so existing screens keep working).
         brass: {
-          DEFAULT: '#A8732E',
-          dark: '#8A5D24',
-          light: '#C79552',
+          DEFAULT: themeColor('brass'),
+          dark: themeColor('brass-dark'),
+          light: themeColor('brass-light'),
         },
         sage: {
-          DEFAULT: '#5F7A63',
-          dark: '#48604C',
+          DEFAULT: themeColor('sage'),
+          dark: themeColor('sage-dark'),
         },
         rust: {
-          DEFAULT: '#9C4A3C',
+          DEFAULT: themeColor('rust'),
         },
+        // Card / input surface (white in the admin, dark grey in the storefront).
+        white: themeColor('white'),
       },
       fontFamily: {
         // English uses a serif display / sans body split.

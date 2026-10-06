@@ -1,98 +1,126 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTenant } from '../../firebase/tenants.service';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { useCart } from '../../context/CartContext';
-import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import { useLanguage } from '../../context/LanguageContext';
-import { usePageMeta } from '../../utils/usePageMeta';
+import { useStorefront } from '../../context/StorefrontContext';
+import StorefrontHeader from '../../components/storefront/StorefrontHeader';
+import StorefrontFooter from '../../components/storefront/StorefrontFooter';
+import Hero from '../../components/storefront/Hero';
 import ProductCard from '../../components/storefront/ProductCard';
 import CartDrawer from '../../components/storefront/CartDrawer';
+import { usePageMeta } from '../../utils/usePageMeta';
+
+const MAX_SLIDES = 5;
 
 export default function StorefrontHome() {
-  const { slug } = useParams();
   const { t } = useTranslation();
   const { addItem } = useCart();
   const { language } = useLanguage();
+  const { tenant } = useStorefront();
 
-  const [tenant, setTenant] = useState(null);
   const [products, setProducts] = useState([]);
-  const [status, setStatus] = useState('loading');
+  const [productsLoading, setProductsLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setStatus('loading');
-      const tenantData = await getTenant(slug);
-      if (cancelled) return;
-      if (!tenantData) {
-        setStatus('not-found');
-        return;
-      }
-      setTenant(tenantData);
-      const productList = await listStorefrontProducts(tenantData.id);
-      if (cancelled) return;
-      setProducts(productList);
-      setStatus('found');
-    }
-    load();
+    listStorefrontProducts(tenant.id)
+      .then((list) => {
+        if (!cancelled) setProducts(list);
+      })
+      .finally(() => {
+        if (!cancelled) setProductsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [tenant.id]);
 
-  const shopName = tenant
-    ? tenant.name?.[language] || tenant.name?.en || tenant.slug
-    : undefined;
-  usePageMeta(shopName, shopName ? `${shopName} — ${t('storefront.heroTagline')}` : undefined);
+  const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
+  usePageMeta(shopName, `${shopName} — ${t('storefront.heroDefaultHeadline')}`);
 
-  if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-ink-soft">
-        {t('common.loading')}
-      </div>
-    );
-  }
+  // Banner slides: the ones the shop set up in Admin > Settings. If none yet,
+  // we show the first product photo so the page never looks empty.
+  const slides = useMemo(() => {
+    const pick = (obj) => obj?.[language] || obj?.en || '';
+    const configured = (tenant.hero?.slides || [])
+      .filter((s) => s.imageUrl || s.headline?.en || s.headline?.ar)
+      .slice(0, MAX_SLIDES)
+      .map((s) => ({
+        imageUrl: s.imageUrl || '',
+        headline: pick(s.headline),
+        subtext: pick(s.subtext),
+        ctaLabel: pick(s.cta) || t('storefront.shopNow'),
+        to: s.productId ? `/store/${tenant.slug}/product/${s.productId}` : '#products',
+      }));
+    if (configured.length > 0) return configured;
 
-  if (status === 'not-found') {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-        <h1 className="font-display text-2xl font-semibold">Shop not found</h1>
-        <p className="mt-2 max-w-sm text-ink-soft">
-          There's no shop at this address. Double-check the link.
-        </p>
-      </div>
-    );
-  }
+    const firstWithImage = products.find((p) => p.imageUrl);
+    return [
+      {
+        imageUrl: firstWithImage?.imageUrl || '',
+        headline: t('storefront.heroDefaultHeadline'),
+        subtext: '',
+        ctaLabel: t('storefront.shopNow'),
+        to: '#products',
+      },
+    ];
+  }, [tenant, products, language, t]);
 
   return (
     <div className="min-h-screen">
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
-      <main className="px-6 py-12">
-        <h1 className="mb-8 text-center font-display text-3xl font-semibold sm:text-4xl">
-          {t('storefront.heroTagline')}
-        </h1>
+      <Hero slides={slides} />
 
-        {products.length === 0 ? (
-          <p className="text-center text-ink-soft">
-            No products available yet.
-          </p>
+      <main className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+        <h2
+          id="products"
+          className="font-display mb-8 scroll-mt-20 text-3xl font-bold tracking-tight sm:text-4xl"
+        >
+          {t('storefront.collection')}
+        </h2>
+
+        {productsLoading ? (
+          <p className="text-ink-soft">{t('common.loading')}</p>
+        ) : products.length === 0 ? (
+          <p className="text-ink-soft">{t('storefront.noProducts')}</p>
         ) : (
-          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
-                onAddToCart={(prod) => addItem(prod, 1)}
+                onAddToCart={(prod) => {
+                  addItem(prod, 1);
+                  setCartOpen(true);
+                }}
               />
             ))}
           </div>
         )}
+
+        <section className="mt-20 grid gap-8 border-t border-ink/10 pt-14 sm:grid-cols-3">
+          {[
+            ['01', 'step1'],
+            ['02', 'step2'],
+            ['03', 'step3'],
+          ].map(([num, key]) => (
+            <div key={num}>
+              <span className="font-display text-sm font-semibold tracking-widest text-brass">
+                {num}
+              </span>
+              <h3 className="font-display mt-2 text-xl font-semibold">
+                {t(`storefront.${key}Title`)}
+              </h3>
+              <p className="mt-2 text-ink-soft">{t(`storefront.${key}Body`)}</p>
+            </div>
+          ))}
+        </section>
       </main>
 
+      <StorefrontFooter tenant={tenant} />
       {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   );

@@ -8,6 +8,63 @@ body,
   height: 100%;
 }
 
+/* ------------------------------------------------------------------
+   THEME VARIABLES  (RGB triplets, so Tailwind opacity like /10 works)
+   To change the BYND look, this is the place.
+   ------------------------------------------------------------------ */
+
+/* Default = light "paper" look, used by the admin area. */
+:root {
+  --paper: 237 234 227;
+  --paper-soft: 245 243 238;
+  --paper-dim: 225 220 209;
+  --ink: 32 34 43;
+  --ink-soft: 74 77 87;
+  --ink-faint: 138 141 151;
+  --white: 255 255 255;
+  --brass: 168 115 46;
+  --brass-dark: 138 93 36;
+  --brass-light: 199 149 82;
+  --sage: 95 122 99;
+  --sage-dark: 72 96 76;
+  --rust: 156 74 60;
+}
+
+/* Storefront = dark look. (The class is added by StorefrontLayout.) */
+html.theme-store {
+  --paper: 12 12 14;
+  --paper-soft: 22 22 26;
+  --paper-dim: 38 38 44;
+  --ink: 244 243 240;
+  --ink-soft: 184 184 191;
+  --ink-faint: 124 124 134;
+  --white: 24 24 28;
+  --sage: 95 150 110;
+  --sage-dark: 140 200 155;
+  --rust: 224 122 106;
+  /* accent = copper unless the shop picked another one */
+  --brass: 217 139 74;
+  --brass-dark: 232 164 104;
+  --brass-light: 240 190 140;
+}
+
+/* Accent colour choices (the shop picks one in Admin > Settings). */
+html.theme-store[data-accent='lime'] {
+  --brass: 200 240 60;
+  --brass-dark: 221 248 115;
+  --brass-light: 235 252 160;
+}
+html.theme-store[data-accent='ice'] {
+  --brass: 108 184 245;
+  --brass-dark: 164 212 250;
+  --brass-light: 200 230 252;
+}
+html.theme-store[data-accent='white'] {
+  --brass: 255 255 255;
+  --brass-dark: 212 212 216;
+  --brass-light: 255 255 255;
+}
+
 body {
   @apply bg-paper text-ink font-body-en;
 }
@@ -27,9 +84,17 @@ html[dir='rtl'] .font-display {
   @apply font-display-ar;
 }
 
+/* Storefront headings: a modern geometric font (Arabic keeps IBM Plex). */
+html.theme-store .font-display {
+  font-family: 'Space Grotesk', 'Work Sans', sans-serif;
+}
+html.theme-store[dir='rtl'] .font-display {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+}
+
 /* Visible keyboard focus everywhere — accessibility floor, not optional. */
 :focus-visible {
-  outline: 2px solid theme('colors.brass.DEFAULT');
+  outline: 2px solid rgb(var(--brass));
   outline-offset: 2px;
 }
 

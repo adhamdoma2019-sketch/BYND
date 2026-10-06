@@ -5,8 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { listProducts } from '../../firebase/products.service';
 import LanguageSwitch from '../../components/shared/LanguageSwitch';
+import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 
-const LOW_STOCK_THRESHOLD = 3;
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -21,7 +21,9 @@ export default function Dashboard() {
       if (!tenant) return;
       const products = await listProducts(tenant.id);
       setLowStockCount(
-        products.filter((p) => p.stock <= LOW_STOCK_THRESHOLD).length
+        // Preorder products are meant to have no stock, so they don't count.
+        products.filter((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD)
+          .length
       );
     }
     checkStock();
@@ -36,7 +38,7 @@ export default function Dashboard() {
           </span>
           {tenant && (
             <p className="text-xs text-ink-faint">
-              {tenant.name?.en} · yourapp.com/store/{tenant.slug}
+              {tenant.name?.en} · {window.location.host}/store/{tenant.slug}
             </p>
           )}
         </div>
@@ -115,7 +117,19 @@ export default function Dashboard() {
                   Profit &amp; Loss
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
-                  Revenue minus expenses, at a glance.
+                  Sales, cost and profit at a glance.
+                </p>
+              </Link>
+
+              <Link
+                to="/admin/settings"
+                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
+              >
+                <h2 className="font-display text-lg font-medium">
+                  {t('admin.settings')}
+                </h2>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Colors, logo and the home page banner.
                 </p>
               </Link>
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getTenant } from '../../firebase/tenants.service';
 import { getProduct } from '../../firebase/products.service';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useStorefront } from '../../context/StorefrontContext';
+import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { formatPrice } from '../../utils/format';
@@ -16,8 +17,8 @@ export default function ProductPage() {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { addItem } = useCart();
+  const { tenant } = useStorefront();
 
-  const [tenant, setTenant] = useState(null);
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState('loading');
   const [quantity, setQuantity] = useState(1);
@@ -28,15 +29,13 @@ export default function ProductPage() {
     async function load() {
       setStatus('loading');
       try {
-        const tenantData = await getTenant(slug);
-        const productData = tenantData ? await getProduct(productId) : null;
+        const productData = await getProduct(productId);
         if (cancelled) return;
         const valid =
           productData &&
-          productData.tenantId === tenantData.id &&
+          productData.tenantId === tenant.id &&
           productData.isActive === true &&
           productData.deleted !== true;
-        setTenant(tenantData);
         setProduct(valid ? productData : null);
         setStatus(valid ? 'found' : 'not-found');
       } catch {
@@ -47,15 +46,13 @@ export default function ProductPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, productId]);
+  }, [tenant.id, productId]);
 
   const name = product ? product.name?.[language] || product.name?.en : '';
   const description = product
     ? product.description?.[language] || product.description?.en || ''
     : '';
-  const shopName = tenant
-    ? tenant.name?.[language] || tenant.name?.en || tenant.slug
-    : '';
+  const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
 
   // Browser tab title + search-engine description.
   usePageMeta(
@@ -204,6 +201,7 @@ export default function ProductPage() {
         </div>
       </main>
 
+      <StorefrontFooter tenant={tenant} />
       {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   );

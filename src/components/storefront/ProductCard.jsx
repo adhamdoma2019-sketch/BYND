@@ -14,17 +14,17 @@ export default function ProductCard({ product, onAddToCart }) {
   const productUrl = `/store/${slug}/product/${product.id}`;
 
   return (
-    <div className="flex flex-col rounded-md border border-ink/10 bg-white p-4">
-      <Link to={productUrl} className="relative block">
+    <div className="group flex flex-col overflow-hidden rounded-md border border-ink/10 bg-white p-3 transition hover:border-brass/60">
+      <Link to={productUrl} className="relative block overflow-hidden rounded">
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
             alt={name}
             loading="lazy"
-            className="mb-3 h-48 w-full rounded object-cover"
+            className="mb-3 aspect-square w-full rounded object-cover transition duration-500 group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="mb-3 flex h-48 w-full items-center justify-center rounded bg-paper-dim text-sm text-ink-faint">
+          <div className="mb-3 flex aspect-square w-full items-center justify-center rounded bg-paper-dim text-sm text-ink-faint">
             {name}
           </div>
         )}
@@ -35,17 +35,17 @@ export default function ProductCard({ product, onAddToCart }) {
         )}
       </Link>
 
-      <h3 className="font-display text-lg font-medium">
+      <h3 className="font-display px-1 text-lg font-semibold">
         <Link to={productUrl} className="hover:text-brass">
           {name}
         </Link>
       </h3>
-      <p className="mt-1 text-ink-soft">{formatPrice(product.price, language)}</p>
+      <p className="mt-1 px-1 text-ink-soft">{formatPrice(product.price, language)}</p>
 
       <button
         onClick={() => onAddToCart(product)}
         disabled={outOfStock}
-        className="mt-3 rounded bg-ink py-2 text-sm text-paper transition hover:bg-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
+        className="mt-3 rounded bg-ink py-2.5 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
       >
         {outOfStock
           ? t('storefront.outOfStock')
