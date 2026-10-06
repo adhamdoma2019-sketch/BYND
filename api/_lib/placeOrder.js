@@ -10,7 +10,12 @@
 
 import { FieldValue } from 'firebase-admin/firestore';
 import { OrderError } from './errors.js';
-import { cleanCustomerInput, applyCustomerRules } from './fields.js';
+import {
+  cleanCustomerInput,
+  applyCustomerRules,
+  cleanCustomInput,
+  applyCustomFields,
+} from './fields.js';
 import { computeTotals } from './pricing.js';
 
 export { OrderError };
@@ -69,13 +74,14 @@ export function validateInput(body) {
   return {
     tenantId,
     customer: cleanCustomerInput(body.customer),
+    custom: cleanCustomInput(body.custom),
     items,
     zoneId: cleanText(body.zoneId, 60),
     promoCode: cleanPromoCode(body.promoCode),
   };
 }
 
-export async function placeOrder(db, { tenantId, customer, items, zoneId, promoCode }) {
+export async function placeOrder(db, { tenantId, customer, custom, items, zoneId, promoCode }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
   const counterRef = db.collection('counters').doc(tenantId);
   const orderRef = db.collection('orders').doc();
@@ -101,6 +107,8 @@ export async function placeOrder(db, { tenantId, customer, items, zoneId, promoC
 
     // The shop's rules about which customer details are needed.
     const cleanCustomer = applyCustomerRules(customer, tenant);
+    // ... and the extra questions the shop added itself.
+    const customFields = applyCustomFields(custom, tenant);
 
     // Build the order lines from the REAL product data in the database.
     const orderItems = items.map((item, index) => {
@@ -205,6 +213,7 @@ export async function placeOrder(db, { tenantId, customer, items, zoneId, promoC
       orderNumberLabel,
       orderType,
       customer: cleanCustomer,
+      customFields, // [{ id, label, type, value }] answers to the shop's extra questions
       items: orderItems.map(({ _newStock, shippingExtra, ...line }) => line),
       subtotal: totals.subtotal,
       discount: totals.discount,

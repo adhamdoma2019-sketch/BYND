@@ -359,6 +359,16 @@ export default function Orders() {
                                   </p>
                                 )
                             )}
+                            {(order.customFields || []).map((f) => (
+                              <p key={f.id} className="text-sm text-ink-soft">
+                                {f.label?.[language] || f.label?.en}:{' '}
+                                {f.type === 'checkbox'
+                                  ? t('orders.yes')
+                                  : typeof f.value === 'object'
+                                    ? f.value[language] || f.value.en
+                                    : f.value}
+                              </p>
+                            ))}
                             {order.customer?.notes && (
                               <p className="mt-1 text-sm italic text-ink-faint">
                                 "{order.customer.notes}"

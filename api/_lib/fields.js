@@ -97,3 +97,88 @@ export function applyCustomerRules(customer, tenant) {
     .join(', ');
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// CUSTOM FIELDS: extra questions the shop adds itself (gift message, preferred
+// delivery time, ...). Defined in the shop's settings as:
+//   { id, label:{en,ar}, type, options:[{id,en,ar}], required, active }
+// IMPORTANT: CUSTOM_FIELD_TYPES must match src/utils/checkoutFields.js.
+// ---------------------------------------------------------------------------
+
+export const CUSTOM_FIELD_TYPES = [
+  'text',
+  'textarea',
+  'number',
+  'email',
+  'phone',
+  'date',
+  'select',
+  'checkbox',
+];
+export const MAX_CUSTOM_FIELDS = 10;
+
+// Keeps only simple answers (text or tick-box) from the browser.
+export function cleanCustomInput(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [key, value] of Object.entries(raw).slice(0, 30)) {
+    if (key.length > 30) continue;
+    if (typeof value === 'boolean') out[key] = value;
+    else if (typeof value === 'string') out[key] = value.trim().slice(0, 500);
+  }
+  return out;
+}
+
+function isRealDate(text) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  const d = new Date(text + 'T00:00:00Z');
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === text;
+}
+
+// Checks the answers against the shop's custom field definitions.
+// Returns the list saved inside the order:  [{ id, label, type, value }]
+export function applyCustomFields(answers, tenant) {
+  const definitions = (tenant?.checkout?.customFields || [])
+    .filter((f) => f && f.active !== false && CUSTOM_FIELD_TYPES.includes(f.type))
+    .slice(0, MAX_CUSTOM_FIELDS);
+
+  const result = [];
+  for (const def of definitions) {
+    const label = def.label || { en: def.id, ar: def.id };
+    const fail = () =>
+      new OrderError(400, 'BAD_FIELD', `Please fill in: ${label.en}`, { customLabel: label });
+    const raw = answers?.[def.id];
+
+    if (def.type === 'checkbox') {
+      if (raw === true) result.push({ id: def.id, label, type: def.type, value: true });
+      else if (def.required) throw fail();
+      continue;
+    }
+
+    const text = typeof raw === 'string' ? raw.trim() : '';
+    if (!text) {
+      if (def.required) throw fail();
+      continue;
+    }
+
+    let value = text;
+    if (def.type === 'text') value = text.slice(0, 200);
+    else if (def.type === 'textarea') value = text.slice(0, 500);
+    else if (def.type === 'number') {
+      if (!/^-?\d+(\.\d+)?$/.test(text) || text.length > 20) throw fail();
+    } else if (def.type === 'email') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) throw fail();
+    } else if (def.type === 'phone') {
+      if (!/^[0-9+\s()-]{7,30}$/.test(text)) throw fail();
+    } else if (def.type === 'date') {
+      if (!isRealDate(text)) throw fail();
+    } else if (def.type === 'select') {
+      // The browser sends the chosen option's id; we save the option's words.
+      const option = (def.options || []).find((o) => o.id === text);
+      if (!option) throw fail();
+      value = { en: option.en, ar: option.ar || option.en };
+    }
+    result.push({ id: def.id, label, type: def.type, value });
+  }
+  return result;
+}

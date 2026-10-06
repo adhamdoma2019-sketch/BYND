@@ -41,10 +41,11 @@ const cartLines = (items) =>
   items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
 
 // Place the order. Returns { orderId, orderNumber, orderNumberLabel, totalAmount, orderType }.
-export function createOrder({ tenantId, customer, items, zoneId, promoCode }) {
+export function createOrder({ tenantId, customer, custom, items, zoneId, promoCode }) {
   return callApi('/api/create-order', {
     tenantId,
     customer,
+    custom: custom || {},
     items: cartLines(items),
     zoneId: zoneId || '',
     promoCode: promoCode || '',

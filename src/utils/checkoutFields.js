@@ -49,3 +49,43 @@ export function resolveFieldSettings(saved) {
   }
   return result;
 }
+
+// ---------------------------------------------------------------------------
+// CUSTOM FIELDS: extra questions the shop adds itself (gift message, preferred
+// delivery time, ...). Each one is saved in the shop's settings as
+//   { id, label:{en,ar}, type, options:[{id,en,ar}], required, active }
+// IMPORTANT: this list of types must match api/_lib/fields.js.
+// ---------------------------------------------------------------------------
+export const CUSTOM_FIELD_TYPES = [
+  'text',
+  'textarea',
+  'number',
+  'email',
+  'phone',
+  'date',
+  'select',
+  'checkbox',
+];
+export const MAX_CUSTOM_FIELDS = 10;
+export const MAX_OPTIONS = 20;
+
+// Admin types one option per line, optionally "English | العربية".
+// Turns that text into options with ids (o1, o2, ...).
+export function parseOptions(text) {
+  return String(text || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, MAX_OPTIONS)
+    .map((line, i) => {
+      const [en, ar] = line.split('|').map((part) => part.trim());
+      return { id: `o${i + 1}`, en: en || ar, ar: ar || en };
+    });
+}
+
+// ...and back to text for editing.
+export function optionsToText(options) {
+  return (options || [])
+    .map((o) => (o.ar && o.ar !== o.en ? `${o.en} | ${o.ar}` : o.en))
+    .join('\n');
+}

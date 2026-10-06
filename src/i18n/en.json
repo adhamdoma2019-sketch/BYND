@@ -59,7 +59,9 @@
     "discount": "Discount",
     "shipping": "Shipping",
     "free": "Free",
-    "total": "Total"
+    "total": "Total",
+    "choose": "Choose...",
+    "chooseArea": "Choose your delivery area"
   },
   "admin": {
     "login": "Partner login",
@@ -210,7 +212,8 @@
       "NOT_FOUND": "Order not found.",
       "ALREADY_CANCELLED": "This order is already cancelled.",
       "ALREADY_DELIVERED": "This order was already delivered and cannot be cancelled."
-    }
+    },
+    "yes": "Yes"
   },
   "expenses": {
     "category": "Category",
@@ -290,7 +293,26 @@
     "zoneFreeAbove": "Free shipping above (EGP, optional)",
     "zoneActive": "Available to customers",
     "addZone": "+ Add zone",
-    "errZone": "Every zone needs a name and a price."
+    "errZone": "Every zone needs a name and a price.",
+    "customTitle": "Extra fields you add",
+    "customHelp": "Add your own questions (for example a gift message or a preferred delivery time). They appear at the end of the checkout form, in this order.",
+    "addField": "+ Add field",
+    "fieldN": "Field {{n}}",
+    "labelEn": "Label (English)",
+    "labelAr": "Label (Arabic)",
+    "fieldType": "Type",
+    "fieldActive": "Shown to customers",
+    "optionsLabel": "Options (one per line, add the Arabic after |)",
+    "optionsHint": "Example: Gift | هدية",
+    "errCustom": "Every extra field needs a label, and a drop-down list needs at least one option.",
+    "type_text": "Short text",
+    "type_textarea": "Long text",
+    "type_number": "Number",
+    "type_email": "Email",
+    "type_phone": "Phone",
+    "type_date": "Date",
+    "type_select": "Drop-down list",
+    "type_checkbox": "Tick box"
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",

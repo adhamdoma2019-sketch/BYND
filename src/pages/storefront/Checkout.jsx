@@ -6,7 +6,12 @@ import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
-import { CHECKOUT_FIELDS, resolveFieldSettings } from '../../utils/checkoutFields';
+import {
+  CHECKOUT_FIELDS,
+  resolveFieldSettings,
+  CUSTOM_FIELD_TYPES,
+  MAX_CUSTOM_FIELDS,
+} from '../../utils/checkoutFields';
 
 const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
@@ -17,7 +22,8 @@ function useErrorText() {
   const { language } = useLanguage();
   return (err) => {
     const meta = { ...(err.meta || {}) };
-    if (meta.field) meta.field = t(`checkoutFields.${meta.field}`);
+    if (meta.customLabel) meta.field = meta.customLabel[language] || meta.customLabel.en;
+    else if (meta.field) meta.field = t(`checkoutFields.${meta.field}`);
     if (meta.minOrder !== undefined) meta.min = formatPrice(meta.minOrder, language);
     const key =
       err.code === 'OUT_OF_STOCK' && err.meta?.stock > 0 ? 'OUT_OF_STOCK_PARTIAL' : err.code;
@@ -40,9 +46,15 @@ export default function Checkout() {
 
   const zones = (tenant.shipping?.zones || []).filter((z) => z.active !== false);
 
+  // Extra questions the shop added itself (Admin > Settings).
+  const customFields = (tenant.checkout?.customFields || [])
+    .filter((f) => f.active !== false && CUSTOM_FIELD_TYPES.includes(f.type))
+    .slice(0, MAX_CUSTOM_FIELDS);
+
   const [form, setForm] = useState(() =>
     Object.fromEntries(CHECKOUT_FIELDS.map((f) => [f.key, '']))
   );
+  const [custom, setCustom] = useState({});
   const [zoneId, setZoneId] = useState(() => (zones.length === 1 ? zones[0].id : ''));
   const [promoInput, setPromoInput] = useState('');
   const [appliedCode, setAppliedCode] = useState('');
@@ -91,6 +103,16 @@ export default function Checkout() {
         return;
       }
     }
+    for (const f of customFields) {
+      const answer = custom[f.id];
+      const empty = f.type === 'checkbox' ? answer !== true : !String(answer || '').trim();
+      if (f.required && empty) {
+        setError(
+          t('errors.BAD_FIELD', { field: f.label?.[language] || f.label?.en || '' })
+        );
+        return;
+      }
+    }
     if (zones.length > 0 && !zoneId) {
       setError(t('errors.ZONE_REQUIRED'));
       return;
@@ -105,6 +127,7 @@ export default function Checkout() {
       const result = await createOrder({
         tenantId: tenant.id,
         customer: form,
+        custom,
         items,
         zoneId,
         promoCode: quote?.promo ? appliedCode : '',
@@ -212,43 +235,96 @@ export default function Checkout() {
           );
         })}
 
-        {/* ----- delivery area (only if the shop set up zones) ----- */}
-        {zones.length > 0 && (
-          <fieldset>
-            <legend className="text-sm text-ink-soft">
-              {t('checkout.deliveryArea')} <span className="text-rust">*</span>
-            </legend>
-            <div className="mt-2 space-y-2">
-              {zones.map((z) => (
-                <label
-                  key={z.id}
-                  className={
-                    'flex cursor-pointer items-center justify-between rounded border px-3 py-2.5 text-sm ' +
-                    (zoneId === z.id ? 'border-brass bg-brass/10' : 'border-ink/15')
+        {/* ----- the shop's own extra questions ----- */}
+        {customFields.map((f) => {
+          const label = f.label?.[language] || f.label?.en || '';
+          const mark = f.required ? (
+            <span className="text-rust"> *</span>
+          ) : (
+            <span className="text-ink-faint"> ({t('checkout.optional')})</span>
+          );
+          const value = custom[f.id] ?? (f.type === 'checkbox' ? false : '');
+          const set = (v) => setCustom({ ...custom, [f.id]: v });
+
+          if (f.type === 'checkbox') {
+            return (
+              <label key={f.id} className="flex items-start gap-2 text-sm text-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={value === true}
+                  onChange={(e) => set(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  {label}
+                  {mark}
+                </span>
+              </label>
+            );
+          }
+          return (
+            <label key={f.id} className="block text-sm text-ink-soft">
+              {label}
+              {mark}
+              {f.type === 'textarea' ? (
+                <textarea
+                  rows={2}
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  className={inputClass}
+                />
+              ) : f.type === 'select' ? (
+                <select value={value} onChange={(e) => set(e.target.value)} className={inputClass}>
+                  <option value="">{t('checkout.choose')}</option>
+                  {(f.options || []).map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o[language] || o.en}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={
+                    { text: 'text', number: 'number', email: 'email', phone: 'tel', date: 'date' }[
+                      f.type
+                    ]
                   }
-                >
-                  <span className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="zone"
-                      value={z.id}
-                      checked={zoneId === z.id}
-                      onChange={() => setZoneId(z.id)}
-                    />
-                    <span>
-                      {z.name?.[language] || z.name?.en}
-                      {Number(z.freeAbove) > 0 && (
-                        <span className="block text-xs text-ink-faint">
-                          {t('checkout.freeAbove', { amount: money(z.freeAbove) })}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                  <span className="text-ink-soft">{money(z.price)}</span>
-                </label>
+                  step={f.type === 'number' ? 'any' : undefined}
+                  dir={['email', 'phone', 'number'].includes(f.type) ? 'ltr' : undefined}
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  className={inputClass}
+                />
+              )}
+            </label>
+          );
+        })}
+
+        {/* ----- delivery area: a drop-down list (only if the shop set up zones) ----- */}
+        {zones.length > 0 && (
+          <div>
+            <label className="block text-sm text-ink-soft" htmlFor="zone">
+              {t('checkout.deliveryArea')} <span className="text-rust">*</span>
+            </label>
+            <select
+              id="zone"
+              value={zoneId}
+              onChange={(e) => setZoneId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">{t('checkout.chooseArea')}</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name?.[language] || z.name?.en} — {money(z.price)}
+                </option>
               ))}
-            </div>
-          </fieldset>
+            </select>
+            {chosenZone && Number(chosenZone.freeAbove) > 0 && (
+              <p className="mt-1 text-xs text-ink-faint">
+                {t('checkout.freeAbove', { amount: money(chosenZone.freeAbove) })}
+              </p>
+            )}
+          </div>
         )}
 
         {/* ----- promo code ----- */}

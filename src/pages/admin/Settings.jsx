@@ -11,7 +11,14 @@ import {
   HERO_MAX_SECONDS,
   HERO_FADE_MS,
 } from '../../utils/constants';
-import { CHECKOUT_FIELDS, resolveFieldSettings } from '../../utils/checkoutFields';
+import {
+  CHECKOUT_FIELDS,
+  resolveFieldSettings,
+  CUSTOM_FIELD_TYPES,
+  MAX_CUSTOM_FIELDS,
+  parseOptions,
+  optionsToText,
+} from '../../utils/checkoutFields';
 
 // The colour choices. To add a new one: add it here, in the texts
 // (settingsPage.<id>) AND in src/index.css.
@@ -90,6 +97,42 @@ function formToZone(f) {
   };
 }
 
+const emptyCustomField = () => ({
+  id: 'c' + Math.random().toString(36).slice(2, 8),
+  labelEn: '',
+  labelAr: '',
+  type: 'text',
+  optionsText: '',
+  required: false,
+  active: true,
+});
+
+function customToForm(f) {
+  return {
+    id: f.id,
+    labelEn: f.label?.en || '',
+    labelAr: f.label?.ar || '',
+    type: f.type,
+    optionsText: optionsToText(f.options),
+    required: f.required === true,
+    active: f.active !== false,
+  };
+}
+
+function formToCustom(f) {
+  return {
+    id: f.id,
+    label: {
+      en: f.labelEn.trim() || f.labelAr.trim(),
+      ar: f.labelAr.trim() || f.labelEn.trim(),
+    },
+    type: f.type,
+    options: f.type === 'select' ? parseOptions(f.optionsText) : [],
+    required: f.required,
+    active: f.active,
+  };
+}
+
 const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
 
@@ -106,6 +149,7 @@ export default function Settings() {
   const [products, setProducts] = useState([]);
   const [fieldSettings, setFieldSettings] = useState(() => resolveFieldSettings(undefined));
   const [zones, setZones] = useState([]);
+  const [customFields, setCustomFields] = useState([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -119,6 +163,7 @@ export default function Settings() {
     setFade(tenant.hero?.fade || 'normal');
     setFieldSettings(resolveFieldSettings(tenant.checkout?.fields));
     setZones((tenant.shipping?.zones || []).map(zoneToForm));
+    setCustomFields((tenant.checkout?.customFields || []).map(customToForm));
     listProducts(tenant.id).then(setProducts);
   }, [tenant]);
 
@@ -141,6 +186,20 @@ export default function Settings() {
       const next = { ...prev[key], [flag]: value };
       if (flag === 'show' && !value) next.required = false; // hidden can't be required
       return { ...prev, [key]: next };
+    });
+  }
+
+  function updateCustom(index, field, value) {
+    setCustomFields((prev) => prev.map((f, i) => (i === index ? { ...f, [field]: value } : f)));
+  }
+
+  function moveCustom(index, direction) {
+    setCustomFields((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const copy = [...prev];
+      [copy[index], copy[target]] = [copy[target], copy[index]];
+      return copy;
     });
   }
 
@@ -176,6 +235,17 @@ export default function Settings() {
       return;
     }
 
+    if (
+      customFields.some(
+        (f) =>
+          !(f.labelEn.trim() || f.labelAr.trim()) ||
+          (f.type === 'select' && parseOptions(f.optionsText).length === 0)
+      )
+    ) {
+      setError(t('settingsPage.errCustom'));
+      return;
+    }
+
     // Keep the timing inside safe limits.
     const safeSeconds = Math.min(
       HERO_MAX_SECONDS,
@@ -192,7 +262,10 @@ export default function Settings() {
           intervalSeconds: safeSeconds,
           fade,
         },
-        checkout: { fields: fieldSettings },
+        checkout: {
+          fields: fieldSettings,
+          customFields: customFields.map(formToCustom),
+        },
         shipping: { zones: zones.map(formToZone) },
       });
       setSeconds(safeSeconds);
@@ -518,6 +591,128 @@ export default function Settings() {
               </tbody>
             </table>
           </div>
+
+          {/* ----- the shop's own extra fields ----- */}
+          <h3 className="mt-8 font-display text-base font-medium">
+            {t('settingsPage.customTitle')}
+          </h3>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.customHelp')}</p>
+
+          <div className="mt-4 space-y-4">
+            {customFields.map((f, i) => (
+              <div key={f.id} className="rounded-md border border-ink/10 bg-paper-soft p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-medium">{t('settingsPage.fieldN', { n: i + 1 })}</p>
+                  <div className="flex gap-3 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => moveCustom(i, -1)}
+                      disabled={i === 0}
+                      className="text-brass hover:underline disabled:opacity-40"
+                    >
+                      {t('settingsPage.up')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveCustom(i, 1)}
+                      disabled={i === customFields.length - 1}
+                      className="text-brass hover:underline disabled:opacity-40"
+                    >
+                      {t('settingsPage.down')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCustomFields((prev) => prev.filter((_, idx) => idx !== i))
+                      }
+                      className="text-rust hover:underline"
+                    >
+                      {t('common.remove')}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm text-ink-soft">
+                    {t('settingsPage.labelEn')}
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={f.labelEn}
+                      onChange={(e) => updateCustom(i, 'labelEn', e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="text-sm text-ink-soft">
+                    {t('settingsPage.labelAr')}
+                    <input
+                      type="text"
+                      dir="rtl"
+                      value={f.labelAr}
+                      onChange={(e) => updateCustom(i, 'labelAr', e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="text-sm text-ink-soft">
+                    {t('settingsPage.fieldType')}
+                    <select
+                      value={f.type}
+                      onChange={(e) => updateCustom(i, 'type', e.target.value)}
+                      className={inputClass}
+                    >
+                      {CUSTOM_FIELD_TYPES.map((ty) => (
+                        <option key={ty} value={ty}>
+                          {t(`settingsPage.type_${ty}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="flex flex-col justify-end gap-2 text-sm text-ink-soft">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={f.required}
+                        onChange={(e) => updateCustom(i, 'required', e.target.checked)}
+                      />
+                      {t('settingsPage.colRequired')}
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={f.active}
+                        onChange={(e) => updateCustom(i, 'active', e.target.checked)}
+                      />
+                      {t('settingsPage.fieldActive')}
+                    </label>
+                  </div>
+                  {f.type === 'select' && (
+                    <label className="col-span-full text-sm text-ink-soft">
+                      {t('settingsPage.optionsLabel')}
+                      <textarea
+                        rows={4}
+                        value={f.optionsText}
+                        onChange={(e) => updateCustom(i, 'optionsText', e.target.value)}
+                        className={inputClass}
+                      />
+                      <span className="mt-1 block text-xs text-ink-faint">
+                        {t('settingsPage.optionsHint')}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {customFields.length < MAX_CUSTOM_FIELDS && (
+            <button
+              type="button"
+              onClick={() => setCustomFields((prev) => [...prev, emptyCustomField()])}
+              className="mt-4 rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass"
+            >
+              {t('settingsPage.addField')}
+            </button>
+          )}
         </section>
 
         {/* ---------- Shipping zones ---------- */}
