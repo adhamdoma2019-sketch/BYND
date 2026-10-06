@@ -52,6 +52,11 @@ function productFields(data) {
     // Preorder products don't need stock.
     stock: data.stock === '' || data.stock === undefined ? 0 : Number(data.stock),
     sku: data.sku || '',
+    // Extra shipping per unit (for big/heavy items). Added to the zone price.
+    shippingExtra:
+      data.shippingExtra === '' || data.shippingExtra === undefined
+        ? 0
+        : Number(data.shippingExtra),
     imageUrl: data.imageUrl || '',
     isPreorder,
     preorderMessage: {

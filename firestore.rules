@@ -82,6 +82,19 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------- Promo codes ----------
+    // Only the shop's own team can see or manage codes. Customers never read
+    // this collection: the secure server function checks codes for them.
+    // The document id must be "<shopId>__<CODE>" so codes can't clash or be
+    // squatted on by another shop.
+    match /promoCodes/{promoId} {
+      allow read: if belongsTo(resource.data.tenantId);
+      allow create: if belongsTo(request.resource.data.tenantId)
+        && promoId == request.resource.data.tenantId + '__' + request.resource.data.code;
+      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow delete: if false; // deactivate instead
+    }
+
     // ---------- Orders ----------
 
     match /orders/{orderId} {

@@ -128,6 +128,16 @@ export default function Dashboard() {
               </Link>
 
               <Link
+                to="/admin/promos"
+                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
+              >
+                <h2 className="font-display text-lg font-medium">
+                  {t('promos.title')}
+                </h2>
+                <p className="mt-1 text-sm text-ink-soft">{t('dash.promosDesc')}</p>
+              </Link>
+
+              <Link
                 to="/admin/settings"
                 className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
               >

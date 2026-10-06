@@ -40,11 +40,18 @@ export async function getUserTenantId(uid) {
 //   theme: { accent }                 colour choice
 //   brand: { logoUrl }                optional logo image
 //   hero:  { slides: [...], intervalSeconds, fade }   home page banner
-export async function updateTenantSettings(tenantId, { theme, brand, hero }) {
+//   checkout: { fields }              which customer details are asked
+//   shipping: { zones }               delivery areas and their prices
+export async function updateTenantSettings(
+  tenantId,
+  { theme, brand, hero, checkout, shipping }
+) {
   await updateDoc(doc(db, 'tenants', tenantId), {
     theme,
     brand,
     hero,
+    checkout, // { fields: { <field>: { show, required } } }
+    shipping, // { zones: [{ id, name:{en,ar}, price, freeAbove, active }] }
     updatedAt: serverTimestamp(),
   });
 }

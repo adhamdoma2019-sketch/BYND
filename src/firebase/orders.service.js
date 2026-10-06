@@ -11,21 +11,14 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 
-// Orders are created by a secure server function (api/create-order.js),
-// NOT directly from the browser. We only send product ids and quantities;
-// the server looks up the real prices and stock itself.
-export async function createOrder({ tenantId, customer, items }) {
-  const response = await fetch('/api/create-order', {
+// The browser never calculates prices, discounts or shipping itself. It asks the
+// secure server functions (api/quote.js, api/create-order.js), which look up
+// the real prices, the shop's rules and the promo code.
+async function callApi(path, payload) {
+  const response = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tenantId,
-      customer,
-      items: items.map((i) => ({
-        productId: i.productId,
-        quantity: i.quantity,
-      })),
-    }),
+    body: JSON.stringify(payload),
   });
 
   let data = {};
@@ -36,12 +29,37 @@ export async function createOrder({ tenantId, customer, items }) {
   }
   if (!response.ok) {
     // `code` and `meta` let the screen show the message in Arabic or English.
-    const error = new Error(data.error || 'Order failed');
+    const error = new Error(data.error || 'Request failed');
     error.code = data.code;
     error.meta = data.meta;
     throw error;
   }
-  return data; // { orderId, orderNumber, orderNumberLabel, totalAmount }
+  return data;
+}
+
+const cartLines = (items) =>
+  items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
+
+// Place the order. Returns { orderId, orderNumber, orderNumberLabel, totalAmount, orderType }.
+export function createOrder({ tenantId, customer, items, zoneId, promoCode }) {
+  return callApi('/api/create-order', {
+    tenantId,
+    customer,
+    items: cartLines(items),
+    zoneId: zoneId || '',
+    promoCode: promoCode || '',
+  });
+}
+
+// Price preview for the checkout page. Returns
+// { subtotal, discount, shippingFee, total, promo, promoError, zoneProblem }.
+export function getQuote({ tenantId, items, zoneId, promoCode }) {
+  return callApi('/api/quote', {
+    tenantId,
+    items: cartLines(items),
+    zoneId: zoneId || '',
+    promoCode: promoCode || '',
+  });
 }
 
 // Errors with a `code` so the screen can translate them.
@@ -121,9 +139,14 @@ export async function cancelOrder(orderId) {
   });
 }
 
+// Only the four editable details are changed; the rest of the customer record
+// (email, floor, landmark, ...) is kept.
 export async function updateOrderCustomer(orderId, customer) {
   await updateDoc(doc(db, 'orders', orderId), {
-    customer,
+    'customer.name': customer.name,
+    'customer.phone': customer.phone,
+    'customer.address': customer.address,
+    'customer.notes': customer.notes,
     updatedAt: serverTimestamp(),
   });
 }

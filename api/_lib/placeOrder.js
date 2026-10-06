@@ -1,33 +1,39 @@
 // The business logic for placing an order. It runs on the SERVER (never in the
-// customer's browser), so customers cannot change prices or stock.
+// customer's browser), so customers cannot change prices, discounts, shipping
+// or stock.
 //
 // Flow: check the input -> in ONE database transaction: read the real product
-// prices and stock, reject if something is unavailable, reduce stock, take the
-// next order number, and save the order. A transaction means that if two people
-// buy the last item at the same moment, only one of them succeeds.
+// prices and stock, the shop's rules, the promo code; reject if something is
+// unavailable; reduce stock; take the next order number; save the order.
+// A transaction means that if two people buy the last item at the same moment,
+// only one of them succeeds.
 
 import { FieldValue } from 'firebase-admin/firestore';
+import { OrderError } from './errors.js';
+import { cleanCustomerInput, applyCustomerRules } from './fields.js';
+import { computeTotals } from './pricing.js';
+
+export { OrderError };
 
 const MAX_LINES = 20; // different products in one order
 const MAX_QTY = 20; // quantity of one product in one order
 const FIRST_ORDER_NUMBER = 1001;
 
-// `code` lets the website show the message in the customer's language;
-// `meta` carries numbers/names the message needs (e.g. how many are left).
-export class OrderError extends Error {
-  constructor(status, code, message, meta) {
-    super(message);
-    this.status = status;
-    this.code = code;
-    this.meta = meta;
-  }
-}
-
 function cleanText(value, max) {
   return String(value ?? '').trim().slice(0, max);
 }
 
-// Checks what the browser sent and returns a clean version.
+export function cleanPromoCode(value) {
+  const code = cleanText(value, 40).toUpperCase();
+  if (!code) return '';
+  if (!/^[A-Z0-9_-]+$/.test(code)) {
+    throw new OrderError(400, 'PROMO_INVALID', "This promo code isn't valid.");
+  }
+  return code;
+}
+
+// Checks the SHAPE of what the browser sent and returns a clean version.
+// (The shop's own rules about customer details are applied later.)
 export function validateInput(body) {
   if (!body || typeof body !== 'object') {
     throw new OrderError(400, 'BAD_REQUEST', 'Invalid request.');
@@ -35,24 +41,6 @@ export function validateInput(body) {
 
   const tenantId = cleanText(body.tenantId, 100);
   if (!tenantId) throw new OrderError(400, 'BAD_REQUEST', 'Missing shop.');
-
-  const c = body.customer || {};
-  const customer = {
-    name: cleanText(c.name, 100),
-    phone: cleanText(c.phone, 30),
-    address: cleanText(c.address, 300),
-    city: cleanText(c.city, 100),
-    notes: cleanText(c.notes, 500),
-  };
-  if (customer.name.length < 2) {
-    throw new OrderError(400, 'BAD_NAME', 'Please enter your name.');
-  }
-  if (!/^[0-9+\s()-]{7,30}$/.test(customer.phone)) {
-    throw new OrderError(400, 'BAD_PHONE', 'Please enter a valid phone number.');
-  }
-  if (customer.address.length < 5) {
-    throw new OrderError(400, 'BAD_ADDRESS', 'Please enter your address.');
-  }
 
   if (!Array.isArray(body.items) || body.items.length === 0) {
     throw new OrderError(400, 'EMPTY_CART', 'Your cart is empty.');
@@ -78,31 +66,41 @@ export function validateInput(body) {
     });
   }
 
-  return { tenantId, customer, items };
+  return {
+    tenantId,
+    customer: cleanCustomerInput(body.customer),
+    items,
+    zoneId: cleanText(body.zoneId, 60),
+    promoCode: cleanPromoCode(body.promoCode),
+  };
 }
 
-export async function placeOrder(db, { tenantId, customer, items }) {
+export async function placeOrder(db, { tenantId, customer, items, zoneId, promoCode }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
   const counterRef = db.collection('counters').doc(tenantId);
   const orderRef = db.collection('orders').doc();
   const productRefs = items.map((i) => db.collection('products').doc(i.productId));
   // Private cost prices live in their own collection (customers can't read it).
   const costRefs = items.map((i) => db.collection('productCosts').doc(i.productId));
+  const promoRef = promoCode
+    ? db.collection('promoCodes').doc(`${tenantId}__${promoCode}`)
+    : null;
 
   return db.runTransaction(async (tx) => {
-    const [tenantSnap, counterSnap, ...rest] = await tx.getAll(
-      tenantRef,
-      counterRef,
-      ...productRefs,
-      ...costRefs
-    );
+    const refs = [tenantRef, counterRef, ...productRefs, ...costRefs];
+    if (promoRef) refs.push(promoRef);
+    const [tenantSnap, counterSnap, ...rest] = await tx.getAll(...refs);
     const productSnaps = rest.slice(0, items.length);
-    const costSnaps = rest.slice(items.length);
+    const costSnaps = rest.slice(items.length, items.length * 2);
+    const promoSnap = promoRef ? rest[items.length * 2] : null;
 
     if (!tenantSnap.exists || tenantSnap.data().isActive === false) {
       throw new OrderError(404, 'NO_SHOP', 'This shop is not available.');
     }
-    const tenant = tenantSnap.data();
+    const tenant = { id: tenantId, ...tenantSnap.data() };
+
+    // The shop's rules about which customer details are needed.
+    const cleanCustomer = applyCustomerRules(customer, tenant);
 
     // Build the order lines from the REAL product data in the database.
     const orderItems = items.map((item, index) => {
@@ -161,13 +159,20 @@ export async function placeOrder(db, { tenantId, customer, items }) {
         unitCost,
         subtotal: unitPrice * item.quantity,
         isPreorder,
+        shippingExtra: Number(product.shippingExtra) || 0,
         _newStock: isPreorder ? null : stock - item.quantity,
       };
     });
 
-    const subtotal = orderItems.reduce((sum, i) => sum + i.subtotal, 0);
-    const shippingFee = 0; // placeholder: shipping rules can be added later
-    const totalAmount = subtotal + shippingFee;
+    // Subtotal, promo discount, shipping and total (same maths as the preview).
+    const totals = computeTotals({
+      tenant,
+      lines: orderItems,
+      zoneId,
+      promo: promoSnap && promoSnap.exists ? promoSnap.data() : null,
+      promoCode,
+      strict: true,
+    });
 
     // Order number: BYND-1001, BYND-1002 ... (unique, never reused)
     const last = counterSnap.exists ? counterSnap.data().current : FIRST_ORDER_NUMBER - 1;
@@ -175,10 +180,10 @@ export async function placeOrder(db, { tenantId, customer, items }) {
     const prefix = String(tenant.orderPrefix || tenant.slug || 'ORD').toUpperCase();
     const orderNumberLabel = `${prefix}-${orderNumber}`;
 
-    // Writes (all-or-nothing).
     // An order containing any preorder item is a "preorder" order.
     const orderType = orderItems.some((i) => i.isPreorder) ? 'preorder' : 'normal';
 
+    // Writes (all-or-nothing).
     orderItems.forEach((line, index) => {
       if (line.isPreorder) return; // preorders don't use stock
       tx.update(productRefs[index], {
@@ -187,16 +192,28 @@ export async function placeOrder(db, { tenantId, customer, items }) {
       });
     });
 
+    if (totals.promo) {
+      tx.update(promoRef, {
+        usedCount: (Number(promoSnap.data().usedCount) || 0) + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
     tx.set(orderRef, {
       tenantId,
       orderNumber,
       orderNumberLabel,
       orderType,
-      customer,
-      items: orderItems.map(({ _newStock, ...line }) => line),
-      subtotal,
-      shippingFee,
-      totalAmount,
+      customer: cleanCustomer,
+      items: orderItems.map(({ _newStock, shippingExtra, ...line }) => line),
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      promo: totals.promo, // { code, type, value, discount } or null
+      shipping: totals.zone
+        ? { zoneId: totals.zone.id, zoneName: totals.zone.name, fee: totals.shippingFee }
+        : null,
+      shippingFee: totals.shippingFee,
+      totalAmount: totals.total,
       paymentMethod: 'COD',
       status: 'pending',
       statusHistory: [
@@ -209,6 +226,12 @@ export async function placeOrder(db, { tenantId, customer, items }) {
 
     tx.set(counterRef, { current: orderNumber }, { merge: true });
 
-    return { orderId: orderRef.id, orderNumber, orderNumberLabel, totalAmount, orderType };
+    return {
+      orderId: orderRef.id,
+      orderNumber,
+      orderNumberLabel,
+      totalAmount: totals.total,
+      orderType,
+    };
   });
 }

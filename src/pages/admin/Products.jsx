@@ -23,6 +23,7 @@ const emptyForm = {
   costPrice: '',
   stock: '',
   sku: '',
+  shippingExtra: '',
   imageUrl: '',
   isActive: true,
   isPreorder: false,
@@ -80,6 +81,7 @@ export default function Products() {
       costPrice: costs[p.id] ?? '',
       stock: p.stock,
       sku: p.sku || '',
+      shippingExtra: p.shippingExtra ?? '',
       imageUrl: p.imageUrl || '',
       isActive: p.isActive,
       isPreorder: p.isPreorder === true,
@@ -269,6 +271,21 @@ export default function Products() {
               onChange={(e) => setForm({ ...form, sku: e.target.value })}
               className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
             />
+          </label>
+
+          <label className="text-sm text-ink-soft">
+            {t('products.shippingExtra')}
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.shippingExtra}
+              onChange={(e) => setForm({ ...form, shippingExtra: e.target.value })}
+              className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+            />
+            <span className="mt-1 block text-xs text-ink-faint">
+              {t('products.shippingExtraHint')}
+            </span>
           </label>
 
           <label className="text-sm text-ink-soft">

@@ -343,9 +343,22 @@ export default function Orders() {
                             <p className="text-sm text-ink-soft">
                               {order.customer?.phone}
                             </p>
+                            {order.customer?.email && (
+                              <p className="text-sm text-ink-soft" dir="ltr">
+                                {order.customer.email}
+                              </p>
+                            )}
                             <p className="text-sm text-ink-soft">
                               {order.customer?.address}
                             </p>
+                            {['floor', 'apartment', 'landmark'].map(
+                              (key) =>
+                                order.customer?.[key] && (
+                                  <p key={key} className="text-sm text-ink-soft">
+                                    {t(`checkoutFields.${key}`)}: {order.customer[key]}
+                                  </p>
+                                )
+                            )}
                             {order.customer?.notes && (
                               <p className="mt-1 text-sm italic text-ink-faint">
                                 "{order.customer.notes}"
@@ -368,6 +381,41 @@ export default function Orders() {
                             <span>{formatPrice(item.subtotal, language)}</span>
                           </div>
                         ))}
+                        {(order.discount > 0 || order.shipping) && (
+                          <div className="mt-2 space-y-0.5 border-t border-ink/10 pt-2 text-sm">
+                            <div className="flex justify-between text-ink-soft">
+                              <span>{t('storefront.subtotal')}</span>
+                              <span>{formatPrice(order.subtotal, language)}</span>
+                            </div>
+                            {order.discount > 0 && (
+                              <div className="flex justify-between text-sage-dark">
+                                <span>
+                                  {t('checkout.discount')}
+                                  {order.promo?.code && ` (${order.promo.code})`}
+                                </span>
+                                <span>− {formatPrice(order.discount, language)}</span>
+                              </div>
+                            )}
+                            {order.shipping && (
+                              <div className="flex justify-between text-ink-soft">
+                                <span>
+                                  {t('checkout.shipping')} —{' '}
+                                  {order.shipping.zoneName?.[language] ||
+                                    order.shipping.zoneName?.en}
+                                </span>
+                                <span>
+                                  {order.shippingFee === 0
+                                    ? t('checkout.free')
+                                    : formatPrice(order.shippingFee, language)}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between font-medium">
+                              <span>{t('checkout.total')}</span>
+                              <span>{formatPrice(order.totalAmount, language)}</span>
+                            </div>
+                          </div>
+                        )}
                         {(() => {
                           const c = orderCost(order);
                           return c.complete ? (

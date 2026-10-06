@@ -1,10 +1,13 @@
 import { useLocation, useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
+import { formatPrice } from '../../utils/format';
 
 export default function OrderConfirmation() {
   const { slug } = useParams();
   const { state } = useLocation();
   const { t } = useTranslation();
+  const { language } = useLanguage();
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
@@ -22,6 +25,11 @@ export default function OrderConfirmation() {
       {state?.orderNumberLabel && (
         <p className="mt-4 text-lg font-medium text-ink">
           {t('checkout.orderNumber')}: {state.orderNumberLabel}
+        </p>
+      )}
+      {state?.totalAmount !== undefined && (
+        <p className="mt-1 text-ink-soft">
+          {t('checkout.total')}: {formatPrice(state.totalAmount, language)}
         </p>
       )}
       <Link to={`/store/${slug}`} className="mt-8 text-brass hover:underline">

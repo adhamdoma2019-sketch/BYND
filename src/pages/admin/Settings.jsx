@@ -11,6 +11,7 @@ import {
   HERO_MAX_SECONDS,
   HERO_FADE_MS,
 } from '../../utils/constants';
+import { CHECKOUT_FIELDS, resolveFieldSettings } from '../../utils/checkoutFields';
 
 // The colour choices. To add a new one: add it here, in the texts
 // (settingsPage.<id>) AND in src/index.css.
@@ -57,6 +58,38 @@ function formToSlide(f) {
   };
 }
 
+const newZoneId = () => 'z' + Math.random().toString(36).slice(2, 8);
+
+const emptyZone = () => ({
+  id: newZoneId(),
+  nameEn: '',
+  nameAr: '',
+  price: '',
+  freeAbove: '',
+  active: true,
+});
+
+function zoneToForm(z) {
+  return {
+    id: z.id,
+    nameEn: z.name?.en || '',
+    nameAr: z.name?.ar || '',
+    price: z.price ?? '',
+    freeAbove: z.freeAbove ? z.freeAbove : '',
+    active: z.active !== false,
+  };
+}
+
+function formToZone(f) {
+  return {
+    id: f.id,
+    name: { en: f.nameEn.trim() || f.nameAr.trim(), ar: f.nameAr.trim() || f.nameEn.trim() },
+    price: Number(f.price),
+    freeAbove: f.freeAbove === '' ? null : Number(f.freeAbove),
+    active: f.active,
+  };
+}
+
 const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
 
@@ -71,6 +104,8 @@ export default function Settings() {
   const [seconds, setSeconds] = useState(HERO_DEFAULT_SECONDS);
   const [fade, setFade] = useState('normal');
   const [products, setProducts] = useState([]);
+  const [fieldSettings, setFieldSettings] = useState(() => resolveFieldSettings(undefined));
+  const [zones, setZones] = useState([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -82,6 +117,8 @@ export default function Settings() {
     setSlides((tenant.hero?.slides || []).map(slideToForm));
     setSeconds(tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS);
     setFade(tenant.hero?.fade || 'normal');
+    setFieldSettings(resolveFieldSettings(tenant.checkout?.fields));
+    setZones((tenant.shipping?.zones || []).map(zoneToForm));
     listProducts(tenant.id).then(setProducts);
   }, [tenant]);
 
@@ -99,6 +136,18 @@ export default function Settings() {
     });
   }
 
+  function setFieldFlag(key, flag, value) {
+    setFieldSettings((prev) => {
+      const next = { ...prev[key], [flag]: value };
+      if (flag === 'show' && !value) next.required = false; // hidden can't be required
+      return { ...prev, [key]: next };
+    });
+  }
+
+  function updateZone(index, field, value) {
+    setZones((prev) => prev.map((z, i) => (i === index ? { ...z, [field]: value } : z)));
+  }
+
   function removeSlide(index) {
     setSlides((prev) => prev.filter((_, i) => i !== index));
   }
@@ -111,6 +160,19 @@ export default function Settings() {
     const urls = [logoUrl, ...slides.map((s) => s.imageUrl)].filter((u) => u.trim());
     if (urls.some((u) => !/^https:\/\//i.test(u.trim()))) {
       setError(t('settingsPage.errHttps'));
+      return;
+    }
+
+    if (
+      zones.some(
+        (z) =>
+          !(z.nameEn.trim() || z.nameAr.trim()) ||
+          z.price === '' ||
+          Number(z.price) < 0 ||
+          (z.freeAbove !== '' && Number(z.freeAbove) < 0)
+      )
+    ) {
+      setError(t('settingsPage.errZone'));
       return;
     }
 
@@ -130,6 +192,8 @@ export default function Settings() {
           intervalSeconds: safeSeconds,
           fade,
         },
+        checkout: { fields: fieldSettings },
+        shipping: { zones: zones.map(formToZone) },
       });
       setSeconds(safeSeconds);
       reloadTenant();
@@ -400,6 +464,145 @@ export default function Settings() {
               {t('settingsPage.addSlide')}
             </button>
           )}
+        </section>
+
+        {/* ---------- Checkout form ---------- */}
+        <section>
+          <h2 className="font-display text-lg font-medium">
+            {t('settingsPage.checkoutTitle')}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.checkoutHelp')}</p>
+          <div className="mt-4 overflow-x-auto rounded-md border border-ink/10 bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-ink/10 text-start text-ink-soft">
+                  <th className="px-4 py-2 text-start font-medium">{t('settingsPage.colField')}</th>
+                  <th className="px-4 py-2 text-center font-medium">{t('settingsPage.colShow')}</th>
+                  <th className="px-4 py-2 text-center font-medium">{t('settingsPage.colRequired')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CHECKOUT_FIELDS.map((f) => {
+                  const s = fieldSettings[f.key];
+                  return (
+                    <tr key={f.key} className="border-b border-ink/5 last:border-0">
+                      <td className="px-4 py-2">{t(`checkoutFields.${f.key}`)}</td>
+                      <td className="px-4 py-2 text-center">
+                        {f.locked ? (
+                          <span className="text-xs text-ink-faint">{t('settingsPage.always')}</span>
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={s.show}
+                            onChange={(e) => setFieldFlag(f.key, 'show', e.target.checked)}
+                            aria-label={`${t('settingsPage.colShow')} ${t(`checkoutFields.${f.key}`)}`}
+                          />
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {f.locked ? (
+                          <span className="text-xs text-ink-faint">{t('settingsPage.always')}</span>
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={s.required}
+                            disabled={!s.show}
+                            onChange={(e) => setFieldFlag(f.key, 'required', e.target.checked)}
+                            aria-label={`${t('settingsPage.colRequired')} ${t(`checkoutFields.${f.key}`)}`}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* ---------- Shipping zones ---------- */}
+        <section>
+          <h2 className="font-display text-lg font-medium">
+            {t('settingsPage.shippingTitle')}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.shippingHelp')}</p>
+
+          <div className="mt-4 space-y-4">
+            {zones.map((z, i) => (
+              <div key={z.id} className="rounded-md border border-ink/10 bg-paper-soft p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-medium">{t('settingsPage.zoneN', { n: i + 1 })}</p>
+                  <button
+                    type="button"
+                    onClick={() => setZones((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="text-sm text-rust hover:underline"
+                  >
+                    {t('common.remove')}
+                  </button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm text-ink-soft">
+                    {t('settingsPage.zoneNameEn')}
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={z.nameEn}
+                      onChange={(e) => updateZone(i, 'nameEn', e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="text-sm text-ink-soft">
+                    {t('settingsPage.zoneNameAr')}
+                    <input
+                      type="text"
+                      dir="rtl"
+                      value={z.nameAr}
+                      onChange={(e) => updateZone(i, 'nameAr', e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="text-sm text-ink-soft">
+                    {t('settingsPage.zonePrice')}
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={z.price}
+                      onChange={(e) => updateZone(i, 'price', e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="text-sm text-ink-soft">
+                    {t('settingsPage.zoneFreeAbove')}
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={z.freeAbove}
+                      onChange={(e) => updateZone(i, 'freeAbove', e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="col-span-full flex items-center gap-2 text-sm text-ink-soft">
+                    <input
+                      type="checkbox"
+                      checked={z.active}
+                      onChange={(e) => updateZone(i, 'active', e.target.checked)}
+                    />
+                    {t('settingsPage.zoneActive')}
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setZones((prev) => [...prev, emptyZone()])}
+            className="mt-4 rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass"
+          >
+            {t('settingsPage.addZone')}
+          </button>
         </section>
 
         {error && <p className="text-sm text-rust">{error}</p>}

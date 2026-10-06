@@ -1,11 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { createOrder } from '../../firebase/orders.service';
+import { createOrder, getQuote } from '../../firebase/orders.service';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
+import { CHECKOUT_FIELDS, resolveFieldSettings } from '../../utils/checkoutFields';
+
+const inputClass =
+  'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
+
+// Turns a server error (code + data) into a message in the customer's language.
+function useErrorText() {
+  const { t } = useTranslation();
+  const { language } = useLanguage();
+  return (err) => {
+    const meta = { ...(err.meta || {}) };
+    if (meta.field) meta.field = t(`checkoutFields.${meta.field}`);
+    if (meta.minOrder !== undefined) meta.min = formatPrice(meta.minOrder, language);
+    const key =
+      err.code === 'OUT_OF_STOCK' && err.meta?.stock > 0 ? 'OUT_OF_STOCK_PARTIAL' : err.code;
+    return t(`errors.${key}`, { ...meta, defaultValue: t('errors.generic') });
+  };
+}
 
 export default function Checkout() {
   const { slug } = useParams();
@@ -13,27 +31,72 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const { items, subtotal, clearCart } = useCart();
-
   const { tenant } = useStorefront();
-  const [form, setForm] = useState({
-    name: '',
-    phone: '',
-    address: '',
-    notes: '',
-  });
+  const errorText = useErrorText();
+
+  // What the shop wants to ask for (set in Admin > Settings).
+  const fieldSettings = resolveFieldSettings(tenant.checkout?.fields);
+  const visibleFields = CHECKOUT_FIELDS.filter((f) => fieldSettings[f.key].show);
+
+  const zones = (tenant.shipping?.zones || []).filter((z) => z.active !== false);
+
+  const [form, setForm] = useState(() =>
+    Object.fromEntries(CHECKOUT_FIELDS.map((f) => [f.key, '']))
+  );
+  const [zoneId, setZoneId] = useState(() => (zones.length === 1 ? zones[0].id : ''));
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState('');
+  const [quote, setQuote] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Ask the server for the real total whenever the cart, area or code changes.
+  const requestId = useRef(0);
+  useEffect(() => {
+    if (items.length === 0) return undefined;
+    const id = ++requestId.current;
+    const timer = setTimeout(async () => {
+      try {
+        const q = await getQuote({ tenantId: tenant.id, items, zoneId, promoCode: appliedCode });
+        if (id === requestId.current) setQuote(q);
+      } catch {
+        if (id === requestId.current) setQuote(null);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [tenant.id, items, zoneId, appliedCode]);
+
+  function applyPromo() {
+    setError('');
+    setAppliedCode(promoInput.trim().toUpperCase());
+  }
+
+  function removePromo() {
+    setAppliedCode('');
+    setPromoInput('');
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
 
-    if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
-      setError(t('errors.fillAll'));
-      return;
-    }
     if (items.length === 0) {
       setError(t('errors.EMPTY_CART'));
+      return;
+    }
+    // Quick checks here; the server checks everything again.
+    for (const f of visibleFields) {
+      if (fieldSettings[f.key].required && !form[f.key].trim()) {
+        setError(t('errors.BAD_FIELD', { field: t(`checkoutFields.${f.key}`) }));
+        return;
+      }
+    }
+    if (zones.length > 0 && !zoneId) {
+      setError(t('errors.ZONE_REQUIRED'));
+      return;
+    }
+    if (appliedCode && quote?.promoError) {
+      setError(promoErrorText(quote.promoError));
       return;
     }
 
@@ -43,7 +106,8 @@ export default function Checkout() {
         tenantId: tenant.id,
         customer: form,
         items,
-        paymentMethod: 'COD',
+        zoneId,
+        promoCode: quote?.promo ? appliedCode : '',
       });
       clearCart();
       navigate(`/store/${slug}/thank-you`, {
@@ -51,23 +115,18 @@ export default function Checkout() {
           orderId: result.orderId,
           orderNumberLabel: result.orderNumberLabel,
           orderType: result.orderType,
+          totalAmount: result.totalAmount,
         },
       });
     } catch (err) {
-      // Show the server's reason in the customer's language.
-      const key =
-        err.code === 'OUT_OF_STOCK' && err.meta?.stock > 0
-          ? 'OUT_OF_STOCK_PARTIAL'
-          : err.code;
-      setError(
-        t(`errors.${key}`, {
-          ...err.meta,
-          defaultValue: t('errors.generic'),
-        })
-      );
+      setError(errorText(err));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function promoErrorText(promoError) {
+    return errorText({ code: promoError.code, meta: promoError.meta });
   }
 
   if (items.length === 0) {
@@ -81,18 +140,21 @@ export default function Checkout() {
     );
   }
 
+  const money = (n) => formatPrice(n, language);
+  const chosenZone = zones.find((z) => z.id === zoneId);
+  const shown = quote || { subtotal, discount: 0, shippingFee: 0, total: subtotal };
+
   return (
     <div className="mx-auto min-h-screen max-w-lg px-4 py-12">
-      <h1 className="font-display text-2xl font-semibold">
-        {t('checkout.title')}
-      </h1>
+      <Link to={`/store/${slug}`} className="text-sm text-brass hover:underline">
+        {t('storefront.backToShop')}
+      </Link>
+      <h1 className="font-display mt-4 text-2xl font-semibold">{t('checkout.title')}</h1>
 
+      {/* ----- items ----- */}
       <div className="mt-6 rounded-md border border-ink/10 bg-paper-soft p-4">
         {items.map((item) => (
-          <div
-            key={item.productId}
-            className="flex justify-between py-1 text-sm"
-          >
+          <div key={item.productId} className="flex justify-between py-1 text-sm">
             <span>
               {item.name?.[language] || item.name?.en} × {item.quantity}
               {item.isPreorder && (
@@ -101,13 +163,9 @@ export default function Checkout() {
                 </span>
               )}
             </span>
-            <span>{formatPrice(item.unitPrice * item.quantity, language)}</span>
+            <span>{money(item.unitPrice * item.quantity)}</span>
           </div>
         ))}
-        <div className="mt-2 flex justify-between border-t border-ink/10 pt-2 font-medium">
-          <span>{t('storefront.subtotal')}</span>
-          <span>{formatPrice(subtotal, language)}</span>
-        </div>
       </div>
 
       {items.some((i) => i.isPreorder) && (
@@ -117,48 +175,154 @@ export default function Checkout() {
       )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <label className="block text-sm text-ink-soft">
-          {t('checkout.name')}
-          <input
-            type="text"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
-          />
-        </label>
+        {/* ----- customer details (the shop chooses which fields) ----- */}
+        {visibleFields.map((f) => {
+          const required = fieldSettings[f.key].required;
+          const label = (
+            <>
+              {t(`checkoutFields.${f.key}`)}
+              {required ? (
+                <span className="text-rust"> *</span>
+              ) : (
+                <span className="text-ink-faint"> ({t('checkout.optional')})</span>
+              )}
+            </>
+          );
+          return (
+            <label key={f.key} className="block text-sm text-ink-soft">
+              {label}
+              {f.type === 'textarea' ? (
+                <textarea
+                  rows={2}
+                  value={form[f.key]}
+                  onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                  className={inputClass}
+                />
+              ) : (
+                <input
+                  type={f.type}
+                  autoComplete={f.autoComplete}
+                  dir={f.type === 'email' || f.type === 'tel' ? 'ltr' : undefined}
+                  value={form[f.key]}
+                  onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                  className={inputClass}
+                />
+              )}
+            </label>
+          );
+        })}
 
-        <label className="block text-sm text-ink-soft">
-          {t('checkout.phone')}
-          <input
-            type="tel"
-            required
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
-          />
-        </label>
+        {/* ----- delivery area (only if the shop set up zones) ----- */}
+        {zones.length > 0 && (
+          <fieldset>
+            <legend className="text-sm text-ink-soft">
+              {t('checkout.deliveryArea')} <span className="text-rust">*</span>
+            </legend>
+            <div className="mt-2 space-y-2">
+              {zones.map((z) => (
+                <label
+                  key={z.id}
+                  className={
+                    'flex cursor-pointer items-center justify-between rounded border px-3 py-2.5 text-sm ' +
+                    (zoneId === z.id ? 'border-brass bg-brass/10' : 'border-ink/15')
+                  }
+                >
+                  <span className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="zone"
+                      value={z.id}
+                      checked={zoneId === z.id}
+                      onChange={() => setZoneId(z.id)}
+                    />
+                    <span>
+                      {z.name?.[language] || z.name?.en}
+                      {Number(z.freeAbove) > 0 && (
+                        <span className="block text-xs text-ink-faint">
+                          {t('checkout.freeAbove', { amount: money(z.freeAbove) })}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <span className="text-ink-soft">{money(z.price)}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
-        <label className="block text-sm text-ink-soft">
-          {t('checkout.address')}
-          <textarea
-            required
-            rows={2}
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
-          />
-        </label>
+        {/* ----- promo code ----- */}
+        <div>
+          <label className="block text-sm text-ink-soft" htmlFor="promo">
+            {t('checkout.promoLabel')}
+          </label>
+          {quote?.promo ? (
+            <div className="mt-1 flex items-center justify-between rounded border border-sage/40 bg-sage/10 px-3 py-2 text-sm text-sage-dark">
+              <span>{t('checkout.promoApplied', { code: quote.promo.code })}</span>
+              <button type="button" onClick={removePromo} className="underline">
+                {t('checkout.promoRemove')}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-1 flex gap-2">
+              <input
+                id="promo"
+                type="text"
+                dir="ltr"
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyPromo();
+                  }
+                }}
+                className="w-full rounded border border-ink/15 bg-white px-3 py-2 uppercase text-ink outline-none focus-visible:border-brass"
+              />
+              <button
+                type="button"
+                onClick={applyPromo}
+                disabled={!promoInput.trim()}
+                className="rounded border border-ink/15 px-4 text-sm hover:border-brass disabled:opacity-50"
+              >
+                {t('checkout.promoApply')}
+              </button>
+            </div>
+          )}
+          {appliedCode && quote?.promoError && (
+            <p className="mt-1 text-sm text-rust">{promoErrorText(quote.promoError)}</p>
+          )}
+        </div>
 
-        <label className="block text-sm text-ink-soft">
-          {t('checkout.notes')}
-          <textarea
-            rows={2}
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
-          />
-        </label>
+        {/* ----- totals (calculated by the server) ----- */}
+        <div className="space-y-1 rounded-md border border-ink/10 bg-paper-soft p-4 text-sm">
+          <div className="flex justify-between">
+            <span className="text-ink-soft">{t('storefront.subtotal')}</span>
+            <span>{money(shown.subtotal)}</span>
+          </div>
+          {shown.discount > 0 && (
+            <div className="flex justify-between text-sage-dark">
+              <span>{t('checkout.discount')}</span>
+              <span>− {money(shown.discount)}</span>
+            </div>
+          )}
+          {zones.length > 0 && (
+            <div className="flex justify-between">
+              <span className="text-ink-soft">{t('checkout.shipping')}</span>
+              <span>
+                {!chosenZone
+                  ? '—'
+                  : shown.shippingFee === 0
+                    ? t('checkout.free')
+                    : money(shown.shippingFee)}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-ink/10 pt-2 text-base font-semibold">
+            <span>{t('checkout.total')}</span>
+            <span>{money(shown.total)}</span>
+          </div>
+        </div>
 
         <div className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink-soft">
           {t('checkout.paymentMethod')}: <strong>{t('checkout.cod')}</strong>
@@ -169,7 +333,7 @@ export default function Checkout() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded bg-ink py-2.5 text-paper transition hover:bg-brass disabled:opacity-60"
+          className="w-full rounded bg-ink py-3 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass disabled:opacity-60"
         >
           {submitting ? t('checkout.placingOrder') : t('checkout.placeOrder')}
         </button>

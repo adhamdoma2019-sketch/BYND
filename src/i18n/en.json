@@ -48,7 +48,18 @@
     "orderPlaced": "Order placed!",
     "orderPlacedBody": "We've received your order and will contact you shortly to confirm delivery.",
     "orderNumber": "Order number",
-    "preorderPlacedBody": "This is a preorder. We'll contact you to confirm the shipping date."
+    "preorderPlacedBody": "This is a preorder. We'll contact you to confirm the shipping date.",
+    "optional": "optional",
+    "deliveryArea": "Delivery area",
+    "freeAbove": "Free shipping above {{amount}}",
+    "promoLabel": "Promo code",
+    "promoApply": "Apply",
+    "promoRemove": "Remove",
+    "promoApplied": "Code {{code}} applied",
+    "discount": "Discount",
+    "shipping": "Shipping",
+    "free": "Free",
+    "total": "Total"
   },
   "admin": {
     "login": "Partner login",
@@ -133,7 +144,8 @@
     "pnlDesc": "Sales, cost and profit at a glance.",
     "settingsDesc": "Colors, logo and the home page banner.",
     "viewStore": "View storefront ↗",
-    "viewStoreDesc": "See what customers see."
+    "viewStoreDesc": "See what customers see.",
+    "promosDesc": "Create discount codes for your customers."
   },
   "products": {
     "add": "+ Add product",
@@ -169,7 +181,9 @@
     "costLine": "Cost: {{cost}} · profit/unit: {{profit}}",
     "noCost": "No cost set yet",
     "hidden": "Hidden",
-    "lowStockBadge": "Low stock"
+    "lowStockBadge": "Low stock",
+    "shippingExtra": "Extra shipping per unit (EGP, optional)",
+    "shippingExtraHint": "Added to the shipping fee for each unit of this product (for big or heavy items)."
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -260,7 +274,23 @@
     "saved": "Saved. Open your storefront to see the changes.",
     "openStore": "Open storefront ↗",
     "errHttps": "Image links must start with https://",
-    "errSave": "Could not save. Please try again."
+    "errSave": "Could not save. Please try again.",
+    "checkoutTitle": "Checkout form",
+    "checkoutHelp": "Choose which details you ask customers for. Name and phone are always required because you need them to deliver.",
+    "colField": "Detail",
+    "colShow": "Show",
+    "colRequired": "Required",
+    "always": "Always",
+    "shippingTitle": "Shipping zones",
+    "shippingHelp": "Add the places you deliver to and the price for each. Customers choose their area at checkout. If you add no zones, shipping is free and no area is asked.",
+    "zoneN": "Zone {{n}}",
+    "zoneNameEn": "Zone name (English)",
+    "zoneNameAr": "Zone name (Arabic)",
+    "zonePrice": "Shipping price (EGP)",
+    "zoneFreeAbove": "Free shipping above (EGP, optional)",
+    "zoneActive": "Available to customers",
+    "addZone": "+ Add zone",
+    "errZone": "Every zone needs a name and a price."
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -274,6 +304,57 @@
     "NO_SHOP": "This shop is not available.",
     "UNAVAILABLE": "Sorry, one of the items in your cart is no longer available.",
     "OUT_OF_STOCK": "Sorry, \"{{name}}\" is out of stock.",
-    "OUT_OF_STOCK_PARTIAL": "Sorry, only {{stock}} of \"{{name}}\" left in stock."
+    "OUT_OF_STOCK_PARTIAL": "Sorry, only {{stock}} of \"{{name}}\" left in stock.",
+    "BAD_FIELD": "Please fill in: {{field}}",
+    "BAD_EMAIL": "Please enter a valid email address.",
+    "ZONE_REQUIRED": "Please choose your delivery area.",
+    "BAD_ZONE": "This delivery area is not available. Please choose another.",
+    "PROMO_INVALID": "This promo code isn't valid.",
+    "PROMO_EXPIRED": "This promo code has expired.",
+    "PROMO_LIMIT": "This promo code has reached its usage limit.",
+    "PROMO_MIN_ORDER": "This code needs an order of at least {{min}}."
+  },
+  "checkoutFields": {
+    "name": "Full name",
+    "phone": "Phone number",
+    "email": "Email",
+    "country": "Country",
+    "city": "City / Governorate",
+    "area": "Area / District",
+    "street": "Street",
+    "building": "Building number",
+    "floor": "Floor",
+    "apartment": "Apartment",
+    "landmark": "Nearby landmark",
+    "notes": "Order notes"
+  },
+  "promos": {
+    "title": "Promo codes",
+    "help": "Create discount codes. Customers type a code at checkout and see the discount before they order. You can turn a code off at any time.",
+    "code": "Code",
+    "codeHint": "Letters, numbers, - and _ only.",
+    "type": "Type",
+    "percent": "Percentage (%)",
+    "fixed": "Fixed amount (EGP)",
+    "value": "Value",
+    "minOrder": "Minimum order (EGP, optional)",
+    "expires": "Last valid day (optional)",
+    "limit": "Usage limit (optional)",
+    "add": "Add code",
+    "badCode": "Enter a valid code (2–30 letters, numbers, - or _).",
+    "badValue": "Enter a valid value (a percentage can't be above 100).",
+    "badMin": "Enter a valid minimum order (or leave it empty).",
+    "badLimit": "The usage limit must be at least 1 (or leave it empty).",
+    "exists": "This code already exists.",
+    "saveFailed": "Could not save the code. Please try again.",
+    "none": "No promo codes yet.",
+    "used": "Used {{n}} time(s)",
+    "usedOf": "Used {{n}} of {{max}}",
+    "minShort": "min order {{amount}}",
+    "until": "until {{date}}",
+    "active": "Active",
+    "inactive": "Off",
+    "activate": "Turn on",
+    "deactivate": "Turn off"
   }
 }
