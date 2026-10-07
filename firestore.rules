@@ -82,6 +82,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------- Private shop settings ----------
+    // e.g. the Telegram chat for order alerts. Only the shop's own team can
+    // read or edit it (the shop record itself is public, so it can't live there).
+    match /tenantPrivate/{tenantId} {
+      allow read, create, update: if belongsTo(tenantId);
+      allow delete: if false;
+    }
+
     // ---------- Promo codes ----------
     // Only the shop's own team can see or manage codes. Customers never read
     // this collection: the secure server function checks codes for them.

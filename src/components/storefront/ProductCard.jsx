@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { formatPrice } from '../../utils/format';
+import { optimizedImage } from '../../utils/images';
 
 export default function ProductCard({ product, onAddToCart }) {
   const { t } = useTranslation();
@@ -18,7 +19,7 @@ export default function ProductCard({ product, onAddToCart }) {
       <Link to={productUrl} className="relative block overflow-hidden rounded">
         {product.imageUrl ? (
           <img
-            src={product.imageUrl}
+            src={optimizedImage(product.imageUrl, 700)}
             alt={name}
             loading="lazy"
             className="mb-3 aspect-square w-full rounded object-cover transition duration-500 group-hover:scale-[1.03]"

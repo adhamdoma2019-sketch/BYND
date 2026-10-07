@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { listProducts } from '../../firebase/products.service';
+import { listOrders } from '../../firebase/orders.service';
 import LanguageSwitch from '../../components/shared/LanguageSwitch';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const storefrontUrl = tenant ? '/store/' + tenant.slug : '';
 
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     async function checkStock() {
@@ -28,7 +30,13 @@ export default function Dashboard() {
           .length
       );
     }
+    async function checkOrders() {
+      if (!tenant) return;
+      const orders = await listOrders(tenant.id);
+      setPendingCount(orders.filter((o) => o.status === 'pending').length);
+    }
     checkStock();
+    checkOrders();
   }, [tenant]);
 
   return (
@@ -68,6 +76,15 @@ export default function Dashboard() {
                 components={{ b: <strong /> }}
               />
             </p>
+
+            {pendingCount > 0 && (
+              <Link
+                to="/admin/orders"
+                className="mt-4 block max-w-3xl rounded border border-sage/40 bg-sage/10 px-4 py-3 text-sm text-sage-dark transition hover:border-sage"
+              >
+                {t('dash.pending', { n: pendingCount })}
+              </Link>
+            )}
 
             {lowStockCount > 0 && (
               <Link

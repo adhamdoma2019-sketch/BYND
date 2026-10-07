@@ -9,6 +9,7 @@ import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { formatPrice } from '../../utils/format';
+import { optimizedImage } from '../../utils/images';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { MAX_ORDER_QTY, LOW_STOCK_THRESHOLD } from '../../utils/constants';
 
@@ -109,7 +110,7 @@ export default function ProductPage() {
           <div>
             {product.imageUrl ? (
               <img
-                src={product.imageUrl}
+                src={optimizedImage(product.imageUrl, 1000)}
                 alt={name}
                 className="w-full rounded-md object-cover"
               />

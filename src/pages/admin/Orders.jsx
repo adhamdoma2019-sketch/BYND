@@ -4,6 +4,7 @@ import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import { formatPrice } from '../../utils/format';
+import { whatsappLink } from '../../utils/phone';
 import {
   listOrders,
   updateOrderStatus,
@@ -340,8 +341,25 @@ export default function Orders() {
                         ) : (
                           <>
                             <p>{order.customer?.name}</p>
-                            <p className="text-sm text-ink-soft">
-                              {order.customer?.phone}
+                            <p className="flex flex-wrap items-center gap-3 text-sm text-ink-soft">
+                              <span dir="ltr">{order.customer?.phone}</span>
+                              <a
+                                href={whatsappLink(
+                                  order.customer?.phone,
+                                  tenant?.defaultCountryCode || '20'
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-brass hover:underline"
+                              >
+                                {t('orders.whatsapp')}
+                              </a>
+                              <a
+                                href={`tel:${order.customer?.phone}`}
+                                className="text-brass hover:underline"
+                              >
+                                {t('orders.call')}
+                              </a>
                             </p>
                             {order.customer?.email && (
                               <p className="text-sm text-ink-soft" dir="ltr">

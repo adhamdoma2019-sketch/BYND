@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import LanguageSwitch from '../../components/shared/LanguageSwitch';
 
@@ -13,6 +15,23 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [info, setInfo] = useState('');
+
+  // "Forgot password": Firebase emails a reset link (free, built in).
+  async function handleForgot() {
+    setError('');
+    setInfo('');
+    if (!email.trim()) {
+      setError(t('login.enterEmail'));
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch {
+      // Same message either way, so nobody can find out which emails have accounts.
+    }
+    setInfo(t('login.resetSent'));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -61,7 +80,16 @@ export default function Login() {
           />
         </label>
 
+        <button
+          type="button"
+          onClick={handleForgot}
+          className="mt-2 text-sm text-brass hover:underline"
+        >
+          {t('login.forgot')}
+        </button>
+
         {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+        {info && <p className="mt-3 text-sm text-sage-dark">{info}</p>}
 
         <button
           type="submit"

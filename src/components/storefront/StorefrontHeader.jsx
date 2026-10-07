@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useCart } from '../../context/CartContext';
 import LanguageSwitch from '../shared/LanguageSwitch';
+import { optimizedImage } from '../../utils/images';
 
 // Top bar shared by the shop pages: logo / shop name, language switch, cart.
 // The logo comes from Admin > Settings; until one is set, the shop name is
@@ -18,7 +19,7 @@ export default function StorefrontHeader({ tenant, onCartClick }) {
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/10 bg-paper/85 px-4 py-3 backdrop-blur sm:px-8">
       <Link to={`/store/${tenant.slug}`} aria-label={shopName}>
         {logoUrl ? (
-          <img src={logoUrl} alt={shopName} className="h-8 w-auto" />
+          <img src={optimizedImage(logoUrl, 400)} alt={shopName} className="h-8 w-auto" />
         ) : (
           <span className="font-display text-xl font-bold uppercase tracking-[0.2em]">
             {shopName}

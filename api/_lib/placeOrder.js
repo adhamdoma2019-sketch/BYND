@@ -207,7 +207,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       });
     }
 
-    tx.set(orderRef, {
+    const orderDoc = {
       tenantId,
       orderNumber,
       orderNumberLabel,
@@ -231,7 +231,8 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       deleted: false,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
+    tx.set(orderRef, orderDoc);
 
     tx.set(counterRef, { current: orderNumber }, { merge: true });
 
@@ -241,6 +242,8 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       orderNumberLabel,
       totalAmount: totals.total,
       orderType,
+      // Used only by the server for the Telegram alert; removed before replying.
+      _order: orderDoc,
     };
   });
 }

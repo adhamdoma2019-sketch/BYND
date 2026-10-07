@@ -5,6 +5,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { listProducts } from '../../firebase/products.service';
 import { updateTenantSettings } from '../../firebase/tenants.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import ImageField from '../../components/admin/ImageField';
+import { getTenantPrivate, saveTenantPrivate } from '../../firebase/private.service';
+import { findTelegramChats, sendTelegramTest } from '../../firebase/telegram.service';
 import {
   HERO_DEFAULT_SECONDS,
   HERO_MIN_SECONDS,
@@ -150,6 +153,12 @@ export default function Settings() {
   const [fieldSettings, setFieldSettings] = useState(() => resolveFieldSettings(undefined));
   const [zones, setZones] = useState([]);
   const [customFields, setCustomFields] = useState([]);
+  const [countryCode, setCountryCode] = useState('20');
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [notifyLanguage, setNotifyLanguage] = useState('en');
+  const [chats, setChats] = useState(null); // null = not searched yet
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertBusy, setAlertBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -164,6 +173,11 @@ export default function Settings() {
     setFieldSettings(resolveFieldSettings(tenant.checkout?.fields));
     setZones((tenant.shipping?.zones || []).map(zoneToForm));
     setCustomFields((tenant.checkout?.customFields || []).map(customToForm));
+    setCountryCode(tenant.defaultCountryCode || '20');
+    getTenantPrivate(tenant.id).then((p) => {
+      setTelegramChatId(p.telegramChatId || '');
+      setNotifyLanguage(p.notifyLanguage === 'ar' ? 'ar' : 'en');
+    });
     listProducts(tenant.id).then(setProducts);
   }, [tenant]);
 
@@ -187,6 +201,33 @@ export default function Settings() {
       if (flag === 'show' && !value) next.required = false; // hidden can't be required
       return { ...prev, [key]: next };
     });
+  }
+
+  // Telegram: show a readable message for what the helper answered.
+  function alertErrorText(result) {
+    if (result.error === 'NOT_CONFIGURED') return t('settingsPage.alertNotConfigured');
+    return t('settingsPage.alertTestFail');
+  }
+
+  async function handleFindChats() {
+    setAlertMessage('');
+    setAlertBusy(true);
+    const result = await findTelegramChats();
+    setAlertBusy(false);
+    if (!result.ok) {
+      setChats(null);
+      setAlertMessage(alertErrorText(result));
+      return;
+    }
+    setChats(result.chats);
+  }
+
+  async function handleSendTest() {
+    setAlertMessage('');
+    setAlertBusy(true);
+    const result = await sendTelegramTest(telegramChatId, notifyLanguage);
+    setAlertBusy(false);
+    setAlertMessage(result.ok ? t('settingsPage.alertTestOk') : alertErrorText(result));
   }
 
   function updateCustom(index, field, value) {
@@ -254,7 +295,9 @@ export default function Settings() {
 
     setSaving(true);
     try {
+      await saveTenantPrivate(tenant.id, { telegramChatId, notifyLanguage });
       await updateTenantSettings(tenant.id, {
+        defaultCountryCode: String(countryCode).replace(/\D/g, '') || '20',
         theme: { accent },
         brand: { logoUrl: logoUrl.trim() },
         hero: {
@@ -327,17 +370,13 @@ export default function Settings() {
             {t('settingsPage.logoTitle')}
           </h2>
           <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.logoHelp')}</p>
-          <label className="mt-3 block text-sm text-ink-soft">
-            {t('settingsPage.logoLink')}
-            <input
-              type="url"
-              dir="ltr"
-              placeholder="https://..."
+          <div className="mt-3">
+            <ImageField
+              label={t('settingsPage.logoLink')}
               value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              className={inputClass}
+              onChange={setLogoUrl}
             />
-          </label>
+          </div>
         </section>
 
         {/* ---------- Banner slides ---------- */}
@@ -425,17 +464,13 @@ export default function Settings() {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="col-span-full text-sm text-ink-soft">
-                    {t('settingsPage.picLink')}
-                    <input
-                      type="url"
-                      dir="ltr"
-                      placeholder="https://..."
+                  <div className="col-span-full">
+                    <ImageField
+                      label={t('settingsPage.picLink')}
                       value={s.imageUrl}
-                      onChange={(e) => updateSlide(i, 'imageUrl', e.target.value)}
-                      className={inputClass}
+                      onChange={(url) => updateSlide(i, 'imageUrl', url)}
                     />
-                  </label>
+                  </div>
                   {s.imageUrl && (
                     <img
                       src={s.imageUrl}
@@ -798,6 +833,101 @@ export default function Settings() {
           >
             {t('settingsPage.addZone')}
           </button>
+        </section>
+
+        {/* ---------- Order alerts + WhatsApp ---------- */}
+        <section>
+          <h2 className="font-display text-lg font-medium">
+            {t('settingsPage.alertsTitle')}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.alertsHelp')}</p>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.alertsSteps')}</p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm text-ink-soft">
+              {t('settingsPage.chatId')}
+              <input
+                type="text"
+                dir="ltr"
+                value={telegramChatId}
+                onChange={(e) => setTelegramChatId(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+            <label className="text-sm text-ink-soft">
+              {t('settingsPage.alertLang')}
+              <select
+                value={notifyLanguage}
+                onChange={(e) => setNotifyLanguage(e.target.value)}
+                className={inputClass}
+              >
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleFindChats}
+              disabled={alertBusy}
+              className="rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass disabled:opacity-60"
+            >
+              {t('settingsPage.findChats')}
+            </button>
+            <button
+              type="button"
+              onClick={handleSendTest}
+              disabled={alertBusy || !telegramChatId.trim()}
+              className="rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass disabled:opacity-60"
+            >
+              {t('settingsPage.sendTest')}
+            </button>
+          </div>
+
+          {chats && (
+            <div className="mt-3 text-sm">
+              {chats.length === 0 ? (
+                <p className="text-ink-soft">{t('settingsPage.noChats')}</p>
+              ) : (
+                <>
+                  <p className="text-ink-soft">{t('settingsPage.pickChat')}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {chats.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setTelegramChatId(c.id);
+                          setChats(null);
+                        }}
+                        className="rounded border border-ink/15 bg-white px-3 py-1.5 hover:border-brass"
+                      >
+                        {c.title}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {alertMessage && <p className="mt-3 text-sm text-ink-soft">{alertMessage}</p>}
+
+          <label className="mt-6 block max-w-xs text-sm text-ink-soft">
+            {t('settingsPage.phoneCode')}
+            <input
+              type="text"
+              dir="ltr"
+              inputMode="numeric"
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value)}
+              className={inputClass}
+            />
+            <span className="mt-1 block text-xs text-ink-faint">
+              {t('settingsPage.phoneCodeHint')}
+            </span>
+          </label>
         </section>
 
         {error && <p className="text-sm text-rust">{error}</p>}

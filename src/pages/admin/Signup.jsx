@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase/config';
@@ -7,6 +7,7 @@ import { createTenant, isSlugAvailable } from '../../firebase/tenants.service';
 import { slugify } from '../../utils/slugify';
 import { useTenant } from '../../context/TenantContext';
 import LanguageSwitch from '../../components/shared/LanguageSwitch';
+import { SIGNUP_OPEN } from '../../config/features';
 
 export default function Signup() {
   const { t } = useTranslation();
@@ -67,6 +68,18 @@ export default function Signup() {
   }
 
   const previewSlug = slugify(shopName) || 'your-shop-name';
+
+  // Signup is switched off while a single shop uses the site (see config/features.js).
+  if (!SIGNUP_OPEN) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+        <p className="max-w-sm text-ink-soft">{t('signup.closed')}</p>
+        <Link to="/admin/login" className="mt-4 text-brass hover:underline">
+          {t('admin.login')}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">

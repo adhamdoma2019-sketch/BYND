@@ -44,9 +44,10 @@ export async function getUserTenantId(uid) {
 //   shipping: { zones }               delivery areas and their prices
 export async function updateTenantSettings(
   tenantId,
-  { theme, brand, hero, checkout, shipping }
+  { theme, brand, hero, checkout, shipping, defaultCountryCode }
 ) {
   await updateDoc(doc(db, 'tenants', tenantId), {
+    defaultCountryCode, // for WhatsApp links, e.g. '20' for Egypt
     theme,
     brand,
     hero,

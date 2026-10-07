@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { optimizedImage } from '../../utils/images';
 
 // The big banner at the top of the shop.
 // `slides` = [{ imageUrl, headline, subtext, ctaLabel, to }]
@@ -45,7 +46,7 @@ export default function Hero({ slides, intervalMs = 6000, fadeMs = 1000 }) {
           >
             {slide.imageUrl && (
               <img
-                src={slide.imageUrl}
+                src={optimizedImage(slide.imageUrl, 1800)}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover"
                 loading={i === 0 ? 'eager' : 'lazy'}

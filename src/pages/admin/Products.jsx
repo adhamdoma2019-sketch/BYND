@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import ImageField from '../../components/admin/ImageField';
 import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import {
@@ -288,16 +289,11 @@ export default function Products() {
             </span>
           </label>
 
-          <label className="text-sm text-ink-soft">
-            {t('products.imageUrl')}
-            <input
-              type="url"
-              placeholder="https://..."
-              value={form.imageUrl}
-              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-              className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
-            />
-          </label>
+          <ImageField
+            label={t('products.imageUrl')}
+            value={form.imageUrl}
+            onChange={(url) => setForm({ ...form, imageUrl: url })}
+          />
 
           <div className="col-span-full rounded border border-ink/10 bg-white p-3">
             <label className="flex items-center gap-2 text-sm text-ink-soft">

@@ -6,7 +6,9 @@
 // placed in the code or sent to anyone.
 
 import { getDb } from './_lib/db.js';
+import { waitUntil } from '@vercel/functions';
 import { validateInput, placeOrder, OrderError } from './_lib/placeOrder.js';
+import { notifyNewOrder } from './_lib/notify.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -25,7 +27,19 @@ export default async function handler(req, res) {
     }
 
     const input = validateInput(body);
-    const result = await placeOrder(getDb(), input);
+    const db = getDb();
+    const { _order, ...result } = await placeOrder(db, input);
+
+    // Tell the team on Telegram. waitUntil lets Vercel finish this in the
+    // background, so the customer isn't kept waiting.
+    waitUntil(
+      notifyNewOrder(db, {
+        tenantId: input.tenantId,
+        orderNumberLabel: result.orderNumberLabel,
+        order: _order,
+      })
+    );
+
     return res.status(200).json(result);
   } catch (err) {
     if (err instanceof OrderError) {

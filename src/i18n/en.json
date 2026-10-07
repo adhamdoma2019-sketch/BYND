@@ -114,7 +114,10 @@
     "note": "Revenue counts delivered orders only. Expenses come from the Expenses screen."
   },
   "login": {
-    "invalid": "Invalid email or password."
+    "invalid": "Invalid email or password.",
+    "forgot": "Forgot password?",
+    "enterEmail": "Enter your email above first.",
+    "resetSent": "If this email has an account, we've sent a link to reset the password."
   },
   "signup": {
     "title": "Create your shop",
@@ -131,7 +134,8 @@
     "weakPassword": "Password should be at least 6 characters.",
     "invalidEmail": "Please enter a valid email address.",
     "network": "Network error — please check your connection and try again.",
-    "generic": "Something went wrong creating your shop. Please try again."
+    "generic": "Something went wrong creating your shop. Please try again.",
+    "closed": "Creating new shops is closed for now."
   },
   "landing": {
     "body": "Build a simple storefront and mini business dashboard for your handmade or small-batch product — no coding needed.",
@@ -147,7 +151,8 @@
     "settingsDesc": "Colors, logo and the home page banner.",
     "viewStore": "View storefront ↗",
     "viewStoreDesc": "See what customers see.",
-    "promosDesc": "Create discount codes for your customers."
+    "promosDesc": "Create discount codes for your customers.",
+    "pending": "{{n}} new order(s) waiting for you"
   },
   "products": {
     "add": "+ Add product",
@@ -213,7 +218,9 @@
       "ALREADY_CANCELLED": "This order is already cancelled.",
       "ALREADY_DELIVERED": "This order was already delivered and cannot be cancelled."
     },
-    "yes": "Yes"
+    "yes": "Yes",
+    "whatsapp": "WhatsApp",
+    "call": "Call"
   },
   "expenses": {
     "category": "Category",
@@ -312,7 +319,21 @@
     "type_phone": "Phone",
     "type_date": "Date",
     "type_select": "Drop-down list",
-    "type_checkbox": "Tick box"
+    "type_checkbox": "Tick box",
+    "alertsTitle": "New-order alerts (Telegram)",
+    "alertsHelp": "Get a Telegram message the moment an order arrives. It is free and instant, and the whole team can be in one group.",
+    "alertsSteps": "Add your order bot to your team's Telegram group (or send the bot a message), press “Find my chat” and pick it, then press “Send a test message”. Don't forget to save.",
+    "chatId": "Telegram chat ID",
+    "alertLang": "Alert language",
+    "findChats": "Find my chat",
+    "sendTest": "Send a test message",
+    "noChats": "No chat found yet. Add the bot to your group, write a message there, then try again.",
+    "pickChat": "Choose the chat:",
+    "alertTestOk": "Test message sent. Check Telegram.",
+    "alertTestFail": "Could not send. Check the chat ID, and that the bot is in the group.",
+    "alertNotConfigured": "Alerts aren't switched on for this site yet (the bot key is missing).",
+    "phoneCode": "Phone country code (for WhatsApp links)",
+    "phoneCodeHint": "Egypt is 20. Local numbers like 010... get this code added in front."
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -378,5 +399,13 @@
     "inactive": "Off",
     "activate": "Turn on",
     "deactivate": "Turn off"
+  },
+  "upload": {
+    "choose": "Upload picture",
+    "uploading": "Uploading...",
+    "failed": "Upload failed. Try again or paste a link.",
+    "tooBig": "This picture is too large (the limit is 8 MB).",
+    "notImage": "Please choose a picture file.",
+    "notSetUp": "Picture upload isn't switched on yet. Paste a picture link instead."
   }
 }
