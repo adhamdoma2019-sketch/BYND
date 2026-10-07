@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { LanguageProvider } from './context/LanguageContext';
 import AppRoutes from './routes/AppRoutes';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 
 export default function App() {
   return (
@@ -10,7 +11,9 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <TenantProvider>
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
           </TenantProvider>
         </AuthProvider>
       </LanguageProvider>

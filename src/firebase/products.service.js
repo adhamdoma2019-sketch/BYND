@@ -10,6 +10,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './config';
+import { formToOptions, formToOptionCosts } from '../utils/productOptionsForm';
 
 const PRODUCTS = 'products';
 
@@ -59,6 +60,7 @@ function productFields(data) {
         : Number(data.shippingExtra),
     imageUrl: data.imageUrl || '',
     isPreorder,
+    options: formToOptions(data.options), // colors, activity, extension... (public)
     preorderMessage: {
       en: isPreorder ? data.preorderMessageEn || '' : '',
       ar: isPreorder ? data.preorderMessageAr || data.preorderMessageEn || '' : '',
@@ -73,6 +75,7 @@ function costFields(tenantId, data) {
   return {
     tenantId,
     costPrice: hasCost ? Number(data.costPrice) : null,
+    optionCosts: formToOptionCosts(data.options), // private extra cost of each choice
     updatedAt: serverTimestamp(),
   };
 }
@@ -86,6 +89,17 @@ export async function listProductCosts(tenantId) {
     costs[d.id] = d.data().costPrice;
   });
   return costs;
+}
+
+// { [productId]: { costPrice, optionCosts } } for the admin screens.
+export async function listProductCostDetails(tenantId) {
+  const q = query(collection(db, 'productCosts'), where('tenantId', '==', tenantId));
+  const snap = await getDocs(q);
+  const details = {};
+  snap.docs.forEach((d) => {
+    details[d.id] = { costPrice: d.data().costPrice, optionCosts: d.data().optionCosts || {} };
+  });
+  return details;
 }
 
 export async function createProduct(tenantId, data) {

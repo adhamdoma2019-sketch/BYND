@@ -38,7 +38,11 @@ async function callApi(path, payload) {
 }
 
 const cartLines = (items) =>
-  items.map((i) => ({ productId: i.productId, quantity: i.quantity }));
+  items.map((i) => ({
+    productId: i.productId,
+    quantity: i.quantity,
+    selections: i.selections || {},
+  }));
 
 // Place the order. Returns { orderId, orderNumber, orderNumberLabel, totalAmount, orderType }.
 export function createOrder({ tenantId, customer, custom, items, zoneId, promoCode }) {

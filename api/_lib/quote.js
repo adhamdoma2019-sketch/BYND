@@ -5,10 +5,12 @@
 
 import { OrderError } from './errors.js';
 import { computeTotals } from './pricing.js';
+import { resolveSelections } from './options.js';
 
 export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
-  const productRefs = items.map((i) => db.collection('products').doc(i.productId));
+  const productIds = [...new Set(items.map((i) => i.productId))];
+  const productRefs = productIds.map((id) => db.collection('products').doc(id));
   const promoRef = promoCode
     ? db.collection('promoCodes').doc(`${tenantId}__${promoCode}`)
     : null;
@@ -17,15 +19,15 @@ export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
   if (promoRef) refs.push(promoRef);
   const [tenantSnap, ...rest] = await db.getAll(...refs);
   const productSnaps = rest.slice(0, items.length);
-  const promoSnap = promoRef ? rest[items.length] : null;
+  const promoSnap = promoRef ? rest[productIds.length] : null;
 
   if (!tenantSnap.exists || tenantSnap.data().isActive === false) {
     throw new OrderError(404, 'NO_SHOP', 'This shop is not available.');
   }
   const tenant = { id: tenantId, ...tenantSnap.data() };
 
-  const lines = items.map((item, index) => {
-    const snap = productSnaps[index];
+  const lines = items.map((item) => {
+    const snap = productSnaps[productIds.indexOf(item.productId)];
     const product = snap.exists ? snap.data() : null;
     if (
       !product ||
@@ -39,8 +41,10 @@ export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
         'Sorry, one of the items in your cart is no longer available.'
       );
     }
+    // The price includes what the customer's choices add (color, extension...).
+    const choice = resolveSelections(product, item.selections);
     return {
-      unitPrice: Number(product.price) || 0,
+      unitPrice: (Number(product.price) || 0) + choice.priceDelta,
       quantity: item.quantity,
       shippingExtra: Number(product.shippingExtra) || 0,
     };

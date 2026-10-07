@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { createOrder, getQuote } from '../../firebase/orders.service';
-import { useCart } from '../../context/CartContext';
+import { useCart, keyOf } from '../../context/CartContext';
+import OptionSummary from '../../components/storefront/OptionSummary';
 import { useLanguage } from '../../context/LanguageContext';
 import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
@@ -177,7 +178,7 @@ export default function Checkout() {
       {/* ----- items ----- */}
       <div className="mt-6 rounded-md border border-ink/10 bg-paper-soft p-4">
         {items.map((item) => (
-          <div key={item.productId} className="flex justify-between py-1 text-sm">
+          <div key={keyOf(item)} className="flex justify-between py-1 text-sm">
             <span>
               {item.name?.[language] || item.name?.en} × {item.quantity}
               {item.isPreorder && (
@@ -185,6 +186,7 @@ export default function Checkout() {
                   {t('storefront.preorder')}
                 </span>
               )}
+              <OptionSummary labels={item.optionLabels} />
             </span>
             <span>{money(item.unitPrice * item.quantity)}</span>
           </div>

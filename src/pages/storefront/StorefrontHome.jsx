@@ -85,7 +85,12 @@ export default function StorefrontHome() {
     <div className="min-h-screen">
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
-      <Hero slides={slides} intervalMs={seconds * 1000} fadeMs={fadeMs} />
+      <Hero
+        slides={slides}
+        intervalMs={seconds * 1000}
+        fadeMs={fadeMs}
+        autoplay={tenant.hero?.autoplay !== false}
+      />
 
       <main className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <h2

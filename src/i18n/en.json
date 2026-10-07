@@ -33,7 +33,11 @@
     "step2Title": "Order and pay on delivery",
     "step2Body": "Send your details. No online payment needed.",
     "step3Title": "We bring it to your door",
-    "step3Body": "We confirm your order and deliver it to you."
+    "step3Body": "We confirm your order and deliver it to you.",
+    "selectOptions": "Choose options",
+    "chooseOptions": "Please choose: {{names}}",
+    "prevSlide": "Previous picture",
+    "nextSlide": "Next picture"
   },
   "checkout": {
     "title": "Checkout",
@@ -333,7 +337,8 @@
     "alertTestFail": "Could not send. Check the chat ID, and that the bot is in the group.",
     "alertNotConfigured": "Alerts aren't switched on for this site yet (the bot key is missing).",
     "phoneCode": "Phone country code (for WhatsApp links)",
-    "phoneCodeHint": "Egypt is 20. Local numbers like 010... get this code added in front."
+    "phoneCodeHint": "Egypt is 20. Local numbers like 010... get this code added in front.",
+    "autoplay": "Change pictures automatically (visitors can always use the arrows or swipe)"
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -355,7 +360,8 @@
     "PROMO_INVALID": "This promo code isn't valid.",
     "PROMO_EXPIRED": "This promo code has expired.",
     "PROMO_LIMIT": "This promo code has reached its usage limit.",
-    "PROMO_MIN_ORDER": "This code needs an order of at least {{min}}."
+    "PROMO_MIN_ORDER": "This code needs an order of at least {{min}}.",
+    "BAD_OPTION": "Please check your choice for: {{field}}"
   },
   "checkoutFields": {
     "name": "Full name",
@@ -407,5 +413,35 @@
     "tooBig": "This picture is too large (the limit is 8 MB).",
     "notImage": "Please choose a picture file.",
     "notSetUp": "Picture upload isn't switched on yet. Paste a picture link instead."
+  },
+  "options": {
+    "title": "Options (colors, activity, extensions...)",
+    "help": "Let customers customize the product. Each choice can change the price. Stock is shared by all choices, so use \"Preorder\" for made-to-order products.",
+    "add": "+ Add option",
+    "optionN": "Option {{n}}",
+    "type": "Type",
+    "type_color": "Color",
+    "type_choice": "Choice list (activity, sport, size...)",
+    "type_addon": "Extension (tick box with a price)",
+    "type_text": "Custom text",
+    "required": "Customer must choose",
+    "labelEn": "Name (English)",
+    "labelAr": "Name (Arabic)",
+    "maxLength": "Maximum characters",
+    "valueEn": "Choice (English)",
+    "valueAr": "Choice (Arabic)",
+    "color": "Color",
+    "priceDelta": "Adds to price (EGP)",
+    "costDelta": "Adds to your cost (EGP)",
+    "addValue": "+ Add choice",
+    "extPrice": "Extension price (EGP)",
+    "extCost": "What the extension costs you (EGP)",
+    "costHint": "Costs are private: customers never see them. They are used for your profit report.",
+    "errInvalid": "Every option needs a name, and a color or choice list needs at least one named choice."
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "body": "The page didn't load properly. Please try again.",
+    "reload": "Reload the page"
   }
 }

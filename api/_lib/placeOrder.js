@@ -17,6 +17,7 @@ import {
   applyCustomFields,
 } from './fields.js';
 import { computeTotals } from './pricing.js';
+import { cleanSelections, selectionSignature, resolveSelections } from './options.js';
 
 export { OrderError };
 
@@ -51,7 +52,9 @@ export function validateInput(body) {
     throw new OrderError(400, 'EMPTY_CART', 'Your cart is empty.');
   }
 
-  // Merge duplicate lines of the same product so stock is counted correctly.
+  // Each line = a product + the customer's choices (color, extension...).
+  // Identical lines are merged; the same product with DIFFERENT choices stays
+  // as separate lines.
   const merged = new Map();
   for (const item of body.items) {
     const productId = cleanText(item?.productId, 100);
@@ -59,12 +62,16 @@ export function validateInput(body) {
     if (!productId || !Number.isInteger(quantity) || quantity < 1) {
       throw new OrderError(400, 'BAD_ITEM', 'Invalid item in cart.');
     }
-    merged.set(productId, (merged.get(productId) || 0) + quantity);
+    const selections = cleanSelections(item?.selections);
+    const key = `${productId}|${selectionSignature(selections)}`;
+    const existing = merged.get(key);
+    if (existing) existing.quantity += quantity;
+    else merged.set(key, { productId, quantity, selections });
   }
   if (merged.size > MAX_LINES) {
     throw new OrderError(400, 'BAD_ITEM', 'Too many different items.');
   }
-  const items = [...merged].map(([productId, quantity]) => ({ productId, quantity }));
+  const items = [...merged.values()];
   if (items.some((i) => i.quantity > MAX_QTY)) {
     throw new OrderError(400, 'TOO_MANY', `You can order up to ${MAX_QTY} of each item.`, {
       max: MAX_QTY,
@@ -85,9 +92,11 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
   const tenantRef = db.collection('tenants').doc(tenantId);
   const counterRef = db.collection('counters').doc(tenantId);
   const orderRef = db.collection('orders').doc();
-  const productRefs = items.map((i) => db.collection('products').doc(i.productId));
+  // Several lines can be the same product (different choices): read each product once.
+  const productIds = [...new Set(items.map((i) => i.productId))];
+  const productRefs = productIds.map((id) => db.collection('products').doc(id));
   // Private cost prices live in their own collection (customers can't read it).
-  const costRefs = items.map((i) => db.collection('productCosts').doc(i.productId));
+  const costRefs = productIds.map((id) => db.collection('productCosts').doc(id));
   const promoRef = promoCode
     ? db.collection('promoCodes').doc(`${tenantId}__${promoCode}`)
     : null;
@@ -96,9 +105,9 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
     const refs = [tenantRef, counterRef, ...productRefs, ...costRefs];
     if (promoRef) refs.push(promoRef);
     const [tenantSnap, counterSnap, ...rest] = await tx.getAll(...refs);
-    const productSnaps = rest.slice(0, items.length);
-    const costSnaps = rest.slice(items.length, items.length * 2);
-    const promoSnap = promoRef ? rest[items.length * 2] : null;
+    const productSnaps = rest.slice(0, productIds.length);
+    const costSnaps = rest.slice(productIds.length, productIds.length * 2);
+    const promoSnap = promoRef ? rest[productIds.length * 2] : null;
 
     if (!tenantSnap.exists || tenantSnap.data().isActive === false) {
       throw new OrderError(404, 'NO_SHOP', 'This shop is not available.');
@@ -110,11 +119,11 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
     // ... and the extra questions the shop added itself.
     const customFields = applyCustomFields(custom, tenant);
 
-    // Build the order lines from the REAL product data in the database.
-    const orderItems = items.map((item, index) => {
+    // Check each product once; count how many of it are ordered in total.
+    const productInfo = new Map();
+    productIds.forEach((id, index) => {
       const snap = productSnaps[index];
       const product = snap.exists ? snap.data() : null;
-
       if (
         !product ||
         product.tenantId !== tenantId ||
@@ -127,13 +136,22 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
           'Sorry, one of the items in your cart is no longer available.'
         );
       }
+      const costDoc = costSnaps[index];
+      const costData = costDoc.exists && costDoc.data().tenantId === tenantId ? costDoc.data() : null;
+      productInfo.set(id, { product, costData, totalQty: 0, index });
+    });
+    items.forEach((item) => {
+      productInfo.get(item.productId).totalQty += item.quantity;
+    });
 
-      // Preorder products can be ordered even with no stock, so they skip the
-      // stock check and never change the stock number.
-      const isPreorder = product.isPreorder === true;
-      const stock = Number(product.stock) || 0;
-      if (!isPreorder && stock < item.quantity) {
-        const name = product.name?.en || 'this item';
+    // Preorder products can be ordered even with no stock, so they skip the
+    // stock check and never change the stock number.
+    for (const info of productInfo.values()) {
+      const stock = Number(info.product.stock) || 0;
+      info.isPreorder = info.product.isPreorder === true;
+      info.stock = stock;
+      if (!info.isPreorder && stock < info.totalQty) {
+        const name = info.product.name?.en || 'this item';
         throw new OrderError(
           409,
           'OUT_OF_STOCK',
@@ -143,21 +161,26 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
           { name, stock }
         );
       }
+    }
 
-      const unitPrice = Number(product.price) || 0;
+    // Build the order lines from the REAL product data in the database.
+    const orderItems = items.map((item) => {
+      const { product, costData, isPreorder } = productInfo.get(item.productId);
+
+      // The customer's choices (color, extension...) -> price and cost changes.
+      const choice = resolveSelections(product, item.selections, costData?.optionCosts);
+      const unitPrice = (Number(product.price) || 0) + choice.priceDelta;
 
       // Cost snapshot: copied into the order so later cost changes never
       // rewrite past profit. null means "no cost was set for this product".
-      const costDoc = costSnaps[index];
-      const costData = costDoc.exists ? costDoc.data() : null;
-      const unitCost =
+      const baseCost =
         costData &&
-        costData.tenantId === tenantId &&
         costData.costPrice !== null &&
         costData.costPrice !== undefined &&
         Number.isFinite(Number(costData.costPrice))
           ? Number(costData.costPrice)
           : null;
+      const unitCost = baseCost === null ? null : baseCost + choice.costDelta;
 
       return {
         productId: item.productId,
@@ -167,8 +190,8 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         unitCost,
         subtotal: unitPrice * item.quantity,
         isPreorder,
+        options: choice.snapshot, // [{ id, label, type, value }] what the customer chose
         shippingExtra: Number(product.shippingExtra) || 0,
-        _newStock: isPreorder ? null : stock - item.quantity,
       };
     });
 
@@ -192,13 +215,14 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
     const orderType = orderItems.some((i) => i.isPreorder) ? 'preorder' : 'normal';
 
     // Writes (all-or-nothing).
-    orderItems.forEach((line, index) => {
-      if (line.isPreorder) return; // preorders don't use stock
-      tx.update(productRefs[index], {
-        stock: line._newStock,
+    // Stock goes down once per product, by the total ordered across its lines.
+    for (const [id, info] of productInfo) {
+      if (info.isPreorder) continue; // preorders don't use stock
+      tx.update(productRefs[info.index], {
+        stock: info.stock - info.totalQty,
         updatedAt: FieldValue.serverTimestamp(),
       });
-    });
+    }
 
     if (totals.promo) {
       tx.update(promoRef, {
@@ -214,7 +238,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       orderType,
       customer: cleanCustomer,
       customFields, // [{ id, label, type, value }] answers to the shop's extra questions
-      items: orderItems.map(({ _newStock, shippingExtra, ...line }) => line),
+      items: orderItems.map(({ shippingExtra, ...line }) => line),
       subtotal: totals.subtotal,
       discount: totals.discount,
       promo: totals.promo, // { code, type, value, discount } or null

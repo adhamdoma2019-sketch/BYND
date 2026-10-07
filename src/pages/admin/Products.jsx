@@ -4,11 +4,13 @@ import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import ImageField from '../../components/admin/ImageField';
+import OptionsEditor from '../../components/admin/OptionsEditor';
+import { optionsToForm, optionsAreValid } from '../../utils/productOptionsForm';
 import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import {
   listProducts,
-  listProductCosts,
+  listProductCostDetails,
   createProduct,
   updateProduct,
   deleteProduct,
@@ -16,6 +18,7 @@ import {
 
 
 const emptyForm = {
+  options: [],
   nameEn: '',
   nameAr: '',
   descriptionEn: '',
@@ -39,6 +42,7 @@ export default function Products() {
 
   const [products, setProducts] = useState([]);
   const [costs, setCosts] = useState({}); // private cost prices by product id
+  const [optionCostsMap, setOptionCostsMap] = useState({}); // private extra cost of each choice
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -50,9 +54,10 @@ export default function Products() {
     setLoading(true);
     const [data, costMap] = await Promise.all([
       listProducts(tenant.id),
-      listProductCosts(tenant.id),
+      listProductCostDetails(tenant.id),
     ]);
-    setCosts(costMap);
+    setCosts(Object.fromEntries(Object.entries(costMap).map(([id, c]) => [id, c.costPrice])));
+    setOptionCostsMap(Object.fromEntries(Object.entries(costMap).map(([id, c]) => [id, c.optionCosts])));
     setProducts(
       data.sort(
         (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
@@ -80,6 +85,7 @@ export default function Products() {
       descriptionAr: p.description?.ar || '',
       price: p.price,
       costPrice: costs[p.id] ?? '',
+      options: optionsToForm(p.options, optionCostsMap[p.id]),
       stock: p.stock,
       sku: p.sku || '',
       shippingExtra: p.shippingExtra ?? '',
@@ -111,6 +117,10 @@ export default function Products() {
     }
     if (form.costPrice !== '' && Number(form.costPrice) < 0) {
       setError(t('products.badCost'));
+      return;
+    }
+    if (!optionsAreValid(form.options)) {
+      setError(t('options.errInvalid'));
       return;
     }
     if (!form.isPreorder && (form.stock === '' || Number(form.stock) < 0)) {
@@ -293,6 +303,11 @@ export default function Products() {
             label={t('products.imageUrl')}
             value={form.imageUrl}
             onChange={(url) => setForm({ ...form, imageUrl: url })}
+          />
+
+          <OptionsEditor
+            options={form.options}
+            onChange={(options) => setForm({ ...form, options })}
           />
 
           <div className="col-span-full rounded border border-ink/10 bg-white p-3">

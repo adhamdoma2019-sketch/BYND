@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import { formatPrice } from '../../utils/format';
 import { whatsappLink } from '../../utils/phone';
+import OptionSummary from '../../components/storefront/OptionSummary';
 import {
   listOrders,
   updateOrderStatus,
@@ -405,6 +406,7 @@ export default function Orders() {
                             <span>
                               {item.name?.[language] || item.name?.en} ×{' '}
                               {item.quantity}
+                              <OptionSummary labels={item.options} />
                             </span>
                             <span>{formatPrice(item.subtotal, language)}</span>
                           </div>

@@ -84,6 +84,20 @@ html[dir='rtl'] .font-display {
   @apply font-display-ar;
 }
 
+/* Banner picture fading in (length is set on the element). */
+@keyframes heroFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.hero-slide-enter {
+  animation-name: heroFadeIn;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide-enter { animation: none; }
+}
+
 /* Storefront headings: a modern geometric font (Arabic keeps IBM Plex). */
 html.theme-store .font-display {
   font-family: 'Space Grotesk', 'Work Sans', sans-serif;

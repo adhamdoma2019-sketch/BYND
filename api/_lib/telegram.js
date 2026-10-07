@@ -66,6 +66,10 @@ export function buildOrderMessage({ order, orderNumberLabel, adminUrl }, lang = 
   lines.push(`${escapeHtml(L.items)}:`);
   for (const item of order.items || []) {
     lines.push(`• ${escapeHtml(item.quantity)} × ${escapeHtml(pick(item.name, lang))}`);
+    for (const o of item.options || []) {
+      const value = o.type === 'addon' ? '✓' : typeof o.value === 'object' ? pick(o.value, lang) : o.value;
+      lines.push(`    ${escapeHtml(pick(o.label, lang))}: ${escapeHtml(value)}`);
+    }
   }
   for (const f of order.customFields || []) {
     const value =

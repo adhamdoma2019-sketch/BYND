@@ -10,6 +10,8 @@ import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
+import OptionPicker from '../../components/storefront/OptionPicker';
+import { resolveChoice, cleanSelections } from '../../utils/productOptions';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { MAX_ORDER_QTY, LOW_STOCK_THRESHOLD } from '../../utils/constants';
 
@@ -24,6 +26,8 @@ export default function ProductPage() {
   const [status, setStatus] = useState('loading');
   const [quantity, setQuantity] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
+  const [selections, setSelections] = useState({});
+  const [showMissing, setShowMissing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,8 +93,22 @@ export default function ProductPage() {
   const preorderMessage =
     product.preorderMessage?.[language] || product.preorderMessage?.en || '';
 
+  // The customer's choices (color, activity, extension...) and what they add to the price.
+  const choice = resolveChoice(product, selections);
+  const unitPrice = (Number(product.price) || 0) + choice.priceDelta;
+  const missingIds = new Set(choice.missing.map((o) => o.id));
+  const productOptions = (product.options || []).filter((o) => o && o.type);
+
   function handleAdd() {
-    addItem(product, quantity);
+    if (choice.missing.length > 0) {
+      setShowMissing(true);
+      return;
+    }
+    addItem(product, quantity, {
+      selections: cleanSelections(selections),
+      labels: choice.labels,
+      unitPrice,
+    });
     setCartOpen(true);
   }
 
@@ -124,7 +142,7 @@ export default function ProductPage() {
           <div>
             <h1 className="font-display text-3xl font-semibold">{name}</h1>
             <p className="mt-2 text-2xl text-ink">
-              {formatPrice(product.price, language)}
+              {formatPrice(unitPrice, language)}
             </p>
 
             <div className="mt-4">
@@ -158,6 +176,32 @@ export default function ProductPage() {
               <p className="mt-6 whitespace-pre-line leading-relaxed text-ink-soft">
                 {description}
               </p>
+            )}
+
+            {productOptions.length > 0 && (
+              <div className="mt-6 space-y-5">
+                {productOptions.map((option) => (
+                  <OptionPicker
+                    key={option.id}
+                    option={option}
+                    value={selections[option.id]}
+                    onChange={(v) => {
+                      setSelections((prev) => ({ ...prev, [option.id]: v }));
+                      setShowMissing(false);
+                    }}
+                    highlight={showMissing && missingIds.has(option.id)}
+                  />
+                ))}
+                {showMissing && choice.missing.length > 0 && (
+                  <p className="text-sm text-rust">
+                    {t('storefront.chooseOptions', {
+                      names: choice.missing
+                        .map((o) => o.label?.[language] || o.label?.en)
+                        .join(', '),
+                    })}
+                  </p>
+                )}
+              </div>
             )}
 
             {!soldOut && (

@@ -16,7 +16,7 @@ export default function StorefrontHeader({ tenant, onCartClick }) {
   const logoUrl = tenant.brand?.logoUrl;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/10 bg-paper/85 px-4 py-3 backdrop-blur sm:px-8">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/10 bg-paper px-4 py-3 sm:px-8">
       <Link to={`/store/${tenant.slug}`} aria-label={shopName}>
         {logoUrl ? (
           <img src={optimizedImage(logoUrl, 400)} alt={shopName} className="h-8 w-auto" />

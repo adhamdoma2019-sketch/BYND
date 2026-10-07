@@ -149,6 +149,7 @@ export default function Settings() {
   const [slides, setSlides] = useState([]);
   const [seconds, setSeconds] = useState(HERO_DEFAULT_SECONDS);
   const [fade, setFade] = useState('normal');
+  const [autoplay, setAutoplay] = useState(true);
   const [products, setProducts] = useState([]);
   const [fieldSettings, setFieldSettings] = useState(() => resolveFieldSettings(undefined));
   const [zones, setZones] = useState([]);
@@ -170,6 +171,7 @@ export default function Settings() {
     setSlides((tenant.hero?.slides || []).map(slideToForm));
     setSeconds(tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS);
     setFade(tenant.hero?.fade || 'normal');
+    setAutoplay(tenant.hero?.autoplay !== false);
     setFieldSettings(resolveFieldSettings(tenant.checkout?.fields));
     setZones((tenant.shipping?.zones || []).map(zoneToForm));
     setCustomFields((tenant.checkout?.customFields || []).map(customToForm));
@@ -304,6 +306,7 @@ export default function Settings() {
           slides: slides.map(formToSlide),
           intervalSeconds: safeSeconds,
           fade,
+          autoplay,
         },
         checkout: {
           fields: fieldSettings,
@@ -391,6 +394,14 @@ export default function Settings() {
           {/* Timing */}
           <div className="mt-4 rounded-md border border-ink/10 bg-paper-soft p-4">
             <p className="text-sm font-medium">{t('settingsPage.timingTitle')}</p>
+            <label className="mt-3 flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={autoplay}
+                onChange={(e) => setAutoplay(e.target.checked)}
+              />
+              {t('settingsPage.autoplay')}
+            </label>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="text-sm text-ink-soft">
                 {t('settingsPage.stayFor')}

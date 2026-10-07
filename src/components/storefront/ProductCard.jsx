@@ -1,13 +1,15 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
+import { hasOptions } from '../../utils/productOptions';
 
 export default function ProductCard({ product, onAddToCart }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { slug } = useParams();
+  const navigate = useNavigate();
 
   const name = product.name?.[language] || product.name?.en;
   const isPreorder = product.isPreorder === true;
@@ -44,15 +46,18 @@ export default function ProductCard({ product, onAddToCart }) {
       <p className="mt-1 px-1 text-ink-soft">{formatPrice(product.price, language)}</p>
 
       <button
-        onClick={() => onAddToCart(product)}
+        // Products with options (color, extension...) are configured on their own page.
+        onClick={() => (hasOptions(product) ? navigate(productUrl) : onAddToCart(product))}
         disabled={outOfStock}
         className="mt-3 rounded bg-ink py-2.5 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
       >
         {outOfStock
           ? t('storefront.outOfStock')
-          : isPreorder
-            ? t('storefront.preorderNow')
-            : t('storefront.addToCart')}
+          : hasOptions(product)
+            ? t('storefront.selectOptions')
+            : isPreorder
+              ? t('storefront.preorderNow')
+              : t('storefront.addToCart')}
       </button>
     </div>
   );

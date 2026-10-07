@@ -1,5 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { MAX_ORDER_QTY } from '../utils/constants';
+import { itemKey } from '../utils/productOptions';
+
+// Older carts saved before options existed have no `key`; the product id works for them.
+export const keyOf = (item) => item.key || item.productId;
 
 const CartContext = createContext(null);
 
@@ -27,48 +31,51 @@ export function CartProvider({ slug, children }) {
     }
   }, [slug, items]);
 
-  function addItem(product, quantity = 1) {
+  // choice = { selections, labels, unitPrice } from the product page
+  // (color, extension...). Same product with different choices = separate lines.
+  function addItem(product, quantity = 1, choice = {}) {
     // Most we allow in the cart: the stock (preorders have no stock limit),
     // and never more than the server accepts per order.
     const max = product.isPreorder
       ? MAX_ORDER_QTY
       : Math.min(Number(product.stock) || 0, MAX_ORDER_QTY);
+    const selections = choice.selections || {};
+    const key = itemKey(product.id, selections);
 
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === product.id);
+      const existing = prev.find((i) => keyOf(i) === key);
       if (existing) {
         return prev.map((i) =>
-          i.productId === product.id
-            ? { ...i, quantity: Math.min(i.quantity + quantity, max) }
-            : i
+          keyOf(i) === key ? { ...i, quantity: Math.min(i.quantity + quantity, max) } : i
         );
       }
       return [
         ...prev,
         {
+          key,
           productId: product.id,
           name: product.name,
-          unitPrice: product.price,
+          unitPrice: choice.unitPrice ?? product.price,
           quantity: Math.min(quantity, max),
           maxStock: max,
           isPreorder: product.isPreorder === true,
+          selections,
+          optionLabels: choice.labels || [],
         },
       ];
     });
   }
 
-  function updateQuantity(productId, quantity) {
+  function updateQuantity(key, quantity) {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(key);
       return;
     }
-    setItems((prev) =>
-      prev.map((i) => (i.productId === productId ? { ...i, quantity } : i))
-    );
+    setItems((prev) => prev.map((i) => (keyOf(i) === key ? { ...i, quantity } : i)));
   }
 
-  function removeItem(productId) {
-    setItems((prev) => prev.filter((i) => i.productId !== productId));
+  function removeItem(key) {
+    setItems((prev) => prev.filter((i) => keyOf(i) !== key));
   }
 
   function clearCart() {

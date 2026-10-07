@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
-import { useCart } from '../../context/CartContext';
+import { useCart, keyOf } from '../../context/CartContext';
+import OptionSummary from './OptionSummary';
 import { formatPrice } from '../../utils/format';
 
 export default function CartDrawer({ onClose }) {
@@ -45,13 +46,14 @@ export default function CartDrawer({ onClose }) {
             <div className="mt-6 flex-1 space-y-4 overflow-y-auto">
               {items.map((item) => (
                 <div
-                  key={item.productId}
+                  key={keyOf(item)}
                   className="flex items-start justify-between gap-3"
                 >
                   <div>
                     <p className="font-medium">
                       {item.name?.[language] || item.name?.en}
                     </p>
+                    <OptionSummary labels={item.optionLabels} />
                     <p className="text-sm text-ink-soft">
                       {formatPrice(item.unitPrice, language)}
                       {item.isPreorder && (
@@ -63,7 +65,7 @@ export default function CartDrawer({ onClose }) {
                     <div className="mt-1 flex items-center gap-2">
                       <button
                         onClick={() =>
-                          updateQuantity(item.productId, item.quantity - 1)
+                          updateQuantity(keyOf(item), item.quantity - 1)
                         }
                         className="rounded border border-ink/15 px-2 text-sm hover:border-brass"
                       >
@@ -72,7 +74,7 @@ export default function CartDrawer({ onClose }) {
                       <span className="text-sm">{item.quantity}</span>
                       <button
                         onClick={() =>
-                          updateQuantity(item.productId, item.quantity + 1)
+                          updateQuantity(keyOf(item), item.quantity + 1)
                         }
                         disabled={item.quantity >= item.maxStock}
                         className="rounded border border-ink/15 px-2 text-sm hover:border-brass disabled:opacity-40"
@@ -82,7 +84,7 @@ export default function CartDrawer({ onClose }) {
                     </div>
                   </div>
                   <button
-                    onClick={() => removeItem(item.productId)}
+                    onClick={() => removeItem(keyOf(item))}
                     className="text-sm text-rust hover:underline"
                   >
                     {t('storefront.remove')}
