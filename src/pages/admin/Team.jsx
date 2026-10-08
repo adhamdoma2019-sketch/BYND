@@ -67,9 +67,24 @@ export default function Team() {
     await refresh();
   }
 
-  async function handleSwitch(member) {
-    if (member.active && !window.confirm(t('team.confirmOff', { name: member.name || member.email }))) {
+  const nameOf = (m) => m.name || m.email;
+
+  // Changing a partner (another owner) gets an extra warning.
+  async function handleRole(member, role) {
+    if (member.role === 'owner' && !window.confirm(t('team.confirmOwnerChange', { name: nameOf(member) }))) {
+      await refresh(); // put the menu back
       return;
+    }
+    await handleUpdate(member.uid, { role });
+  }
+
+  async function handleSwitch(member) {
+    if (member.active) {
+      const message =
+        member.role === 'owner'
+          ? t('team.confirmOwnerChange', { name: nameOf(member) })
+          : t('team.confirmOff', { name: nameOf(member) });
+      if (!window.confirm(message)) return;
     }
     await handleUpdate(member.uid, { active: !member.active });
   }
@@ -148,7 +163,7 @@ export default function Team() {
         <div className="divide-y divide-ink/10 rounded-md border border-ink/10 bg-white">
           {members.map((m) => {
             const isMe = m.uid === user?.uid;
-            const locked = isMe || m.role === 'owner';
+            const locked = isMe; // you can't change your own account here
             return (
               <div
                 key={m.uid}
@@ -180,7 +195,7 @@ export default function Team() {
                   ) : (
                     <select
                       value={m.role}
-                      onChange={(e) => handleUpdate(m.uid, { role: e.target.value })}
+                      onChange={(e) => handleRole(m, e.target.value)}
                       className="rounded border border-ink/15 bg-white px-2 py-1.5"
                       aria-label={t('team.role')}
                     >
@@ -266,7 +281,11 @@ export default function Team() {
             {busy ? t('team.adding') : t('team.addBtn')}
           </button>
         </div>
-        <p className="col-span-full text-xs text-ink-faint">{t('team.roleHelp_owner')}</p>
+        {form.role === 'owner' && (
+          <p className="col-span-full rounded border border-brass/30 bg-brass/10 px-3 py-2 text-xs text-brass-dark">
+            {t('team.ownersNote')}
+          </p>
+        )}
       </form>
     </div>
   );

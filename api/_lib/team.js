@@ -13,7 +13,10 @@ import crypto from 'node:crypto';
 import { OrderError } from './errors.js';
 import { writeAudit } from './audit.js';
 
-export const ASSIGNABLE_ROLES = ['manager', 'staff'];
+// A shop can have several owners (partners). Owners are equal: any owner can add
+// or change other people. The only protection: nobody can change THEIR OWN account
+// here, so a shop always keeps at least one active owner.
+export const ASSIGNABLE_ROLES = ['owner', 'manager', 'staff'];
 export const MAX_MEMBERS = 20;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -143,7 +146,6 @@ export async function addMember({ auth, db, actor, email, name, role }) {
 export async function updateMember({ auth, db, actor, uid, role, active, name }) {
   if (uid === actor.uid) throw fail(400, 'CANNOT_CHANGE_SELF', 'You can\'t change your own account here.');
   const current = await memberOf(db, actor.tenantId, uid);
-  if (current.role === 'owner') throw fail(400, 'CANNOT_CHANGE_OWNER', 'The owner can\'t be changed.');
 
   const patch = {};
   const entries = [];

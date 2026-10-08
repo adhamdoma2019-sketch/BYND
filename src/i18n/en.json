@@ -448,7 +448,7 @@
   },
   "team": {
     "title": "Team",
-    "help": "Give each person their own email and password, and choose what they can do. Nobody shares a login.",
+    "help": "Give each person their own email and password, and choose what they can do. Nobody shares a login. A shop can have several owners (partners).",
     "blocked": "This account has been switched off. Please contact the shop owner.",
     "noAccess": "Your role doesn't have access to this page.",
     "you": "(you)",
@@ -459,7 +459,7 @@
     "role_owner": "Owner",
     "role_manager": "Manager",
     "role_staff": "Staff",
-    "roleHelp_owner": "Owner: everything, including the team and the shop settings. There is one owner per shop.",
+    "roleHelp_owner": "everything, including the team and the shop settings",
     "roleHelp_manager": "products, orders, expenses, promo codes and reports",
     "roleHelp_staff": "orders only (move them along, fix customer details)",
     "passwordLink": "Password link",
@@ -491,7 +491,9 @@
       "NOT_FOUND": "That team member wasn't found.",
       "AUTH_PERMISSION": "The server isn't allowed to create logins yet. Add the role \"Firebase Authentication Admin\" to its Google account (see the setup steps).",
       "SERVER": "Something went wrong. Please try again."
-    }
+    },
+    "ownersNote": "Owners can do everything, including adding or removing other owners and changing the shop settings. Give this role only to partners you fully trust. Every change is recorded in the activity log.",
+    "confirmOwnerChange": "{{name}} is an owner (a partner). Change their access? This is recorded in the activity log."
   },
   "audit": {
     "title": "Activity log",
