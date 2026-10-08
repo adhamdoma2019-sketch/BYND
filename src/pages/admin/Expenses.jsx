@@ -8,6 +8,7 @@ import {
   deleteExpense,
 } from '../../firebase/expenses.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import { useAudit } from '../../hooks/useAudit';
 import { formatPrice } from '../../utils/format';
 
 // Categories offered for NEW expenses. Older records may use others
@@ -33,6 +34,7 @@ export default function Expenses() {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { tenant } = useTenant();
+  const log = useAudit(); // records who changed what (Activity log)
 
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,12 @@ export default function Expenses() {
     setSaving(true);
     try {
       await createExpense(tenant.id, form);
+      log({
+        action: 'expense.create',
+        entityType: 'expense',
+        entityLabel: `${t(`expenses.cat.${form.category}`, { defaultValue: form.category })} ${form.amount}`,
+        changes: [{ field: 'amount', to: String(form.amount) }],
+      });
       setForm({
         category: 'manufacturing',
         description: '',
@@ -92,7 +100,16 @@ export default function Expenses() {
 
   async function handleDelete(id) {
     if (!window.confirm(t('expenses.confirmDelete'))) return;
+    const removed = expenses.find((x) => x.id === id);
     await deleteExpense(id);
+    log({
+      action: 'expense.delete',
+      entityType: 'expense',
+      entityId: id,
+      entityLabel: removed
+        ? `${t(`expenses.cat.${removed.category}`, { defaultValue: removed.category })} ${removed.amount}`
+        : '',
+    });
     await refresh();
   }
 

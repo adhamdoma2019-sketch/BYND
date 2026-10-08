@@ -4,6 +4,8 @@ import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import ImageField from '../../components/admin/ImageField';
+import { useAudit } from '../../hooks/useAudit';
+import { diffFields } from '../../utils/audit';
 import OptionsEditor from '../../components/admin/OptionsEditor';
 import { optionsToForm, optionsAreValid } from '../../utils/productOptionsForm';
 import { formatPrice } from '../../utils/format';
@@ -39,6 +41,7 @@ export default function Products() {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { tenant } = useTenant();
+  const log = useAudit(); // records who changed what (Activity log)
 
   const [products, setProducts] = useState([]);
   const [costs, setCosts] = useState({}); // private cost prices by product id
@@ -132,9 +135,53 @@ export default function Products() {
     setError('');
     try {
       if (editingId === 'new') {
-        await createProduct(tenant.id, form);
+        const newId = await createProduct(tenant.id, form);
+        log({
+          action: 'product.create',
+          entityType: 'product',
+          entityId: newId,
+          entityLabel: form.nameEn,
+          changes: [
+            { field: 'price', to: String(form.price) },
+            { field: 'stock', to: String(form.stock === '' ? 0 : form.stock) },
+          ],
+        });
       } else {
+        const original = products.find((p) => p.id === editingId);
         await updateProduct(tenant.id, editingId, form);
+        const changes = diffFields(
+          {
+            name: original?.name?.en,
+            price: original?.price,
+            cost: costs[editingId] ?? '',
+            stock: original?.stock,
+            active: original?.isActive,
+            preorder: original?.isPreorder === true,
+            sku: original?.sku || '',
+            shippingExtra: original?.shippingExtra || 0,
+            options: (original?.options || []).length,
+          },
+          {
+            name: form.nameEn,
+            price: Number(form.price),
+            cost: form.costPrice === '' ? '' : Number(form.costPrice),
+            stock: form.stock === '' ? 0 : Number(form.stock),
+            active: form.isActive,
+            preorder: form.isPreorder,
+            sku: form.sku || '',
+            shippingExtra: Number(form.shippingExtra) || 0,
+            options: form.options.length,
+          }
+        );
+        if (changes.length > 0) {
+          log({
+            action: 'product.update',
+            entityType: 'product',
+            entityId: editingId,
+            entityLabel: form.nameEn,
+            changes,
+          });
+        }
       }
       cancelForm();
       await refresh();
@@ -151,7 +198,14 @@ export default function Products() {
     ) {
       return;
     }
+    const removed = products.find((p) => p.id === id);
     await deleteProduct(id);
+    log({
+      action: 'product.delete',
+      entityType: 'product',
+      entityId: id,
+      entityLabel: removed?.name?.en || '',
+    });
     await refresh();
   }
 

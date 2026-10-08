@@ -9,6 +9,7 @@ import {
   promoDocId,
 } from '../../firebase/promos.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import { useAudit } from '../../hooks/useAudit';
 import { formatPrice } from '../../utils/format';
 
 const emptyForm = {
@@ -27,6 +28,7 @@ export default function PromoCodes() {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { tenant } = useTenant();
+  const log = useAudit(); // records who changed what (Activity log)
 
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,15 @@ export default function PromoCodes() {
     setSaving(true);
     try {
       await createPromoCode(tenant.id, { ...form, code });
+      log({
+        action: 'promo.create',
+        entityType: 'promo',
+        entityId: code,
+        entityLabel: code,
+        changes: [
+          { field: 'value', to: form.type === 'percent' ? `${form.value}%` : String(form.value) },
+        ],
+      });
       setForm(emptyForm);
       await refresh();
     } catch {
@@ -87,6 +98,13 @@ export default function PromoCodes() {
 
   async function toggle(promo) {
     await setPromoActive(promo.id, !promo.isActive);
+    log({
+      action: 'promo.toggle',
+      entityType: 'promo',
+      entityId: promo.id,
+      entityLabel: promo.code,
+      changes: [{ field: 'active', from: String(promo.isActive), to: String(!promo.isActive) }],
+    });
     await refresh();
   }
 

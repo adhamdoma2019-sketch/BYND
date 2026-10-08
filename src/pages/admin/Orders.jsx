@@ -6,6 +6,9 @@ import AdminTopBar from '../../components/admin/AdminTopBar';
 import { formatPrice } from '../../utils/format';
 import { whatsappLink } from '../../utils/phone';
 import OptionSummary from '../../components/storefront/OptionSummary';
+import { useAudit } from '../../hooks/useAudit';
+import { diffFields } from '../../utils/audit';
+import { canSeeCosts, canCancelOrders } from '../../utils/roles';
 import {
   listOrders,
   updateOrderStatus,
@@ -39,7 +42,9 @@ function orderDateStr(order) {
 export default function Orders() {
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const { tenant } = useTenant();
+  const { tenant, role } = useTenant();
+  const log = useAudit(); // records who changed what (Activity log)
+  const orderLabel = (o) => o.orderNumberLabel || `#${o.orderNumber}`;
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +103,13 @@ export default function Orders() {
     setUpdatingId(order.id);
     setActionError('');
     await updateOrderStatus(order.id, next);
+    log({
+      action: 'order.status',
+      entityType: 'order',
+      entityId: order.id,
+      entityLabel: orderLabel(order),
+      changes: [{ field: 'status', from: order.status, to: next }],
+    });
     await refresh();
     setUpdatingId(null);
   }
@@ -111,6 +123,13 @@ export default function Orders() {
     setActionError('');
     try {
       await cancelOrder(order.id);
+      log({
+        action: 'order.cancel',
+        entityType: 'order',
+        entityId: order.id,
+        entityLabel: orderLabel(order),
+        changes: [{ field: 'status', from: order.status, to: 'cancelled' }],
+      });
       await refresh();
     } catch (err) {
       setActionError(
@@ -135,7 +154,26 @@ export default function Orders() {
 
   async function saveCustomerEdit(orderId) {
     setUpdatingId(orderId);
+    const order = orders.find((o) => o.id === orderId);
     await updateOrderCustomer(orderId, customerForm);
+    const changes = diffFields(
+      {
+        name: order?.customer?.name,
+        phone: order?.customer?.phone,
+        address: order?.customer?.address,
+        notes: order?.customer?.notes,
+      },
+      customerForm
+    );
+    if (changes.length > 0) {
+      log({
+        action: 'order.customer',
+        entityType: 'order',
+        entityId: orderId,
+        entityLabel: order ? orderLabel(order) : '',
+        changes,
+      });
+    }
     setEditingCustomerId(null);
     await refresh();
     setUpdatingId(null);
@@ -446,7 +484,7 @@ export default function Orders() {
                             </div>
                           </div>
                         )}
-                        {(() => {
+                        {canSeeCosts(role) && (() => {
                           const c = orderCost(order);
                           return c.complete ? (
                             <p className="mt-2 border-t border-ink/10 pt-2 text-xs text-ink-faint">
@@ -479,7 +517,7 @@ export default function Orders() {
                           })}
                         </button>
                       )}
-                      {canCancel && (
+                      {canCancel && canCancelOrders(role) && (
                         <button
                           onClick={() => handleCancel(order)}
                           disabled={updatingId === order.id}

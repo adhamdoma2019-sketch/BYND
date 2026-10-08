@@ -6,6 +6,8 @@ import { listProducts } from '../../firebase/products.service';
 import { updateTenantSettings } from '../../firebase/tenants.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import ImageField from '../../components/admin/ImageField';
+import { useAudit } from '../../hooks/useAudit';
+import { fieldsOnly, stable } from '../../utils/audit';
 import { getTenantPrivate, saveTenantPrivate } from '../../firebase/private.service';
 import { findTelegramChats, sendTelegramTest } from '../../firebase/telegram.service';
 import {
@@ -143,6 +145,7 @@ export default function Settings() {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { tenant, reloadTenant } = useTenant();
+  const log = useAudit(); // records who changed what (Activity log)
 
   const [accent, setAccent] = useState('copper');
   const [logoUrl, setLogoUrl] = useState('');
@@ -314,6 +317,27 @@ export default function Settings() {
         },
         shipping: { zones: zones.map(formToZone) },
       });
+      // Note which parts of the settings were changed (compared with what was saved before).
+      const saved = stable;
+      const changed = [];
+      if ((tenant.theme?.accent || 'copper') !== accent) changed.push('accent');
+      if ((tenant.brand?.logoUrl || '') !== logoUrl.trim()) changed.push('logo');
+      if (saved(tenant.hero?.slides || []) !== saved(slides.map(formToSlide)) ||
+          (tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS) !== safeSeconds ||
+          (tenant.hero?.fade || 'normal') !== fade ||
+          (tenant.hero?.autoplay !== false) !== autoplay) changed.push('banner');
+      if (saved(resolveFieldSettings(tenant.checkout?.fields)) !== saved(fieldSettings)) changed.push('checkoutForm');
+      if (saved(tenant.checkout?.customFields || []) !== saved(customFields.map(formToCustom))) changed.push('customFields');
+      if (saved(tenant.shipping?.zones || []) !== saved(zones.map(formToZone))) changed.push('shipping');
+      if ((tenant.defaultCountryCode || '20') !== (String(countryCode).replace(/\D/g, '') || '20')) changed.push('phoneCode');
+      if (changed.length > 0) {
+        log({
+          action: 'settings.update',
+          entityType: 'settings',
+          entityLabel: '',
+          changes: fieldsOnly(changed),
+        });
+      }
       setSeconds(safeSeconds);
       reloadTenant();
       setMessage(t('settingsPage.saved'));

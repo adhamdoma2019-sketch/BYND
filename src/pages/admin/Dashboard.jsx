@@ -8,13 +8,14 @@ import { listProducts } from '../../firebase/products.service';
 import { listOrders } from '../../firebase/orders.service';
 import LanguageSwitch from '../../components/shared/LanguageSwitch';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
+import { can } from '../../utils/roles';
 
 
 export default function Dashboard() {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { logout } = useAuth();
-  const { tenant, loading } = useTenant();
+  const { tenant, role, loading } = useTenant();
   const storefrontUrl = tenant ? '/store/' + tenant.slug : '';
 
   const [lowStockCount, setLowStockCount] = useState(0);
@@ -86,7 +87,7 @@ export default function Dashboard() {
               </Link>
             )}
 
-            {lowStockCount > 0 && (
+            {lowStockCount > 0 && can(role, 'products') && (
               <Link
                 to="/admin/products"
                 className="mt-4 block max-w-3xl rounded border border-brass/30 bg-brass/10 px-4 py-3 text-sm text-brass-dark transition hover:border-brass"
@@ -96,75 +97,27 @@ export default function Dashboard() {
             )}
 
             <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Link
-                to="/admin/orders"
-                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
-              >
-                <h2 className="font-display text-lg font-medium">
-                  {t('admin.orders')}
-                </h2>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {t('dash.ordersDesc')}
-                </p>
-              </Link>
-
-              <Link
-                to="/admin/products"
-                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
-              >
-                <h2 className="font-display text-lg font-medium">
-                  {t('admin.products')}
-                </h2>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {t('dash.productsDesc')}
-                </p>
-              </Link>
-
-              <Link
-                to="/admin/expenses"
-                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
-              >
-                <h2 className="font-display text-lg font-medium">
-                  {t('admin.expenses')}
-                </h2>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {t('dash.expensesDesc')}
-                </p>
-              </Link>
-
-              <Link
-                to="/admin/pnl"
-                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
-              >
-                <h2 className="font-display text-lg font-medium">
-                  {t('pnl.title')}
-                </h2>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {t('dash.pnlDesc')}
-                </p>
-              </Link>
-
-              <Link
-                to="/admin/promos"
-                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
-              >
-                <h2 className="font-display text-lg font-medium">
-                  {t('promos.title')}
-                </h2>
-                <p className="mt-1 text-sm text-ink-soft">{t('dash.promosDesc')}</p>
-              </Link>
-
-              <Link
-                to="/admin/settings"
-                className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
-              >
-                <h2 className="font-display text-lg font-medium">
-                  {t('admin.settings')}
-                </h2>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {t('dash.settingsDesc')}
-                </p>
-              </Link>
+              {[
+                ['orders', '/admin/orders', t('admin.orders'), t('dash.ordersDesc')],
+                ['products', '/admin/products', t('admin.products'), t('dash.productsDesc')],
+                ['expenses', '/admin/expenses', t('admin.expenses'), t('dash.expensesDesc')],
+                ['pnl', '/admin/pnl', t('pnl.title'), t('dash.pnlDesc')],
+                ['promos', '/admin/promos', t('promos.title'), t('dash.promosDesc')],
+                ['activity', '/admin/activity', t('audit.title'), t('dash.activityDesc')],
+                ['team', '/admin/team', t('team.title'), t('dash.teamDesc')],
+                ['settings', '/admin/settings', t('admin.settings'), t('dash.settingsDesc')],
+              ]
+                .filter(([area]) => can(role, area))
+                .map(([area, to, title, desc]) => (
+                  <Link
+                    key={area}
+                    to={to}
+                    className="rounded-md border border-ink/10 bg-paper-soft p-5 transition hover:border-brass"
+                  >
+                    <h2 className="font-display text-lg font-medium">{title}</h2>
+                    <p className="mt-1 text-sm text-ink-soft">{desc}</p>
+                  </Link>
+                ))}
 
               {tenant && (
                 <a

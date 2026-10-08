@@ -31,6 +31,19 @@ export async function createTenant({ slug, shopName, ownerUid }) {
   return { id: slug, slug };
 }
 
+// The signed-in person's record: { tenantId, role, active, name } (or null).
+export async function getUserProfile(uid) {
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) return null;
+  const d = snap.data();
+  return {
+    tenantId: d.tenantId || null,
+    role: d.role || 'staff',
+    active: d.active !== false,
+    name: d.name || '',
+  };
+}
+
 export async function getUserTenantId(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
   return snap.exists() ? snap.data().tenantId : null;

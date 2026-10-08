@@ -14,6 +14,8 @@ import Expenses from '../pages/admin/Expenses';
 import PnL from '../pages/admin/PnL';
 import Settings from '../pages/admin/Settings';
 import PromoCodes from '../pages/admin/PromoCodes';
+import Team from '../pages/admin/Team';
+import Activity from '../pages/admin/Activity';
 import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRoutes() {
@@ -41,7 +43,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/products"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute area="products">
             <Products />
           </ProtectedRoute>
         }
@@ -49,7 +51,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/orders"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute area="orders">
             <Orders />
           </ProtectedRoute>
         }
@@ -57,7 +59,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/expenses"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute area="expenses">
             <Expenses />
           </ProtectedRoute>
         }
@@ -65,7 +67,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/promos"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute area="promos">
             <PromoCodes />
           </ProtectedRoute>
         }
@@ -73,7 +75,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/settings"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute area="settings">
             <Settings />
           </ProtectedRoute>
         }
@@ -81,8 +83,24 @@ export default function AppRoutes() {
       <Route
         path="/admin/pnl"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute area="pnl">
             <PnL />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/team"
+        element={
+          <ProtectedRoute area="team">
+            <Team />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/activity"
+        element={
+          <ProtectedRoute area="activity">
+            <Activity />
           </ProtectedRoute>
         }
       />

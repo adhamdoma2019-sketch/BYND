@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { getTenant, getUserTenantId } from '../firebase/tenants.service';
+import { getTenant, getUserProfile } from '../firebase/tenants.service';
 
 const TenantContext = createContext(null);
 
 export function TenantProvider({ children }) {
   const { user } = useAuth();
   const [tenant, setTenant] = useState(null);
+  const [member, setMember] = useState(null); // this person: { role, active, name }
   const [loading, setLoading] = useState(true);
   // Bumping this number makes the shop reload (used right after signup).
   const [reloadKey, setReloadKey] = useState(0);
@@ -17,14 +18,18 @@ export function TenantProvider({ children }) {
     async function loadTenant() {
       if (!user) {
         setTenant(null);
+        setMember(null);
         setLoading(false);
         return;
       }
       setLoading(true);
-      const tenantId = await getUserTenantId(user.uid);
-      const tenantData = tenantId ? await getTenant(tenantId) : null;
+      const profile = await getUserProfile(user.uid);
+      // A switched-off team member gets no access at all.
+      const allowed = profile && profile.tenantId && profile.active;
+      const tenantData = allowed ? await getTenant(profile.tenantId) : null;
       if (!cancelled) {
         setTenant(tenantData);
+        setMember(profile);
         setLoading(false);
       }
     }
@@ -40,7 +45,15 @@ export function TenantProvider({ children }) {
   }
 
   return (
-    <TenantContext.Provider value={{ tenant, loading, setTenant, reloadTenant }}>
+    <TenantContext.Provider value={{
+        tenant,
+        member,
+        role: member?.role || null,
+        blocked: Boolean(member && !member.active),
+        loading,
+        setTenant,
+        reloadTenant,
+      }}>
       {children}
     </TenantContext.Provider>
   );

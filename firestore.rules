@@ -8,12 +8,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // True only if the signed-in person belongs to this shop.
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // True only if the signed-in person belongs to this shop AND is switched on.
     // "Belongs" is decided by their record in users/{uid}.
     function belongsTo(tenantId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+        && userData().tenantId == tenantId
+        && userData().get('active', true) != false;
+    }
+
+    // Roles: owner (everything) / manager (everything except team and shop
+    // settings) / staff (orders only).
+    function hasRole(tenantId, roles) {
+      return belongsTo(tenantId) && userData().get('role', 'staff') in roles;
+    }
+    function canManage(tenantId) {
+      return hasRole(tenantId, ['owner', 'manager']);
+    }
+    function isOwner(tenantId) {
+      return hasRole(tenantId, ['owner']);
     }
 
     function tenantIdUnchanged() {
@@ -32,12 +49,25 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.slug == tenantId;
 
-      // Only people in that shop can edit it, and ownership can't be changed.
-      allow update: if belongsTo(tenantId)
+      // Only the owner can change the shop's settings, and ownership can't be changed.
+      allow update: if isOwner(tenantId)
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.slug == resource.data.slug;
 
       allow delete: if false;
+
+      // ----- Activity log: who changed what, and when -----
+      // Written by the team's screens (and by the server for team changes).
+      // Entries can never be edited or deleted.
+      match /auditLogs/{logId} {
+        allow read: if canManage(tenantId);
+        allow create: if belongsTo(tenantId)
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.at == request.time
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.get('changes', []).size() <= 30;
+        allow update, delete: if false;
+      }
     }
 
     // ---------- Who belongs to which shop ----------
@@ -47,6 +77,7 @@ service cloud.firestore {
 
       // You can only link yourself to a shop that YOU own.
       // This stops anyone from adding themselves to someone else's shop.
+      // (Team members are added by the secure server function instead.)
       allow create: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.role == 'owner'
@@ -63,30 +94,30 @@ service cloud.firestore {
       allow read: if (resource.data.isActive == true && resource.data.deleted == false)
         || belongsTo(resource.data.tenantId);
 
-      allow create: if belongsTo(request.resource.data.tenantId);
-      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow create: if canManage(request.resource.data.tenantId);
+      allow update: if canManage(resource.data.tenantId) && tenantIdUnchanged();
       allow delete: if false; // products are hidden (soft delete), never erased
     }
 
     // ---------- Product costs (PRIVATE) ----------
     // What a product costs you. Kept apart from products so customers
-    // (who can read products) can never see it.
+    // (who can read products) can never see it. Staff can't see it either.
     match /productCosts/{productId} {
-      allow read: if belongsTo(resource.data.tenantId);
+      allow read: if canManage(resource.data.tenantId);
 
       // Can only be created for a product that belongs to the same shop.
-      allow create: if belongsTo(request.resource.data.tenantId)
+      allow create: if canManage(request.resource.data.tenantId)
         && getAfter(/databases/$(database)/documents/products/$(productId)).data.tenantId == request.resource.data.tenantId;
 
-      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow update: if canManage(resource.data.tenantId) && tenantIdUnchanged();
       allow delete: if false;
     }
 
     // ---------- Private shop settings ----------
-    // e.g. the Telegram chat for order alerts. Only the shop's own team can
-    // read or edit it (the shop record itself is public, so it can't live there).
+    // e.g. the Telegram chat for order alerts. The shop record itself is
+    // public, so these can't live there.
     match /tenantPrivate/{tenantId} {
-      allow read, create, update: if belongsTo(tenantId);
+      allow read, create, update: if isOwner(tenantId);
       allow delete: if false;
     }
 
@@ -96,10 +127,10 @@ service cloud.firestore {
     // The document id must be "<shopId>__<CODE>" so codes can't clash or be
     // squatted on by another shop.
     match /promoCodes/{promoId} {
-      allow read: if belongsTo(resource.data.tenantId);
-      allow create: if belongsTo(request.resource.data.tenantId)
+      allow read: if canManage(resource.data.tenantId);
+      allow create: if canManage(request.resource.data.tenantId)
         && promoId == request.resource.data.tenantId + '__' + request.resource.data.code;
-      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow update: if canManage(resource.data.tenantId) && tenantIdUnchanged();
       allow delete: if false; // deactivate instead
     }
 
@@ -111,16 +142,25 @@ service cloud.firestore {
       allow create: if false;
 
       allow read: if belongsTo(resource.data.tenantId);
-      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+
+      // Owners and managers can change anything on an order. Staff can only
+      // move it through its statuses and fix the customer's details: they can't
+      // touch items, prices or totals.
+      allow update: if tenantIdUnchanged()
+        && (canManage(resource.data.tenantId)
+          || (belongsTo(resource.data.tenantId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'statusHistory', 'updatedAt', 'customer'])));
+
       allow delete: if false; // orders are permanent business records
     }
 
     // ---------- Expenses ----------
 
     match /expenses/{expenseId} {
-      allow read: if belongsTo(resource.data.tenantId);
-      allow create: if belongsTo(request.resource.data.tenantId);
-      allow update: if belongsTo(resource.data.tenantId) && tenantIdUnchanged();
+      allow read: if canManage(resource.data.tenantId);
+      allow create: if canManage(request.resource.data.tenantId);
+      allow update: if canManage(resource.data.tenantId) && tenantIdUnchanged();
       allow delete: if false; // use the "deleted" flag instead
     }
 
