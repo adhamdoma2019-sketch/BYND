@@ -21,6 +21,8 @@ import {
 
 const emptyForm = {
   options: [],
+  images: [],
+  relatedIds: [],
   nameEn: '',
   nameAr: '',
   descriptionEn: '',
@@ -89,6 +91,8 @@ export default function Products() {
       price: p.price,
       costPrice: costs[p.id] ?? '',
       options: optionsToForm(p.options, optionCostsMap[p.id]),
+      images: p.images || [],
+      relatedIds: p.relatedIds || [],
       stock: p.stock,
       sku: p.sku || '',
       shippingExtra: p.shippingExtra ?? '',
@@ -358,6 +362,72 @@ export default function Products() {
             value={form.imageUrl}
             onChange={(url) => setForm({ ...form, imageUrl: url })}
           />
+
+          {/* more pictures (gallery) */}
+          <div className="col-span-full rounded border border-ink/10 bg-white p-3">
+            <p className="text-sm font-medium">{t('products.galleryTitle')}</p>
+            <p className="mt-1 text-xs text-ink-faint">{t('products.galleryHelp')}</p>
+            <div className="mt-3 space-y-3">
+              {form.images.map((url, i) => (
+                <div key={i} className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <ImageField
+                      label={t('products.galleryN', { n: i + 1 })}
+                      value={url}
+                      onChange={(u) =>
+                        setForm({ ...form, images: form.images.map((x, k) => (k === i ? u : x)) })
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, images: form.images.filter((_, k) => k !== i) })}
+                    className="pb-2 text-xs text-rust hover:underline"
+                  >
+                    {t('common.remove')}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {form.images.length < 8 && (
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, images: [...form.images, ''] })}
+                className="mt-3 rounded border border-ink/15 px-3 py-1.5 text-sm hover:border-brass"
+              >
+                {t('products.addPicture')}
+              </button>
+            )}
+          </div>
+
+          {/* related products, e.g. extension plates sold on their own */}
+          {products.filter((p) => p.id !== editingId).length > 0 && (
+            <div className="col-span-full rounded border border-ink/10 bg-white p-3">
+              <p className="text-sm font-medium">{t('products.relatedTitle')}</p>
+              <p className="mt-1 text-xs text-ink-faint">{t('products.relatedHelp')}</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {products
+                  .filter((p) => p.id !== editingId)
+                  .map((p) => (
+                    <label key={p.id} className="flex items-center gap-2 text-sm text-ink-soft">
+                      <input
+                        type="checkbox"
+                        checked={form.relatedIds.includes(p.id)}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            relatedIds: e.target.checked
+                              ? [...form.relatedIds, p.id].slice(0, 6)
+                              : form.relatedIds.filter((x) => x !== p.id),
+                          })
+                        }
+                      />
+                      {p.name?.[language] || p.name?.en}
+                    </label>
+                  ))}
+              </div>
+            </div>
+          )}
 
           <OptionsEditor
             options={form.options}

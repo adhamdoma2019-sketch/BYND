@@ -21,7 +21,9 @@ export default function OptionSummary({ labels }) {
           <span>
             {o.label?.[language] || o.label?.en}:{' '}
             {o.type === 'addon'
-              ? t('orders.yes')
+              ? o.text
+                ? `${t('orders.yes')} — “${o.text}”`
+                : t('orders.yes')
               : typeof o.value === 'object'
                 ? o.value[language] || o.value.en
                 : o.value}

@@ -11,7 +11,8 @@ import CartDrawer from '../../components/storefront/CartDrawer';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
-import { resolveChoice, cleanSelections } from '../../utils/productOptions';
+import { resolveChoice, cleanSelections, textKey } from '../../utils/productOptions';
+import { listStorefrontProducts } from '../../firebase/products.service';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { MAX_ORDER_QTY, LOW_STOCK_THRESHOLD } from '../../utils/constants';
 
@@ -27,6 +28,8 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [selections, setSelections] = useState({});
+  const [mainImage, setMainImage] = useState(''); // the picture shown big
+  const [related, setRelated] = useState([]); // linked products (e.g. extensions)
   const [showMissing, setShowMissing] = useState(false);
 
   useEffect(() => {
@@ -60,6 +63,23 @@ export default function ProductPage() {
   const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
 
   // Browser tab title + search-engine description.
+  // Linked products ("Extensions and accessories") for this product.
+  useEffect(() => {
+    if (!product?.relatedIds?.length) {
+      setRelated([]);
+      return;
+    }
+    let cancelled = false;
+    listStorefrontProducts(tenant.id)
+      .then((all) => {
+        if (!cancelled) setRelated(all.filter((p) => product.relatedIds.includes(p.id)));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [product, tenant.id]);
+
   usePageMeta(
     name ? `${name} — ${shopName}` : undefined,
     description ? description.slice(0, 155) : undefined
@@ -95,6 +115,10 @@ export default function ProductPage() {
 
   // The customer's choices (color, activity, extension...) and what they add to the price.
   const choice = resolveChoice(product, selections);
+  // Pictures: the product's own, and the big one follows what the customer picks
+  // (a color or choice can have its own picture).
+  const pictures = [...new Set([product.imageUrl, ...(product.images || [])].filter(Boolean))];
+  const shownImage = mainImage || pictures[0] || '';
   const unitPrice = (Number(product.price) || 0) + choice.priceDelta;
   const missingIds = new Set(choice.missing.map((o) => o.id));
   const productOptions = (product.options || []).filter((o) => o && o.type);
@@ -108,6 +132,7 @@ export default function ProductPage() {
       selections: cleanSelections(selections),
       labels: choice.labels,
       unitPrice,
+      imageUrl: choice.imageUrl || pictures[0] || '',
     });
     setCartOpen(true);
   }
@@ -126,15 +151,39 @@ export default function ProductPage() {
 
         <div className="mt-6 grid gap-8 md:grid-cols-2">
           <div>
-            {product.imageUrl ? (
+            {shownImage ? (
               <img
-                src={optimizedImage(product.imageUrl, 1000)}
+                src={optimizedImage(shownImage, 1000)}
                 alt={name}
+                decoding="async"
                 className="w-full rounded-md object-cover"
               />
             ) : (
               <div className="flex aspect-square w-full items-center justify-center rounded-md bg-paper-dim text-ink-faint">
                 {name}
+              </div>
+            )}
+            {pictures.length > 1 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {pictures.map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => setMainImage(url)}
+                    aria-label={name}
+                    className={
+                      'h-16 w-16 overflow-hidden rounded border-2 ' +
+                      (url === shownImage ? 'border-brass' : 'border-ink/15')
+                    }
+                  >
+                    <img
+                      src={optimizedImage(url, 160)}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -186,9 +235,20 @@ export default function ProductPage() {
                     option={option}
                     value={selections[option.id]}
                     onChange={(v) => {
-                      setSelections((prev) => ({ ...prev, [option.id]: v }));
+                      setSelections((prev) => {
+                        const next = { ...prev, [option.id]: v };
+                        if (option.type === 'addon' && v !== true) delete next[textKey(option.id)];
+                        return next;
+                      });
+                      // The big picture changes to the picture of the choice (if it has one).
+                      const picked = (option.values || []).find((x) => x.id === v);
+                      if (picked?.imageUrl) setMainImage(picked.imageUrl);
                       setShowMissing(false);
                     }}
+                    textValue={selections[textKey(option.id)] || ''}
+                    onTextChange={(v) =>
+                      setSelections((prev) => ({ ...prev, [textKey(option.id)]: v }))
+                    }
                     highlight={showMissing && missingIds.has(option.id)}
                   />
                 ))}
@@ -244,6 +304,34 @@ export default function ProductPage() {
             </button>
           </div>
         </div>
+
+        {related.length > 0 && (
+          <section className="mt-16 border-t border-ink/10 pt-10">
+            <h2 className="font-display text-2xl font-semibold">{t('storefront.related')}</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/store/${slug}/product/${p.id}`}
+                  className="flex items-center gap-4 rounded-md border border-ink/10 bg-white p-3 transition hover:border-brass/60"
+                >
+                  {p.imageUrl && (
+                    <img
+                      src={optimizedImage(p.imageUrl, 200)}
+                      alt=""
+                      loading="lazy"
+                      className="h-20 w-20 rounded object-cover"
+                    />
+                  )}
+                  <div>
+                    <p className="font-display font-semibold">{p.name?.[language] || p.name?.en}</p>
+                    <p className="text-sm text-ink-soft">{formatPrice(p.price, language)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <StorefrontFooter tenant={tenant} />

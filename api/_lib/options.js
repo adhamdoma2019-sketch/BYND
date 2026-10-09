@@ -3,7 +3,11 @@
 //
 // A product stores its options (public) as:
 //   { id, type: 'color'|'choice'|'addon'|'text', label:{en,ar}, required, maxLength,
-//     values: [{ id, label:{en,ar}, color, priceDelta }] }
+//     values: [{ id, label:{en,ar}, color, imageUrl, priceDelta }],
+//     // a tick box (addon) can also ask the customer to type something when ticked:
+//     askText, textRequired, textLabel:{en,ar}, textMax }
+// A choice or color can have its own picture (imageUrl): the product photo changes
+// when the customer picks it.
 // The shop's private extra COST of each choice is kept apart, in
 // productCosts/{productId}.optionCosts  { "<optionId>.<valueId>": cost }.
 //
@@ -20,12 +24,15 @@ export const MAX_OPTIONS = 6;
 export const MAX_VALUES = 20;
 const DEFAULT_TEXT_LENGTH = 60;
 
+// The text typed for a ticked tick box is kept under "<optionId>.text".
+export const textKey = (optionId) => `${optionId}.text`;
+
 // Keeps only simple answers from the browser: { optionId: valueId | text | true }.
 export function cleanSelections(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
   for (const [key, value] of Object.entries(raw).slice(0, 12)) {
-    if (key.length > 30) continue;
+    if (key.length > 40) continue;
     if (value === true) out[key] = true;
     else if (typeof value === 'string' && value.trim()) out[key] = value.trim().slice(0, 120);
   }
@@ -46,7 +53,8 @@ const fail = (option) =>
   });
 
 // Checks the choices against the product's options.
-// Returns { priceDelta, costDelta, snapshot } where snapshot is saved in the order.
+// Returns { priceDelta, costDelta, snapshot, imageUrl } where snapshot is saved in
+// the order and imageUrl is the picture of the choice made (if the choice has one).
 export function resolveSelections(product, selections, optionCosts) {
   const options = (product.options || [])
     .filter((o) => o && OPTION_TYPES.includes(o.type))
@@ -54,6 +62,7 @@ export function resolveSelections(product, selections, optionCosts) {
 
   let priceDelta = 0;
   let costDelta = 0;
+  let imageUrl = '';
   const snapshot = [];
 
   for (const option of options) {
@@ -77,7 +86,16 @@ export function resolveSelections(product, selections, optionCosts) {
       const value = option.values?.[0] || {};
       priceDelta += Number(value.priceDelta) || 0;
       costDelta += Number(optionCosts?.[`${option.id}.${value.id}`]) || 0;
-      snapshot.push({ id: option.id, label, type: 'addon', value: true });
+      const entry = { id: option.id, label, type: 'addon', value: true };
+      // A tick box can also ask for a word / comment (the shop decides).
+      if (option.askText) {
+        const raw = selections?.[textKey(option.id)];
+        const text = typeof raw === 'string' ? raw.trim() : '';
+        if (!text && option.textRequired) throw fail(option);
+        const max = Number(option.textMax) > 0 ? Number(option.textMax) : DEFAULT_TEXT_LENGTH;
+        if (text) entry.text = text.slice(0, max);
+      }
+      snapshot.push(entry);
       continue;
     }
 
@@ -90,6 +108,7 @@ export function resolveSelections(product, selections, optionCosts) {
     if (!value) throw fail(option);
     priceDelta += Number(value.priceDelta) || 0;
     costDelta += Number(optionCosts?.[`${option.id}.${value.id}`]) || 0;
+    if (typeof value.imageUrl === 'string' && value.imageUrl) imageUrl = value.imageUrl;
     snapshot.push({
       id: option.id,
       label,
@@ -99,5 +118,5 @@ export function resolveSelections(product, selections, optionCosts) {
     });
   }
 
-  return { priceDelta, costDelta, snapshot };
+  return { priceDelta, costDelta, snapshot, imageUrl };
 }

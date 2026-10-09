@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { OPTION_TYPES, MAX_OPTIONS, MAX_VALUES } from '../../utils/productOptions';
+import ImageField from './ImageField';
 import { newOption, newValue } from '../../utils/productOptionsForm';
 
 const input =
@@ -138,6 +139,62 @@ export default function OptionsEditor({ options, onChange }) {
                     className={input}
                   />
                 </label>
+
+                {/* A word / comment the customer types when the box is ticked */}
+                <div className="col-span-full rounded border border-ink/10 bg-white p-3">
+                  <label className="flex items-center gap-2 text-sm text-ink-soft">
+                    <input
+                      type="checkbox"
+                      checked={o.askText}
+                      onChange={(e) => updateOption(i, { askText: e.target.checked })}
+                    />
+                    {t('options.askText')}
+                  </label>
+                  {o.askText && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <label className="text-sm text-ink-soft">
+                        {t('options.textLabelEn')}
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={o.textLabelEn}
+                          onChange={(e) => updateOption(i, { textLabelEn: e.target.value })}
+                          className={input}
+                        />
+                      </label>
+                      <label className="text-sm text-ink-soft">
+                        {t('options.textLabelAr')}
+                        <input
+                          type="text"
+                          dir="rtl"
+                          value={o.textLabelAr}
+                          onChange={(e) => updateOption(i, { textLabelAr: e.target.value })}
+                          className={input}
+                        />
+                      </label>
+                      <label className="text-sm text-ink-soft">
+                        {t('options.textMax')}
+                        <input
+                          type="number"
+                          min="1"
+                          max="200"
+                          placeholder="60"
+                          value={o.textMax}
+                          onChange={(e) => updateOption(i, { textMax: e.target.value })}
+                          className={input}
+                        />
+                      </label>
+                      <label className="flex items-end gap-2 pb-2 text-sm text-ink-soft">
+                        <input
+                          type="checkbox"
+                          checked={o.textRequired}
+                          onChange={(e) => updateOption(i, { textRequired: e.target.checked })}
+                        />
+                        {t('options.textRequired')}
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -218,6 +275,14 @@ export default function OptionsEditor({ options, onChange }) {
                     >
                       {t('common.remove')}
                     </button>
+                    {/* the product photo changes to this picture when the customer picks it */}
+                    <div className="col-span-full">
+                      <ImageField
+                        label={t('options.valueImage')}
+                        value={v.imageUrl || ''}
+                        onChange={(url) => updateValue(i, j, { imageUrl: url })}
+                      />
+                    </div>
                   </div>
                 ))}
                 {o.values.length < MAX_VALUES && (

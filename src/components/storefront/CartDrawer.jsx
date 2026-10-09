@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useCart, keyOf } from '../../context/CartContext';
 import OptionSummary from './OptionSummary';
+import { optimizedImage } from '../../utils/images';
 import { formatPrice } from '../../utils/format';
 
 export default function CartDrawer({ onClose }) {
@@ -49,7 +50,15 @@ export default function CartDrawer({ onClose }) {
                   key={keyOf(item)}
                   className="flex items-start justify-between gap-3"
                 >
-                  <div>
+                  <div className="flex gap-3">
+                    {item.imageUrl && (
+                      <img
+                        src={optimizedImage(item.imageUrl, 160)}
+                        alt=""
+                        className="h-14 w-14 shrink-0 rounded object-cover"
+                      />
+                    )}
+                    <div>
                     <p className="font-medium">
                       {item.name?.[language] || item.name?.en}
                     </p>
@@ -81,6 +90,7 @@ export default function CartDrawer({ onClose }) {
                       >
                         +
                       </button>
+                    </div>
                     </div>
                   </div>
                   <button

@@ -61,6 +61,7 @@ export function CartProvider({ slug, children }) {
           isPreorder: product.isPreorder === true,
           selections,
           optionLabels: choice.labels || [],
+          imageUrl: choice.imageUrl || '',
         },
       ];
     });

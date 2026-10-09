@@ -59,6 +59,13 @@ function productFields(data) {
         ? 0
         : Number(data.shippingExtra),
     imageUrl: data.imageUrl || '',
+    // More pictures of the product (shown as thumbnails on the product page).
+    images: (data.images || [])
+      .map((u) => String(u || '').trim())
+      .filter(Boolean)
+      .slice(0, 8),
+    // Other products offered on this product's page (e.g. extension plates).
+    relatedIds: (data.relatedIds || []).slice(0, 6),
     isPreorder,
     options: formToOptions(data.options), // colors, activity, extension... (public)
     preorderMessage: {

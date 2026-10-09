@@ -37,7 +37,8 @@
     "selectOptions": "Choose options",
     "chooseOptions": "Please choose: {{names}}",
     "prevSlide": "Previous picture",
-    "nextSlide": "Next picture"
+    "nextSlide": "Next picture",
+    "related": "Extensions and accessories"
   },
   "checkout": {
     "title": "Checkout",
@@ -196,7 +197,13 @@
     "hidden": "Hidden",
     "lowStockBadge": "Low stock",
     "shippingExtra": "Extra shipping per unit (EGP, optional)",
-    "shippingExtraHint": "Added to the shipping fee for each unit of this product (for big or heavy items)."
+    "shippingExtraHint": "Added to the shipping fee for each unit of this product (for big or heavy items).",
+    "galleryTitle": "More pictures",
+    "galleryHelp": "Extra photos shown as small pictures under the main one. A color or choice can also have its own picture (in Options): the big picture changes when the customer picks it.",
+    "galleryN": "Picture {{n}}",
+    "addPicture": "+ Add picture",
+    "relatedTitle": "Linked products (extensions, accessories)",
+    "relatedHelp": "Shown on this product's page as \"Extensions and accessories\". Each one is still a normal product that can be bought on its own."
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -439,7 +446,13 @@
     "extPrice": "Extension price (EGP)",
     "extCost": "What the extension costs you (EGP)",
     "costHint": "Costs are private: customers never see them. They are used for your profit report.",
-    "errInvalid": "Every option needs a name, and a color or choice list needs at least one named choice."
+    "errInvalid": "Every option needs a name, and a color or choice list needs at least one named choice.",
+    "valueImage": "Picture for this choice (optional): the product photo changes to it when picked",
+    "askText": "Ask the customer to type a word or comment when this box is ticked",
+    "textLabelEn": "Question for the customer (English)",
+    "textLabelAr": "Question for the customer (Arabic)",
+    "textMax": "Maximum characters",
+    "textRequired": "The customer must type something when ticked"
   },
   "errorPage": {
     "title": "Something went wrong",

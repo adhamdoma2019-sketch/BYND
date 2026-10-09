@@ -191,6 +191,8 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         subtotal: unitPrice * item.quantity,
         isPreorder,
         options: choice.snapshot, // [{ id, label, type, value }] what the customer chose
+        // Picture of what was chosen (for packing): the choice's own picture, else the product's.
+        imageUrl: choice.imageUrl || product.imageUrl || '',
         shippingExtra: Number(product.shippingExtra) || 0,
       };
     });

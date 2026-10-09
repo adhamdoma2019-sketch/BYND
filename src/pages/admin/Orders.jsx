@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import { formatPrice } from '../../utils/format';
 import { whatsappLink } from '../../utils/phone';
+import { optimizedImage } from '../../utils/images';
 import OptionSummary from '../../components/storefront/OptionSummary';
 import { useAudit } from '../../hooks/useAudit';
 import { diffFields } from '../../utils/audit';
@@ -440,11 +441,21 @@ export default function Orders() {
                           {t('orders.items')}
                         </p>
                         {order.items?.map((item, i) => (
-                          <div key={i} className="flex justify-between text-sm">
-                            <span>
-                              {item.name?.[language] || item.name?.en} ×{' '}
-                              {item.quantity}
-                              <OptionSummary labels={item.options} />
+                          <div key={i} className="flex justify-between gap-3 text-sm">
+                            <span className="flex gap-3">
+                              {/* picture of what was ordered (the chosen color/version) */}
+                              {item.imageUrl && (
+                                <img
+                                  src={optimizedImage(item.imageUrl, 120)}
+                                  alt=""
+                                  className="h-12 w-12 shrink-0 rounded object-cover"
+                                />
+                              )}
+                              <span>
+                                {item.name?.[language] || item.name?.en} ×{' '}
+                                {item.quantity}
+                                <OptionSummary labels={item.options} />
+                              </span>
                             </span>
                             <span>{formatPrice(item.subtotal, language)}</span>
                           </div>

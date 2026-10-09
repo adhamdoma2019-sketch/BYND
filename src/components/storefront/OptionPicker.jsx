@@ -4,7 +4,14 @@ import { formatPrice } from '../../utils/format';
 
 // One option on the product page: color swatches, a list of choices
 // (activity / sport...), a tick box (extension) or a text box (custom text).
-export default function OptionPicker({ option, value, onChange, highlight }) {
+export default function OptionPicker({
+  option,
+  value,
+  onChange,
+  highlight,
+  textValue = '',
+  onTextChange = () => {},
+}) {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const name = option.label?.[language] || option.label?.en || '';
@@ -22,18 +29,40 @@ export default function OptionPicker({ option, value, onChange, highlight }) {
   if (option.type === 'addon') {
     const v = option.values?.[0] || {};
     return (
-      <label className={`flex cursor-pointer items-start gap-2 text-sm ${frame}`}>
-        <input
-          type="checkbox"
-          checked={value === true}
-          onChange={(e) => onChange(e.target.checked ? true : '')}
-          className="mt-0.5"
-        />
-        <span>
-          {name}
-          {plus(v)}
-        </span>
-      </label>
+      <div className={frame}>
+        <label className="flex cursor-pointer items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value === true}
+            onChange={(e) => onChange(e.target.checked ? true : '')}
+            className="mt-0.5"
+          />
+          <span>
+            {name}
+            {plus(v)}
+          </span>
+        </label>
+        {/* the shop can ask for a word / comment once the box is ticked */}
+        {option.askText && value === true && (
+          <label className="mt-2 block text-sm">
+            <span className="text-ink-soft">
+              {option.textLabel?.[language] || option.textLabel?.en || name}
+              {option.textRequired ? (
+                <span className="text-rust"> *</span>
+              ) : (
+                <span className="text-ink-faint"> ({t('checkout.optional')})</span>
+              )}
+            </span>
+            <input
+              type="text"
+              maxLength={Number(option.textMax) > 0 ? Number(option.textMax) : 60}
+              value={textValue}
+              onChange={(e) => onTextChange(e.target.value)}
+              className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+            />
+          </label>
+        )}
+      </div>
     );
   }
 

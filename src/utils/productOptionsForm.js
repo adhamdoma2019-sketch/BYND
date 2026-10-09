@@ -16,6 +16,7 @@ export const newValue = (type) => ({
   labelEn: '',
   labelAr: '',
   color: type === 'color' ? '#222222' : '',
+  imageUrl: '',
   priceDelta: '',
   costDelta: '',
 });
@@ -27,6 +28,11 @@ export const newOption = () => ({
   labelAr: '',
   required: true,
   maxLength: '',
+  askText: false,
+  textRequired: false,
+  textLabelEn: '',
+  textLabelAr: '',
+  textMax: '',
   values: [newValue('color')],
 });
 
@@ -39,11 +45,17 @@ export function optionsToForm(options, optionCosts = {}) {
     labelAr: o.label?.ar || '',
     required: o.required === true,
     maxLength: o.maxLength || '',
+    askText: o.askText === true,
+    textRequired: o.textRequired === true,
+    textLabelEn: o.textLabel?.en || '',
+    textLabelAr: o.textLabel?.ar || '',
+    textMax: o.textMax || '',
     values: (o.values || []).map((v) => ({
       id: v.id,
       labelEn: v.label?.en || '',
       labelAr: v.label?.ar || '',
       color: v.color || '',
+      imageUrl: v.imageUrl || '',
       priceDelta: v.priceDelta || '',
       costDelta: optionCosts[`${o.id}.${v.id}`] || '',
     })),
@@ -88,13 +100,24 @@ export function formToOptions(form) {
       }
       if (o.type === 'addon') {
         const v = o.values[0] || newValue('addon');
-        return {
+        const base = {
           id: o.id,
           type: 'addon',
           label,
           required: false,
           values: [{ id: v.id, label, priceDelta: num(v.priceDelta) }],
         };
+        // Optional: ask the customer to type a word / comment when the box is ticked.
+        if (o.askText) {
+          base.askText = true;
+          base.textRequired = o.textRequired === true;
+          base.textLabel = {
+            en: o.textLabelEn.trim() || o.textLabelAr.trim() || label.en,
+            ar: o.textLabelAr.trim() || o.textLabelEn.trim() || label.ar,
+          };
+          base.textMax = Number(o.textMax) > 0 ? Number(o.textMax) : 60;
+        }
+        return base;
       }
       return {
         id: o.id,
@@ -111,6 +134,7 @@ export function formToOptions(form) {
               ar: v.labelAr.trim() || v.labelEn.trim(),
             },
             ...(o.type === 'color' ? { color: v.color || '#222222' } : {}),
+            ...(v.imageUrl && v.imageUrl.trim() ? { imageUrl: v.imageUrl.trim() } : {}),
             priceDelta: num(v.priceDelta),
           })),
       };
