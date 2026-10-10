@@ -164,6 +164,12 @@ service cloud.firestore {
       allow delete: if false; // use the "deleted" flag instead
     }
 
+    // ---------- Spam-protection counters ----------
+    // Only the secure server functions use these.
+    match /rateLimits/{limitId} {
+      allow read, write: if false;
+    }
+
     // ---------- Order-number counters ----------
     // Only the secure server function touches these.
     match /counters/{counterId} {

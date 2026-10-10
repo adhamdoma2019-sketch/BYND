@@ -370,7 +370,8 @@
     "PROMO_EXPIRED": "This promo code has expired.",
     "PROMO_LIMIT": "This promo code has reached its usage limit.",
     "PROMO_MIN_ORDER": "This code needs an order of at least {{min}}.",
-    "BAD_OPTION": "Please check your choice for: {{field}}"
+    "BAD_OPTION": "Please check your choice for: {{field}}",
+    "RATE_LIMITED": "Too many attempts from this phone number or connection. Please try again later, or contact us directly."
   },
   "checkoutFields": {
     "name": "Full name",

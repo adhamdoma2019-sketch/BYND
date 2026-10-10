@@ -45,8 +45,9 @@ const cartLines = (items) =>
   }));
 
 // Place the order. Returns { orderId, orderNumber, orderNumberLabel, totalAmount, orderType }.
-export function createOrder({ tenantId, customer, custom, items, zoneId, promoCode }) {
+export function createOrder({ tenantId, customer, custom, items, zoneId, promoCode, website }) {
   return callApi('/api/create-order', {
+    website: website || '', // hidden trap field: real customers never fill it in
     tenantId,
     customer,
     custom: custom || {},

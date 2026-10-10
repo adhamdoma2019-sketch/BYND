@@ -34,7 +34,9 @@ export default async function handler(req, res) {
     // 2) Which shop do they belong to?
     const userSnap = await db.collection('users').doc(uid).get();
     const tenantId = userSnap.exists ? userSnap.data().tenantId : null;
-    if (!tenantId) return send(res, 403, { ok: false, error: 'AUTH' });
+    if (!tenantId || userSnap.data().active === false) return send(res, 403, { ok: false, error: 'AUTH' });
+    // Alert settings belong to the shop owners only (staff and managers can't open that page).
+    if (userSnap.data().role !== 'owner') return send(res, 403, { ok: false, error: 'FORBIDDEN' });
 
     let body = req.body;
     if (typeof body === 'string') {

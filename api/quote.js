@@ -5,6 +5,7 @@
 import { getDb } from './_lib/db.js';
 import { validateInput, OrderError } from './_lib/placeOrder.js';
 import { getQuote } from './_lib/quote.js';
+import { clientIp, hashKey, hasRoom, countUse, LIMITS } from './_lib/rateLimit.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -24,7 +25,22 @@ export default async function handler(req, res) {
 
     // Same checks as a real order, except the customer's details (not needed yet).
     const input = validateInput({ ...body, customer: {} });
-    const result = await getQuote(getDb(), input);
+    const db = getDb();
+
+    // Stops people from guessing promo codes: each check with a code is counted per connection.
+    let promoBlocked = false;
+    if (input.promoCode) {
+      const key = `promo-ip-${hashKey(clientIp(req))}`;
+      if (await hasRoom(db, key, LIMITS.promoIp)) {
+        await countUse(db, key, LIMITS.promoIp);
+      } else {
+        promoBlocked = true;
+        input.promoCode = ''; // the totals still work, just without the code
+      }
+    }
+
+    const result = await getQuote(db, input);
+    if (promoBlocked) result.promoError = { code: 'RATE_LIMITED' };
     return res.status(200).json(result);
   } catch (err) {
     if (err instanceof OrderError) {

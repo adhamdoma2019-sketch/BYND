@@ -62,6 +62,7 @@ export default function Checkout() {
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [website, setWebsite] = useState(''); // trap for bots (kept out of sight)
 
   // Ask the server for the real total whenever the cart, area or code changes.
   const requestId = useRef(0);
@@ -129,6 +130,7 @@ export default function Checkout() {
         tenantId: tenant.id,
         customer: form,
         custom,
+        website,
         items,
         zoneId,
         promoCode: quote?.promo ? appliedCode : '',
@@ -404,6 +406,21 @@ export default function Checkout() {
 
         <div className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink-soft">
           {t('checkout.paymentMethod')}: <strong>{t('checkout.cod')}</strong>
+        </div>
+
+        {/* Hidden trap: people never see or fill this; bots do. */}
+        <div aria-hidden="true" className="absolute -start-[9999px] h-0 w-0 overflow-hidden opacity-0">
+          <label>
+            Website
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+            />
+          </label>
         </div>
 
         {error && <p className="text-sm text-rust">{error}</p>}

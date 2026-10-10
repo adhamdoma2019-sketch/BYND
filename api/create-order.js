@@ -9,6 +9,7 @@ import { getDb } from './_lib/db.js';
 import { waitUntil } from '@vercel/functions';
 import { validateInput, placeOrder, OrderError } from './_lib/placeOrder.js';
 import { notifyNewOrder } from './_lib/notify.js';
+import { clientIp, hashKey, hasRoom, countUse, phoneDigits, LIMITS } from './_lib/rateLimit.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,9 +27,31 @@ export default async function handler(req, res) {
       }
     }
 
+    // Bots fill in every box, including the hidden "website" one that people never see.
+    // They get a fake "success" and nothing is saved.
+    if (typeof body?.website === 'string' && body.website.trim()) {
+      return res
+        .status(200)
+        .json({ orderId: 'none', orderNumber: 0, orderNumberLabel: '—', totalAmount: 0, orderType: 'normal' });
+    }
+
     const input = validateInput(body);
     const db = getDb();
+
+    // Spam protection: limits per connection and per phone number.
+    const ipKey = `order-ip-${hashKey(clientIp(req))}`;
+    const digits = phoneDigits(input.customer.phone);
+    const phoneKey = digits ? `order-ph-${hashKey(digits)}` : '';
+    if (
+      !(await hasRoom(db, ipKey, LIMITS.orderIp)) ||
+      (phoneKey && !(await hasRoom(db, phoneKey, LIMITS.orderPhone)))
+    ) {
+      throw new OrderError(429, 'RATE_LIMITED', 'Too many orders. Please try again later.');
+    }
+    await countUse(db, ipKey, LIMITS.orderIp);
+
     const { _order, ...result } = await placeOrder(db, input);
+    if (phoneKey) await countUse(db, phoneKey, LIMITS.orderPhone); // only real orders count
 
     // Tell the team on Telegram. waitUntil lets Vercel finish this in the
     // background, so the customer isn't kept waiting.
