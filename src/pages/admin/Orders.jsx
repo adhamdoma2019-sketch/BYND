@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
+import {
+  ALL_STATUSES,
+  nextStatus,
+  canReturnStatus,
+  canCancelStatus,
+  statusBadgeClass,
+} from '../../utils/orderRules';
+import { downloadFile } from '../../utils/csv';
+import { ordersToCsv } from '../../utils/exports';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import { formatPrice } from '../../utils/format';
@@ -14,26 +23,11 @@ import {
   listOrders,
   updateOrderStatus,
   cancelOrder,
+  returnOrder,
   updateOrderCustomer,
 } from '../../firebase/orders.service';
 import { orderCost } from '../../utils/profit';
 
-const STATUS_FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
-const ALL_STATUSES = [...STATUS_FLOW, 'cancelled'];
-
-function nextStatus(current) {
-  const idx = STATUS_FLOW.indexOf(current);
-  if (idx === -1 || idx === STATUS_FLOW.length - 1) return null;
-  return STATUS_FLOW[idx + 1];
-}
-
-function statusBadgeClass(status) {
-  if (status === 'delivered') return 'bg-sage/15 text-sage-dark';
-  if (status === 'cancelled') return 'bg-rust/15 text-rust';
-  if (status === 'shipped') return 'bg-brass/15 text-brass-dark';
-  if (status === 'confirmed') return 'bg-sage/10 text-sage-dark';
-  return 'bg-paper-dim text-ink-soft';
-}
 
 function orderDateStr(order) {
   if (!order.createdAt?.seconds) return '';
@@ -113,6 +107,37 @@ export default function Orders() {
     });
     await refresh();
     setUpdatingId(null);
+  }
+
+  // Returned parcels: first choose whether the items go back on the shelf.
+  const [returningId, setReturningId] = useState(null);
+
+  async function handleReturn(order, restock) {
+    setUpdatingId(order.id);
+    setActionError('');
+    try {
+      await returnOrder(order.id, { restock });
+      log({
+        action: 'order.return',
+        entityType: 'order',
+        entityId: order.id,
+        entityLabel: orderLabel(order),
+        changes: [
+          { field: 'status', from: order.status, to: 'returned' },
+          { field: 'restock', to: String(restock) },
+        ],
+      });
+      setReturningId(null);
+      await refresh();
+    } catch (err) {
+      setActionError(
+        err.code
+          ? t(`orders.err.${err.code}`, { defaultValue: t('orders.returnFailed') })
+          : t('orders.returnFailed')
+      );
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   async function handleCancel(order) {
@@ -223,6 +248,20 @@ export default function Orders() {
           className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus-visible:border-brass"
         />
 
+        {filteredOrders.length > 0 && (
+          <button
+            onClick={() =>
+              downloadFile(
+                `orders-${new Date().toISOString().slice(0, 10)}.csv`,
+                ordersToCsv(filteredOrders, { language, t })
+              )
+            }
+            className="rounded border border-ink/15 px-3 py-2 text-sm text-ink-soft hover:border-brass hover:text-brass"
+          >
+            {t('exports.button')}
+          </button>
+        )}
+
         {(statusFilter !== 'all' || search || dateFrom || dateTo) && (
           <button
             onClick={() => {
@@ -251,8 +290,8 @@ export default function Orders() {
           {filteredOrders.map((order) => {
             const isOpen = expandedId === order.id;
             const next = nextStatus(order.status);
-            const canCancel =
-              order.status !== 'delivered' && order.status !== 'cancelled';
+            const canCancel = canCancelStatus(order.status);
+            const canReturn = canReturnStatus(order.status);
             const isEditingCustomer = editingCustomerId === order.id;
 
             return (
@@ -537,7 +576,43 @@ export default function Orders() {
                           {t('orders.cancelOrder')}
                         </button>
                       )}
+                      {canReturn && canCancelOrders(role) && returningId !== order.id && (
+                        <button
+                          onClick={() => setReturningId(order.id)}
+                          disabled={updatingId === order.id}
+                          className="rounded border border-ink/15 px-3 py-1.5 text-sm text-rust hover:border-rust disabled:opacity-60"
+                        >
+                          {t('orders.returnBtn')}
+                        </button>
+                      )}
                     </div>
+                    {returningId === order.id && (
+                      <div className="mt-3 rounded border border-ink/10 bg-paper-soft p-3 text-sm">
+                        <p className="text-ink-soft">{t('orders.returnHelp')}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleReturn(order, true)}
+                            disabled={updatingId === order.id}
+                            className="rounded bg-ink px-3 py-1.5 text-paper transition hover:bg-brass disabled:opacity-60"
+                          >
+                            {t('orders.returnRestock')}
+                          </button>
+                          <button
+                            onClick={() => handleReturn(order, false)}
+                            disabled={updatingId === order.id}
+                            className="rounded border border-ink/15 px-3 py-1.5 hover:border-rust disabled:opacity-60"
+                          >
+                            {t('orders.returnNoRestock')}
+                          </button>
+                          <button
+                            onClick={() => setReturningId(null)}
+                            className="px-3 py-1.5 text-ink-soft hover:underline"
+                          >
+                            {t('orders.returnKeep')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

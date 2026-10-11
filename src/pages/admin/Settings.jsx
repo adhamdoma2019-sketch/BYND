@@ -10,6 +10,8 @@ import { useAudit } from '../../hooks/useAudit';
 import { fieldsOnly, stable } from '../../utils/audit';
 import { getTenantPrivate, saveTenantPrivate } from '../../firebase/private.service';
 import { findTelegramChats, sendTelegramTest } from '../../firebase/telegram.service';
+import { buildBackup, backupToJson } from '../../firebase/backup.service';
+import { downloadFile } from '../../utils/csv';
 import {
   HERO_DEFAULT_SECONDS,
   HERO_MIN_SECONDS,
@@ -163,6 +165,9 @@ export default function Settings() {
   const [chats, setChats] = useState(null); // null = not searched yet
   const [alertMessage, setAlertMessage] = useState('');
   const [alertBusy, setAlertBusy] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupMessage, setBackupMessage] = useState('');
+  const [lastBackup, setLastBackup] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -179,6 +184,7 @@ export default function Settings() {
     setZones((tenant.shipping?.zones || []).map(zoneToForm));
     setCustomFields((tenant.checkout?.customFields || []).map(customToForm));
     setCountryCode(tenant.defaultCountryCode || '20');
+    setLastBackup(localStorage.getItem(`backup:${tenant.id}`));
     getTenantPrivate(tenant.id).then((p) => {
       setTelegramChatId(p.telegramChatId || '');
       setNotifyLanguage(p.notifyLanguage === 'ar' ? 'ar' : 'en');
@@ -233,6 +239,27 @@ export default function Settings() {
     const result = await sendTelegramTest(telegramChatId, notifyLanguage);
     setAlertBusy(false);
     setAlertMessage(result.ok ? t('settingsPage.alertTestOk') : alertErrorText(result));
+  }
+
+  async function handleBackup() {
+    setBackupMessage('');
+    setBackupBusy(true);
+    try {
+      const backup = await buildBackup(tenant);
+      downloadFile(
+        `${tenant.slug}-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        backupToJson(backup),
+        'application/json;charset=utf-8'
+      );
+      const now = new Date().toISOString();
+      localStorage.setItem(`backup:${tenant.id}`, now);
+      setLastBackup(now);
+      setBackupMessage(t('settingsPage.backupDone'));
+    } catch {
+      setBackupMessage(t('settingsPage.backupFailed'));
+    } finally {
+      setBackupBusy(false);
+    }
   }
 
   function updateCustom(index, field, value) {
@@ -963,6 +990,28 @@ export default function Settings() {
               {t('settingsPage.phoneCodeHint')}
             </span>
           </label>
+        </section>
+
+        {/* ---------- Backup ---------- */}
+        <section>
+          <h2 className="font-display text-lg font-medium">{t('settingsPage.backupTitle')}</h2>
+          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.backupHelp')}</p>
+          <button
+            type="button"
+            onClick={handleBackup}
+            disabled={backupBusy}
+            className="mt-3 rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass disabled:opacity-60"
+          >
+            {backupBusy ? t('settingsPage.backupWorking') : t('settingsPage.backupBtn')}
+          </button>
+          <p className="mt-2 text-xs text-ink-faint">
+            {lastBackup
+              ? t('settingsPage.backupLast', {
+                  date: new Date(lastBackup).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-GB'),
+                })
+              : t('settingsPage.backupNever')}
+          </p>
+          {backupMessage && <p className="mt-2 text-sm text-ink-soft">{backupMessage}</p>}
         </section>
 
         {error && <p className="text-sm text-rust">{error}</p>}

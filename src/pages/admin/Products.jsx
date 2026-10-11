@@ -5,6 +5,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import ImageField from '../../components/admin/ImageField';
 import { useAudit } from '../../hooks/useAudit';
+import { downloadFile } from '../../utils/csv';
+import { productsToCsv } from '../../utils/exports';
 import { diffFields } from '../../utils/audit';
 import OptionsEditor from '../../components/admin/OptionsEditor';
 import { optionsToForm, optionsAreValid } from '../../utils/productOptionsForm';
@@ -221,12 +223,27 @@ export default function Products() {
           {t('admin.products')}
         </h1>
         {editingId === null && (
-          <button
-            onClick={startAdd}
-            className="rounded bg-ink px-4 py-2 text-sm text-paper transition hover:bg-brass"
-          >
-            {t('products.add')}
-          </button>
+          <div className="flex gap-3">
+            {products.length > 0 && (
+              <button
+                onClick={() =>
+                  downloadFile(
+                    `products-${new Date().toISOString().slice(0, 10)}.csv`,
+                    productsToCsv(products, costs, { language, t, includeCost: true })
+                  )
+                }
+                className="rounded border border-ink/15 px-3 py-2 text-sm text-ink-soft hover:border-brass hover:text-brass"
+              >
+                {t('exports.button')}
+              </button>
+            )}
+            <button
+              onClick={startAdd}
+              className="rounded bg-ink px-4 py-2 text-sm text-paper transition hover:bg-brass"
+            >
+              {t('products.add')}
+            </button>
+          </div>
         )}
       </div>
 

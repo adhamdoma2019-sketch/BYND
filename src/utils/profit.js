@@ -38,7 +38,7 @@ export function monthKey(date) {
 }
 
 // period: 'all' | 'thisMonth' | 'lastMonth'
-function inPeriod(key, period, now = new Date()) {
+export function inPeriod(key, period, now = new Date()) {
   if (period === 'all') return true;
   if (!key) return false;
   const current = monthKey(now);
@@ -70,7 +70,7 @@ export function calcProfit(orders, expenses, period = 'all', now = new Date()) {
 
   // Orders still on their way: not profit yet, shown for information only.
   const expectedRevenue = orders
-    .filter((o) => o.status !== 'delivered' && o.status !== 'cancelled')
+    .filter((o) => !['delivered', 'cancelled', 'returned'].includes(o.status))
     .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
 
   const grossProfit = revenue - cogs;

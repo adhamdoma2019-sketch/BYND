@@ -10,6 +10,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './config';
+import { stockToRestore, canReturnStatus } from '../utils/orderRules';
 
 // The browser never calculates prices, discounts or shipping itself. It asks the
 // secure server functions (api/quote.js, api/create-order.js), which look up
@@ -99,6 +100,23 @@ export async function updateOrderStatus(orderId, newStatus) {
   });
 }
 
+// Puts the order's items back on the shelf (one total per product, never for preorder
+// lines). Must be called inside a transaction, BEFORE any write of that transaction.
+async function readStockToRestore(transaction, order) {
+  const restore = stockToRestore(order);
+  const refs = restore.map((r) => doc(db, 'products', r.productId));
+  const snaps = await Promise.all(refs.map((ref) => transaction.get(ref)));
+  return restore.map((r, i) => ({ ref: refs[i], snap: snaps[i], quantity: r.quantity }));
+}
+
+function writeStockBack(transaction, plan) {
+  plan.forEach(({ ref, snap, quantity }) => {
+    if (!snap.exists()) return;
+    transaction.update(ref, { stock: (Number(snap.data().stock) || 0) + quantity });
+  });
+}
+
+// Cancel an order that has not been delivered yet. Its items go back in stock.
 export async function cancelOrder(orderId) {
   const orderRef = doc(db, 'orders', orderId);
 
@@ -109,6 +127,8 @@ export async function cancelOrder(orderId) {
     const order = orderSnap.data();
     if (order.status === 'cancelled')
       throw codedError('ALREADY_CANCELLED', 'This order is already cancelled.');
+    if (order.status === 'returned')
+      throw codedError('ALREADY_RETURNED', 'This order was already returned.');
     if (order.status === 'delivered') {
       throw codedError(
         'ALREADY_DELIVERED',
@@ -116,22 +136,8 @@ export async function cancelOrder(orderId) {
       );
     }
 
-    const productRefs = order.items.map((item) =>
-      doc(db, 'products', item.productId)
-    );
-    const productSnaps = await Promise.all(
-      productRefs.map((ref) => transaction.get(ref))
-    );
-
-    productSnaps.forEach((snap, index) => {
-      if (!snap.exists()) return;
-      const item = order.items[index];
-      // Preorder lines never reduced stock, so there is nothing to give back.
-      if (item.isPreorder) return;
-      transaction.update(productRefs[index], {
-        stock: snap.data().stock + item.quantity,
-      });
-    });
+    const plan = await readStockToRestore(transaction, order);
+    writeStockBack(transaction, plan);
 
     transaction.update(orderRef, {
       status: 'cancelled',
@@ -139,6 +145,37 @@ export async function cancelOrder(orderId) {
         status: 'cancelled',
         timestamp: new Date().toISOString(),
         updatedBy: 'partner',
+      }),
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+// The parcel came back (refused, failed delivery, or sent back after delivery).
+// `restock` = put the items back in stock (false if they are damaged or lost).
+export async function returnOrder(orderId, { restock }) {
+  const orderRef = doc(db, 'orders', orderId);
+
+  await runTransaction(db, async (transaction) => {
+    const orderSnap = await transaction.get(orderRef);
+    if (!orderSnap.exists()) throw codedError('NOT_FOUND', 'Order not found.');
+
+    const order = orderSnap.data();
+    if (order.status === 'returned')
+      throw codedError('ALREADY_RETURNED', 'This order was already returned.');
+    if (!canReturnStatus(order.status))
+      throw codedError('NOT_RETURNABLE', 'Only a shipped or delivered order can be returned.');
+
+    const plan = restock ? await readStockToRestore(transaction, order) : [];
+    writeStockBack(transaction, plan);
+
+    transaction.update(orderRef, {
+      status: 'returned',
+      statusHistory: arrayUnion({
+        status: 'returned',
+        timestamp: new Date().toISOString(),
+        updatedBy: 'partner',
+        restocked: Boolean(restock),
       }),
       updatedAt: serverTimestamp(),
     });

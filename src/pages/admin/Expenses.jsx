@@ -9,6 +9,8 @@ import {
 } from '../../firebase/expenses.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import { useAudit } from '../../hooks/useAudit';
+import { downloadFile } from '../../utils/csv';
+import { expensesToCsv } from '../../utils/exports';
 import { formatPrice } from '../../utils/format';
 
 // Categories offered for NEW expenses. Older records may use others
@@ -191,9 +193,24 @@ export default function Expenses() {
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : (
         <>
-          <div className="mb-4 flex justify-between text-lg font-medium">
+          <div className="mb-4 flex items-center justify-between text-lg font-medium">
             <span>{t('admin.totalExpenses')}</span>
-            <span>{formatPrice(total, language)}</span>
+            <span className="flex items-center gap-4">
+              {expenses.length > 0 && (
+                <button
+                  onClick={() =>
+                    downloadFile(
+                      `expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+                      expensesToCsv(expenses, { t })
+                    )
+                  }
+                  className="rounded border border-ink/15 px-3 py-1.5 text-sm font-normal text-ink-soft hover:border-brass hover:text-brass"
+                >
+                  {t('exports.button')}
+                </button>
+              )}
+              {formatPrice(total, language)}
+            </span>
           </div>
           {expenses.length === 0 ? (
             <p className="text-ink-soft">{t('expenses.none')}</p>

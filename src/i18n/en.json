@@ -87,7 +87,8 @@
       "shipped": "Shipped",
       "delivered": "Delivered",
       "cancelled": "Cancelled",
-      "confirmed": "Confirmed"
+      "confirmed": "Confirmed",
+      "returned": "Returned"
     },
     "settings": "Settings",
     "backToDashboard": "← Dashboard"
@@ -229,11 +230,19 @@
     "err": {
       "NOT_FOUND": "Order not found.",
       "ALREADY_CANCELLED": "This order is already cancelled.",
-      "ALREADY_DELIVERED": "This order was already delivered and cannot be cancelled."
+      "ALREADY_DELIVERED": "This order was already delivered and cannot be cancelled.",
+      "ALREADY_RETURNED": "This order was already returned.",
+      "NOT_RETURNABLE": "Only a shipped or delivered order can be returned."
     },
     "yes": "Yes",
     "whatsapp": "WhatsApp",
-    "call": "Call"
+    "call": "Call",
+    "returnBtn": "Mark as returned",
+    "returnHelp": "Use this when the customer refused the parcel, delivery failed, or it was sent back. Choose what happens to the items.",
+    "returnRestock": "Returned: put items back in stock",
+    "returnNoRestock": "Returned: don't restock (damaged or lost)",
+    "returnKeep": "Keep as is",
+    "returnFailed": "Could not mark this order as returned."
   },
   "expenses": {
     "category": "Category",
@@ -347,7 +356,15 @@
     "alertNotConfigured": "Alerts aren't switched on for this site yet (the bot key is missing).",
     "phoneCode": "Phone country code (for WhatsApp links)",
     "phoneCodeHint": "Egypt is 20. Local numbers like 010... get this code added in front.",
-    "autoplay": "Change pictures automatically (visitors can always use the arrows or swipe)"
+    "autoplay": "Change pictures automatically (visitors can always use the arrows or swipe)",
+    "backupTitle": "Backup",
+    "backupHelp": "Download all your shop data (products, orders, expenses, promo codes, settings) as one file. The free Firebase plan has no automatic backup, so do this every week and keep the file somewhere safe (for example Google Drive). It includes your private cost prices, so don't share it.",
+    "backupBtn": "Download a backup",
+    "backupWorking": "Preparing...",
+    "backupLast": "Last backup: {{date}}",
+    "backupNever": "No backup downloaded yet.",
+    "backupDone": "Backup downloaded. Keep the file somewhere safe.",
+    "backupFailed": "Could not create the backup. Please try again."
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -542,7 +559,8 @@
       "team.role": "changed the role of",
       "team.activate": "switched on the account of",
       "team.deactivate": "switched off the account of",
-      "team.resetLink": "created a password link for"
+      "team.resetLink": "created a password link for",
+      "order.return": "marked as returned order"
     },
     "field": {
       "name": "Name",
@@ -567,7 +585,61 @@
       "checkoutForm": "Checkout form",
       "customFields": "Extra checkout fields",
       "shipping": "Shipping zones",
-      "phoneCode": "Phone country code"
+      "phoneCode": "Phone country code",
+      "restock": "Items back in stock"
     }
+  },
+  "stats": {
+    "operations": "Orders now",
+    "pending": "Pending",
+    "inProgress": "In progress",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "returned": "Returned",
+    "money": "Sales and profit",
+    "sales": "Sales (delivered)",
+    "ordersPlaced": "Orders placed",
+    "expenses": "Expenses",
+    "inventory": "Inventory",
+    "units": "Units in stock",
+    "stockValue": "Stock value (at cost)",
+    "lowStock": "Low or out of stock",
+    "valueNote": "* Some products with stock have no cost price yet, so the value is incomplete.",
+    "recent": "Recent orders",
+    "viewAll": "View all orders",
+    "noOrders": "No orders yet.",
+    "backupNever": "You haven't downloaded a backup yet. Please download one now, then every week.",
+    "backupDue": "It's been {{days}} days since your last backup.",
+    "backupGo": "Download a backup"
+  },
+  "exports": {
+    "button": "Export to Excel",
+    "orderNo": "Order",
+    "date": "Date",
+    "status": "Status",
+    "type": "Type",
+    "customer": "Customer",
+    "phone": "Phone",
+    "city": "City",
+    "address": "Address",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "promo": "Promo code",
+    "zone": "Delivery area",
+    "shipping": "Shipping",
+    "total": "Total to collect",
+    "extra": "Extra answers",
+    "notes": "Notes",
+    "sku": "SKU",
+    "name": "Name",
+    "price": "Price",
+    "cost": "Cost",
+    "stock": "Stock",
+    "preorder": "Preorder",
+    "active": "Active",
+    "category": "Category",
+    "description": "Description",
+    "amount": "Amount"
   }
 }

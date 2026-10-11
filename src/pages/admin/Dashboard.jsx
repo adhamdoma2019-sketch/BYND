@@ -1,14 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
-import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
-import { listProducts } from '../../firebase/products.service';
-import { listOrders } from '../../firebase/orders.service';
 import LanguageSwitch from '../../components/shared/LanguageSwitch';
-import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { can } from '../../utils/roles';
+import DashboardStats from '../../components/admin/DashboardStats';
 
 
 export default function Dashboard() {
@@ -17,28 +14,6 @@ export default function Dashboard() {
   const { logout } = useAuth();
   const { tenant, role, loading } = useTenant();
   const storefrontUrl = tenant ? '/store/' + tenant.slug : '';
-
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-
-  useEffect(() => {
-    async function checkStock() {
-      if (!tenant) return;
-      const products = await listProducts(tenant.id);
-      setLowStockCount(
-        // Preorder products are meant to have no stock, so they don't count.
-        products.filter((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD)
-          .length
-      );
-    }
-    async function checkOrders() {
-      if (!tenant) return;
-      const orders = await listOrders(tenant.id);
-      setPendingCount(orders.filter((o) => o.status === 'pending').length);
-    }
-    checkStock();
-    checkOrders();
-  }, [tenant]);
 
   return (
     <div className="min-h-screen">
@@ -78,23 +53,7 @@ export default function Dashboard() {
               />
             </p>
 
-            {pendingCount > 0 && (
-              <Link
-                to="/admin/orders"
-                className="mt-4 block max-w-3xl rounded border border-sage/40 bg-sage/10 px-4 py-3 text-sm text-sage-dark transition hover:border-sage"
-              >
-                {t('dash.pending', { n: pendingCount })}
-              </Link>
-            )}
-
-            {lowStockCount > 0 && can(role, 'products') && (
-              <Link
-                to="/admin/products"
-                className="mt-4 block max-w-3xl rounded border border-brass/30 bg-brass/10 px-4 py-3 text-sm text-brass-dark transition hover:border-brass"
-              >
-                {t('dash.lowStock', { n: lowStockCount })}
-              </Link>
-            )}
+            <DashboardStats />
 
             <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
