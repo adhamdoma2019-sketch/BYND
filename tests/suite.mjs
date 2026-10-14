@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 // ---------- fake Firestore ----------
 function makeDb(initial) {
   const store = new Map(Object.entries(initial)); let auto = 0;
-  const ref = (col, id) => ({ col, id, path: `${col}/${id}` });
+  const ref = (col, id) => ({ col, id, path: `${col}/${id}`, collection: (sub) => ({ doc: (sid) => ref(`${col}/${id}/${sub}`, sid ?? `auto${++auto}`) }) });
   const snap = (r) => ({ exists: store.has(r.path), data: () => structuredClone(store.get(r.path)) });
   return { store,
     collection: (c) => ({ doc: (id) => ref(c, id ?? `auto${++auto}`) }),

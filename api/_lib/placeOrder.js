@@ -224,6 +224,23 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         stock: info.stock - info.totalQty,
         updatedAt: FieldValue.serverTimestamp(),
       });
+      // ...and a line in the stock history (same shape the admin writes).
+      tx.set(db.collection('tenants').doc(tenantId).collection('stockMovements').doc(), {
+        tenantId,
+        productId: id,
+        productName: info.product.name || {},
+        type: 'sale',
+        delta: -info.totalQty,
+        stockAfter: info.stock - info.totalQty,
+        unitCost: null,
+        totalCost: null,
+        note: '',
+        orderId: orderRef.id,
+        orderLabel: orderNumberLabel,
+        actorUid: 'customer',
+        actorName: '',
+        at: FieldValue.serverTimestamp(),
+      });
     }
 
     if (totals.promo) {

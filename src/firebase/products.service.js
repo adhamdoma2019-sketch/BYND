@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import { formToOptions, formToOptionCosts } from '../utils/productOptionsForm';
+import { buildMovement } from '../utils/stock';
 
 const PRODUCTS = 'products';
 
@@ -109,19 +110,35 @@ export async function listProductCostDetails(tenantId) {
   return details;
 }
 
-export async function createProduct(tenantId, data) {
+export async function createProduct(tenantId, data, actor) {
   const productRef = doc(collection(db, PRODUCTS));
   const costRef = doc(db, 'productCosts', productRef.id);
-  const batch = writeBatch(db); // both saved together, or neither
+  const batch = writeBatch(db); // all saved together, or none
+  const fields = productFields(data);
   batch.set(productRef, {
     tenantId,
-    ...productFields(data),
+    ...fields,
     isActive: true,
     deleted: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
   batch.set(costRef, costFields(tenantId, data));
+  // The starting stock is the first line of the stock history.
+  if (!fields.isPreorder && fields.stock > 0) {
+    batch.set(doc(collection(db, 'tenants', tenantId, 'stockMovements')), {
+      ...buildMovement({
+        tenantId,
+        productId: productRef.id,
+        productName: fields.name,
+        type: 'initial',
+        delta: fields.stock,
+        stockAfter: fields.stock,
+        actor,
+      }),
+      at: serverTimestamp(),
+    });
+  }
   await batch.commit();
   return productRef.id;
 }
@@ -130,8 +147,11 @@ export async function updateProduct(tenantId, productId, data) {
   const productRef = doc(db, PRODUCTS, productId);
   const costRef = doc(db, 'productCosts', productId);
   const batch = writeBatch(db);
+  // Stock is NOT written here: it only changes through "Add stock", "Adjust" and orders
+  // (editing it here could overwrite sales that arrived in the meantime).
+  const { stock: _ignored, ...fields } = productFields(data);
   batch.update(productRef, {
-    ...productFields(data),
+    ...fields,
     isActive: data.isActive,
     updatedAt: serverTimestamp(),
   });

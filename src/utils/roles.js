@@ -15,6 +15,7 @@ export const ACCESS = {
   pnl: ['owner', 'manager'],
   promos: ['owner', 'manager'],
   activity: ['owner', 'manager'],
+  stock: ['owner', 'manager'],
   settings: ['owner'],
   team: ['owner'],
 };

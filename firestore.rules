@@ -56,6 +56,18 @@ service cloud.firestore {
 
       allow delete: if false;
 
+      // ----- Stock history: every change of a product's stock -----
+      // Written by the admin screens (restock, adjust, cancel/return) and by the
+      // server for sales. Lines can never be edited or deleted.
+      match /stockMovements/{moveId} {
+        allow read: if canManage(tenantId);
+        allow create: if canManage(tenantId)
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.at == request.time;
+        allow update, delete: if false;
+      }
+
       // ----- Activity log: who changed what, and when -----
       // Written by the team's screens (and by the server for team changes).
       // Entries can never be edited or deleted.

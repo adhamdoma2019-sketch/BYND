@@ -8,7 +8,7 @@ import { buildOrderMessage } from '../api/_lib/telegram.js';
 
 function makeDb(initial) {
   const store = new Map(Object.entries(initial)); let auto = 0;
-  const ref = (col, id) => ({ col, id, path: `${col}/${id}` });
+  const ref = (col, id) => ({ col, id, path: `${col}/${id}`, collection: (sub) => ({ doc: (sid) => ref(`${col}/${id}/${sub}`, sid ?? `auto${++auto}`) }) });
   const snap = (r) => ({ exists: store.has(r.path), data: () => structuredClone(store.get(r.path)) });
   return { store, collection: (c) => ({ doc: (id) => ref(c, id ?? `auto${++auto}`) }), getAll: async (...r) => r.map(snap),
     async runTransaction(fn) { const w = []; const tx = { getAll: async (...r) => r.map(snap), update: (r, d) => w.push(['u', r, d]), set: (r, d, o) => w.push(['s', r, d, o]) };

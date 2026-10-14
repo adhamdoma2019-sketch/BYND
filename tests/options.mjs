@@ -8,7 +8,7 @@ import { buildOrderMessage } from '../api/_lib/telegram.js';
 
 function makeDb(initial) {
   const store = new Map(Object.entries(initial)); let auto = 0;
-  const ref = (col, id) => ({ col, id, path: `${col}/${id}` });
+  const ref = (col, id) => ({ col, id, path: `${col}/${id}`, collection: (sub) => ({ doc: (sid) => ref(`${col}/${id}/${sub}`, sid ?? `auto${++auto}`) }) });
   const snap = (r) => ({ exists: store.has(r.path), data: () => structuredClone(store.get(r.path)) });
   return { store, collection: (c) => ({ doc: (id) => ref(c, id ?? `auto${++auto}`) }), getAll: async (...r) => r.map(snap),
     async runTransaction(fn) { const w = []; const tx = { getAll: async (...r) => r.map(snap), update: (r, d) => w.push(['u', r, d]), set: (r, d, o) => w.push(['s', r, d, o]) };
@@ -71,7 +71,10 @@ await rejects(placeOrder(db, mk([
   { productId: 'board', quantity: 1, selections: { col: 'black', act: 'run' } },
   { productId: 'board', quantity: 1, selections: { col: 'gold', act: 'run' } } ])), 'OUT_OF_STOCK');
 assert.equal(db.store.get('products/board').stock, 1);
-ok('two lines of the same product with different colors: stock reduced by 4 in total; oversell blocked');
+const sales = [...db.store].filter(([k]) => k.startsWith('tenants/bynd/stockMovements/')).map(([, v]) => v);
+assert.equal(sales.length, 1); assert.deepEqual([sales[0].type, sales[0].delta, sales[0].stockAfter, sales[0].productId, sales[0].actorUid], ['sale', -4, 1, 'board', 'customer']);
+assert.equal(sales[0].orderLabel, db.store.get(`orders/${r.orderId}`).orderNumberLabel); assert.equal(sales[0].orderId, r.orderId);
+ok('two lines of the same product with different colors: stock reduced by 4 in total, ONE "sale" history line (-4, stock 1); oversell blocked');
 
 // 5. identical lines merge, different choices stay apart
 const merged = mk([{ productId: 'board', quantity: 1, selections: { col: 'black', act: 'run' } }, { productId: 'board', quantity: 2, selections: { act: 'run', col: 'black' } }, { productId: 'board', quantity: 1, selections: { col: 'gold', act: 'run' } }]);

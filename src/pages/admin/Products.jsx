@@ -9,6 +9,9 @@ import { downloadFile } from '../../utils/csv';
 import { productsToCsv } from '../../utils/exports';
 import { diffFields } from '../../utils/audit';
 import OptionsEditor from '../../components/admin/OptionsEditor';
+import StockPanel from '../../components/admin/StockPanel';
+import { useActor } from '../../hooks/useActor';
+import { Link } from 'react-router-dom';
 import { optionsToForm, optionsAreValid } from '../../utils/productOptionsForm';
 import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
@@ -46,6 +49,9 @@ export default function Products() {
   const { language } = useLanguage();
   const { tenant } = useTenant();
   const log = useAudit(); // records who changed what (Activity log)
+  const actor = useActor();
+  const [stockPanel, setStockPanel] = useState(null); // { id, mode: 'restock' | 'adjust' }
+  const [stockMessage, setStockMessage] = useState('');
 
   const [products, setProducts] = useState([]);
   const [costs, setCosts] = useState({}); // private cost prices by product id
@@ -132,7 +138,7 @@ export default function Products() {
       setError(t('options.errInvalid'));
       return;
     }
-    if (!form.isPreorder && (form.stock === '' || Number(form.stock) < 0)) {
+    if (editingId === 'new' && !form.isPreorder && (form.stock === '' || Number(form.stock) < 0)) {
       setError(t('products.badStock'));
       return;
     }
@@ -141,7 +147,7 @@ export default function Products() {
     setError('');
     try {
       if (editingId === 'new') {
-        const newId = await createProduct(tenant.id, form);
+        const newId = await createProduct(tenant.id, form, actor);
         log({
           action: 'product.create',
           entityType: 'product',
@@ -160,7 +166,6 @@ export default function Products() {
             name: original?.name?.en,
             price: original?.price,
             cost: costs[editingId] ?? '',
-            stock: original?.stock,
             active: original?.isActive,
             preorder: original?.isPreorder === true,
             sku: original?.sku || '',
@@ -171,7 +176,6 @@ export default function Products() {
             name: form.nameEn,
             price: Number(form.price),
             cost: form.costPrice === '' ? '' : Number(form.costPrice),
-            stock: form.stock === '' ? 0 : Number(form.stock),
             active: form.isActive,
             preorder: form.isPreorder,
             sku: form.sku || '',
@@ -218,6 +222,11 @@ export default function Products() {
   return (
     <div className="min-h-screen px-6 py-10">
       <AdminTopBar />
+      {stockMessage && (
+        <p className="mb-4 rounded border border-sage/40 bg-sage/10 px-3 py-2 text-sm text-sage-dark">
+          {stockMessage}
+        </p>
+      )}
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-display text-2xl font-semibold">
           {t('admin.products')}
@@ -338,16 +347,23 @@ export default function Products() {
             </span>
           </label>
 
+          {editingId === 'new' ? (
           <label className="text-sm text-ink-soft">
-            {t('products.stock')}
-            <input
-              type="number"
-              min="0"
-              value={form.stock}
-              onChange={(e) => setForm({ ...form, stock: e.target.value })}
-              className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
-            />
-          </label>
+              {t('products.startingStock')}
+              <input
+                type="number"
+                min="0"
+                value={form.stock}
+                onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+              />
+            </label>
+          ) : (
+            <div className="text-sm text-ink-soft">
+              {t('products.stockNow', { n: products.find((p) => p.id === editingId)?.stock ?? 0 })}
+              <span className="mt-1 block text-xs text-ink-faint">{t('products.stockHint')}</span>
+            </div>
+          )}
 
           <label className="text-sm text-ink-soft">
             {t('products.sku')}
@@ -615,6 +631,40 @@ export default function Products() {
                   {t('common.delete')}
                 </button>
               </div>
+              <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                <button
+                  onClick={() => setStockPanel({ id: p.id, mode: 'restock' })}
+                  className="text-brass hover:underline"
+                >
+                  {t('stock.addStock')}
+                </button>
+                <button
+                  onClick={() => setStockPanel({ id: p.id, mode: 'adjust' })}
+                  className="text-brass hover:underline"
+                >
+                  {t('stock.adjust')}
+                </button>
+                <Link to={`/admin/stock?product=${p.id}`} className="text-ink-soft hover:underline">
+                  {t('stock.history')}
+                </Link>
+              </div>
+              {stockPanel?.id === p.id && (
+                <StockPanel
+                  key={stockPanel.mode}
+                  product={p}
+                  cost={costs[p.id] ?? null}
+                  mode={stockPanel.mode}
+                  tenantId={tenant.id}
+                  actor={actor}
+                  log={log}
+                  onClose={() => setStockPanel(null)}
+                  onDone={async (message) => {
+                    setStockPanel(null);
+                    setStockMessage(message);
+                    await refresh();
+                  }}
+                />
+              )}
             </div>
           ))}
         </div>

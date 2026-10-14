@@ -160,7 +160,8 @@
     "promosDesc": "Create discount codes for your customers.",
     "pending": "{{n}} new order(s) waiting for you",
     "activityDesc": "See who changed what, and when.",
-    "teamDesc": "Give each person their own login and role."
+    "teamDesc": "Give each person their own login and role.",
+    "stockDesc": "See every change of stock."
   },
   "products": {
     "add": "+ Add product",
@@ -204,7 +205,10 @@
     "galleryN": "Picture {{n}}",
     "addPicture": "+ Add picture",
     "relatedTitle": "Linked products (extensions, accessories)",
-    "relatedHelp": "Shown on this product's page as \"Extensions and accessories\". Each one is still a normal product that can be bought on its own."
+    "relatedHelp": "Shown on this product's page as \"Extensions and accessories\". Each one is still a normal product that can be bought on its own.",
+    "startingStock": "Starting stock",
+    "stockNow": "Stock now: {{n}}",
+    "stockHint": "To change stock, use \"Add stock\" or \"Adjust\" on the product card. This keeps the stock history correct."
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -560,7 +564,9 @@
       "team.activate": "switched on the account of",
       "team.deactivate": "switched off the account of",
       "team.resetLink": "created a password link for",
-      "order.return": "marked as returned order"
+      "order.return": "marked as returned order",
+      "stock.restock": "added stock to",
+      "stock.adjust": "adjusted the stock of"
     },
     "field": {
       "name": "Name",
@@ -641,5 +647,63 @@
     "category": "Category",
     "description": "Description",
     "amount": "Amount"
+  },
+  "stock": {
+    "title": "Stock history",
+    "help": "Every change of stock: what happened, how many, who and when. Lines can't be edited or deleted.",
+    "addStock": "Add stock",
+    "adjust": "Adjust stock",
+    "history": "History",
+    "close": "Close",
+    "currentStock": "In stock now: {{n}}",
+    "quantity": "How many units are you adding?",
+    "totalCost": "Total cost of this batch (EGP, optional)",
+    "totalCostHint": "What the whole batch cost you: materials, printing, labour. Leave empty if you don't know.",
+    "note": "Note (batch, supplier...)",
+    "updateCost": "Update the product's cost price (average of old and new stock)",
+    "recordExpense": "Also record this amount as an expense",
+    "expenseCategory": "Expense category",
+    "modeCount": "Stocktake: set the real count",
+    "modeRemove": "Damaged or lost: remove units",
+    "countLabel": "Real number on the shelf now",
+    "removeLabel": "How many are damaged or lost?",
+    "reason": "Reason (optional)",
+    "previewStock": "New stock: {{n}}",
+    "previewUnit": "Cost per unit of this batch: {{unit}}",
+    "previewAvg": "New average cost price: {{cost}}",
+    "previewChange": "Change: {{delta}}",
+    "doneRestock": "Added {{q}} to {{name}}. Stock is now {{n}}.",
+    "doneAdjust": "Stock of {{name}} is now {{n}}.",
+    "allProducts": "All products",
+    "allTypes": "All kinds of change",
+    "none": "No stock changes yet.",
+    "loadFailed": "Could not load the stock history.",
+    "change": "Change",
+    "after": "Stock after",
+    "details": "Details",
+    "by": "By",
+    "customer": "Customer (order)",
+    "order": "Order",
+    "unitCost": "cost per unit",
+    "totalCostShort": "batch cost",
+    "stockAfter": "stock: {{n}}",
+    "type": {
+      "initial": "Starting stock",
+      "restock": "Restock",
+      "sale": "Sale",
+      "adjustment": "Stocktake",
+      "damaged": "Damaged or lost",
+      "return": "Customer return",
+      "cancel": "Order cancelled"
+    },
+    "err": {
+      "BAD_QUANTITY": "Enter a whole number of units (1 or more; a stocktake can be 0).",
+      "BAD_COST": "Enter a valid cost (0 or more).",
+      "NOT_FOUND": "Product not found.",
+      "NO_CHANGE": "That is already the current stock.",
+      "TOO_MANY": "You can't remove more than what is in stock.",
+      "BAD_MODE": "Choose what you want to do.",
+      "SERVER": "Could not save. Please try again."
+    }
   }
 }

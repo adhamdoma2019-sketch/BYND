@@ -62,6 +62,7 @@ export default function Dashboard() {
                 ['expenses', '/admin/expenses', t('admin.expenses'), t('dash.expensesDesc')],
                 ['pnl', '/admin/pnl', t('pnl.title'), t('dash.pnlDesc')],
                 ['promos', '/admin/promos', t('promos.title'), t('dash.promosDesc')],
+                ['stock', '/admin/stock', t('stock.title'), t('dash.stockDesc')],
                 ['activity', '/admin/activity', t('audit.title'), t('dash.activityDesc')],
                 ['team', '/admin/team', t('team.title'), t('dash.teamDesc')],
                 ['settings', '/admin/settings', t('admin.settings'), t('dash.settingsDesc')],

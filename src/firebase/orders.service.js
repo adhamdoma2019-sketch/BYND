@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import { stockToRestore, canReturnStatus } from '../utils/orderRules';
+import { buildMovement } from '../utils/stock';
 
 // The browser never calculates prices, discounts or shipping itself. It asks the
 // secure server functions (api/quote.js, api/create-order.js), which look up
@@ -106,18 +107,43 @@ async function readStockToRestore(transaction, order) {
   const restore = stockToRestore(order);
   const refs = restore.map((r) => doc(db, 'products', r.productId));
   const snaps = await Promise.all(refs.map((ref) => transaction.get(ref)));
-  return restore.map((r, i) => ({ ref: refs[i], snap: snaps[i], quantity: r.quantity }));
+  return restore.map((r, i) => ({
+    productId: r.productId,
+    ref: refs[i],
+    snap: snaps[i],
+    quantity: r.quantity,
+    name: (order.items || []).find((it) => it.productId === r.productId)?.name,
+  }));
 }
 
-function writeStockBack(transaction, plan) {
-  plan.forEach(({ ref, snap, quantity }) => {
+// ctx = { type: 'cancel' | 'return', tenantId, orderId, orderLabel, actor }
+// Besides the stock itself, a line is added to the stock history.
+function writeStockBack(transaction, plan, ctx) {
+  plan.forEach(({ productId, ref, snap, quantity, name }) => {
     if (!snap.exists()) return;
-    transaction.update(ref, { stock: (Number(snap.data().stock) || 0) + quantity });
+    const stockAfter = (Number(snap.data().stock) || 0) + quantity;
+    transaction.update(ref, { stock: stockAfter });
+    transaction.set(doc(collection(db, 'tenants', ctx.tenantId, 'stockMovements')), {
+      ...buildMovement({
+        tenantId: ctx.tenantId,
+        productId,
+        productName: name,
+        type: ctx.type,
+        delta: quantity,
+        stockAfter,
+        orderId: ctx.orderId,
+        orderLabel: ctx.orderLabel,
+        actor: ctx.actor,
+      }),
+      at: serverTimestamp(),
+    });
   });
 }
 
+const labelOf = (order) => order.orderNumberLabel || `#${order.orderNumber}`;
+
 // Cancel an order that has not been delivered yet. Its items go back in stock.
-export async function cancelOrder(orderId) {
+export async function cancelOrder(orderId, actor) {
   const orderRef = doc(db, 'orders', orderId);
 
   await runTransaction(db, async (transaction) => {
@@ -137,7 +163,13 @@ export async function cancelOrder(orderId) {
     }
 
     const plan = await readStockToRestore(transaction, order);
-    writeStockBack(transaction, plan);
+    writeStockBack(transaction, plan, {
+      type: 'cancel',
+      tenantId: order.tenantId,
+      orderId,
+      orderLabel: labelOf(order),
+      actor,
+    });
 
     transaction.update(orderRef, {
       status: 'cancelled',
@@ -153,7 +185,7 @@ export async function cancelOrder(orderId) {
 
 // The parcel came back (refused, failed delivery, or sent back after delivery).
 // `restock` = put the items back in stock (false if they are damaged or lost).
-export async function returnOrder(orderId, { restock }) {
+export async function returnOrder(orderId, { restock, actor }) {
   const orderRef = doc(db, 'orders', orderId);
 
   await runTransaction(db, async (transaction) => {
@@ -167,7 +199,13 @@ export async function returnOrder(orderId, { restock }) {
       throw codedError('NOT_RETURNABLE', 'Only a shipped or delivered order can be returned.');
 
     const plan = restock ? await readStockToRestore(transaction, order) : [];
-    writeStockBack(transaction, plan);
+    writeStockBack(transaction, plan, {
+      type: 'return',
+      tenantId: order.tenantId,
+      orderId,
+      orderLabel: labelOf(order),
+      actor,
+    });
 
     transaction.update(orderRef, {
       status: 'returned',
