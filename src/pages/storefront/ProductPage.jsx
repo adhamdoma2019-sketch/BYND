@@ -99,7 +99,7 @@ export default function ProductPage() {
         <h1 className="font-display text-2xl font-semibold">
           {t('storefront.productNotFound')}
         </h1>
-        <Link to={`/store/${slug}`} className="mt-4 text-brass hover:underline">
+        <Link to={`/store/${slug}`} className="mt-4 text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
       </div>
@@ -144,7 +144,7 @@ export default function ProductPage() {
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
         <Link
           to={`/store/${slug}`}
-          className="text-sm text-brass hover:underline"
+          className="text-sm text-brass-dark hover:underline"
         >
           {t('storefront.backToShop')}
         </Link>
@@ -294,7 +294,7 @@ export default function ProductPage() {
             <button
               onClick={handleAdd}
               disabled={soldOut}
-              className="mt-6 w-full rounded bg-ink py-3 text-paper transition hover:bg-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
+              className="mt-6 w-full rounded bg-ink py-3 text-paper transition hover:bg-brass hover:text-on-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
             >
               {soldOut
                 ? t('storefront.outOfStock')

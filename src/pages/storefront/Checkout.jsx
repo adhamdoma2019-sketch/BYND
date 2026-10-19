@@ -159,7 +159,7 @@ export default function Checkout() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
         <p className="text-ink-soft">{t('storefront.emptyCart')}</p>
-        <Link to={`/store/${slug}`} className="mt-4 text-brass hover:underline">
+        <Link to={`/store/${slug}`} className="mt-4 text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
       </div>
@@ -172,7 +172,7 @@ export default function Checkout() {
 
   return (
     <div className="mx-auto min-h-screen max-w-lg px-4 py-12">
-      <Link to={`/store/${slug}`} className="text-sm text-brass hover:underline">
+      <Link to={`/store/${slug}`} className="text-sm text-brass-dark hover:underline">
         {t('storefront.backToShop')}
       </Link>
       <h1 className="font-display mt-4 text-2xl font-semibold">{t('checkout.title')}</h1>
@@ -428,7 +428,7 @@ export default function Checkout() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded bg-ink py-3 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass disabled:opacity-60"
+          className="w-full rounded bg-ink py-3 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass hover:text-on-brass disabled:opacity-60"
         >
           {submitting ? t('checkout.placingOrder') : t('checkout.placeOrder')}
         </button>

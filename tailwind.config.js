@@ -26,6 +26,8 @@ export default {
           dark: themeColor('brass-dark'),
           light: themeColor('brass-light'),
         },
+        // text placed ON the accent colour (white or black, whichever reads better)
+        'on-brass': themeColor('on-brass'),
         sage: {
           DEFAULT: themeColor('sage'),
           dark: themeColor('sage-dark'),
@@ -35,6 +37,12 @@ export default {
         },
         // Card / input surface (white in the admin, dark grey in the storefront).
         white: themeColor('white'),
+      },
+      // Corner style comes from variables (the shop picks sharp / soft / round).
+      borderRadius: {
+        DEFAULT: 'var(--radius-sm, 0.25rem)',
+        md: 'var(--radius-md, 0.375rem)',
+        lg: 'var(--radius-lg, 0.5rem)',
       },
       fontFamily: {
         // English uses a serif display / sans body split.

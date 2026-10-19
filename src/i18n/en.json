@@ -277,7 +277,7 @@
     "copper": "Copper",
     "lime": "Lime",
     "ice": "Ice blue",
-    "white": "White (monochrome)",
+    "white": "Monochrome",
     "logoTitle": "Logo (optional)",
     "logoHelp": "Paste a link to your logo image (a transparent PNG or SVG works best). Until you add one, the shop name is shown as text.",
     "logoLink": "Logo image link",
@@ -368,7 +368,18 @@
     "backupLast": "Last backup: {{date}}",
     "backupNever": "No backup downloaded yet.",
     "backupDone": "Backup downloaded. Keep the file somewhere safe.",
-    "backupFailed": "Could not create the backup. Please try again."
+    "backupFailed": "Could not create the backup. Please try again.",
+    "tab_appearance": "Look",
+    "tab_banner": "Home banner",
+    "tab_checkout": "Checkout form",
+    "tab_shipping": "Shipping",
+    "tab_contact": "Contact",
+    "tab_alerts": "Alerts",
+    "tab_backup": "Backup",
+    "rose": "Rose",
+    "violet": "Violet",
+    "emerald": "Emerald",
+    "gold": "Gold"
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -592,7 +603,10 @@
       "customFields": "Extra checkout fields",
       "shipping": "Shipping zones",
       "phoneCode": "Phone country code",
-      "restock": "Items back in stock"
+      "restock": "Items back in stock",
+      "appearance": "Look (mode, font, corners)",
+      "announcement": "Top bar message",
+      "contact": "Contact details"
     }
   },
   "stats": {
@@ -705,5 +719,62 @@
       "BAD_MODE": "Choose what you want to do.",
       "SERVER": "Could not save. Please try again."
     }
+  },
+  "appearance": {
+    "modeTitle": "Light or dark",
+    "modeHelp": "Choose how the shop looks by default. Visitors can always switch with the sun / moon button, and their choice is remembered on their phone.",
+    "mode_auto": "Automatic",
+    "mode_auto_help": "Follows each visitor's phone",
+    "mode_light": "Light",
+    "mode_light_help": "Light unless the visitor switches",
+    "mode_dark": "Dark",
+    "mode_dark_help": "Dark unless the visitor switches",
+    "accentHelp": "Used for buttons, highlights and links. Pick a ready color or any color you like. The text on it is adjusted automatically, so it stays easy to read in light and dark.",
+    "customColor": "Any color",
+    "hexCode": "Color code",
+    "preview_dark": "On a dark page",
+    "preview_light": "On a light page",
+    "previewButton": "Shop now",
+    "previewLink": "A link",
+    "readableNote": "Text on the color, and links, are adjusted automatically to stay readable.",
+    "faintLight": "This color is very close to a light page, so buttons may be hard to see in light mode. Try a stronger color.",
+    "faintDark": "This color is very close to a dark page, so buttons may be hard to see in dark mode. Try a brighter color.",
+    "faintBoth": "This color is very close to both light and dark pages, so buttons may be hard to see. Try a stronger color.",
+    "fontTitle": "Heading font",
+    "fontHelp": "The font of titles and big headlines. Only the font you choose is downloaded by visitors.",
+    "font_modern": "Modern and sporty",
+    "font_elegant": "Elegant, fashion-like",
+    "font_sport": "Bold and condensed",
+    "font_clean": "Clean and simple",
+    "font_classic": "Classic serif",
+    "radiusTitle": "Corners",
+    "radius_sharp": "Sharp",
+    "radius_soft": "Soft",
+    "radius_round": "Round",
+    "barTitle": "Top bar message",
+    "barHelp": "A thin colored bar at the very top of your shop. Good for an offer or delivery news.",
+    "barShow": "Show the top bar",
+    "barTextEn": "Message (English)",
+    "barTextAr": "Message (Arabic)",
+    "barLink": "Link (optional)",
+    "barLinkHint": "A full https:// address, or #products to scroll down to the products."
+  },
+  "theme": {
+    "toLight": "Switch to light mode",
+    "toDark": "Switch to dark mode"
+  },
+  "contact": {
+    "title": "Contact and social",
+    "help": "Shown in the footer of your shop. Only what you fill in is shown.",
+    "whatsappNumber": "WhatsApp number",
+    "phone": "Phone",
+    "email": "Email",
+    "addressEn": "Address (English)",
+    "addressAr": "Address (Arabic)",
+    "floating": "Show a round WhatsApp button on every page of the shop",
+    "floatingHint": "Customers can message you in one tap. It uses the WhatsApp number above.",
+    "whatsapp": "WhatsApp",
+    "whatsappHello": "Hello {{shop}}, I have a question.",
+    "whatsappLabel": "Chat on WhatsApp"
   }
 }

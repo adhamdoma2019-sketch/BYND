@@ -60,6 +60,9 @@ export default function OptionPicker({
               onChange={(e) => onTextChange(e.target.value)}
               className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
             />
+            <span className="mt-1 block text-end text-xs text-ink-faint" dir="ltr">
+              {textValue.length}/{Number(option.textMax) > 0 ? Number(option.textMax) : 60}
+            </span>
           </label>
         )}
       </div>
@@ -81,6 +84,9 @@ export default function OptionPicker({
           onChange={(e) => onChange(e.target.value)}
           className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
         />
+        <span className="mt-1 block text-end text-xs text-ink-faint" dir="ltr">
+          {(value || '').length}/{Number(option.maxLength) > 0 ? Number(option.maxLength) : 60}
+        </span>
       </label>
     );
   }

@@ -39,7 +39,7 @@ export default function ProductCard({ product, onAddToCart }) {
       </Link>
 
       <h3 className="font-display px-1 text-lg font-semibold">
-        <Link to={productUrl} className="hover:text-brass">
+        <Link to={productUrl} className="hover:text-brass-dark">
           {name}
         </Link>
       </h3>
@@ -49,7 +49,7 @@ export default function ProductCard({ product, onAddToCart }) {
         // Products with options (color, extension...) are configured on their own page.
         onClick={() => (hasOptions(product) ? navigate(productUrl) : onAddToCart(product))}
         disabled={outOfStock}
-        className="mt-3 rounded bg-ink py-2.5 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
+        className="mt-3 rounded bg-ink py-2.5 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass hover:text-on-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
       >
         {outOfStock
           ? t('storefront.outOfStock')

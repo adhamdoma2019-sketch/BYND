@@ -6,6 +6,10 @@ import { listProducts } from '../../firebase/products.service';
 import { updateTenantSettings } from '../../firebase/tenants.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import ImageField from '../../components/admin/ImageField';
+import AppearanceFields from '../../components/admin/AppearanceFields';
+import ContactFields from '../../components/admin/ContactFields';
+import { DEFAULT_ACCENT, DEFAULT_FONT, DEFAULT_RADIUS } from '../../utils/theme';
+import { safeBarLink } from '../../utils/contact';
 import { useAudit } from '../../hooks/useAudit';
 import { fieldsOnly, stable } from '../../utils/audit';
 import { getTenantPrivate, saveTenantPrivate } from '../../firebase/private.service';
@@ -26,15 +30,6 @@ import {
   parseOptions,
   optionsToText,
 } from '../../utils/checkoutFields';
-
-// The colour choices. To add a new one: add it here, in the texts
-// (settingsPage.<id>) AND in src/index.css.
-const ACCENTS = [
-  { id: 'copper', color: '#D98B4A' },
-  { id: 'lime', color: '#C8F03C' },
-  { id: 'ice', color: '#6CB8F5' },
-  { id: 'white', color: '#FFFFFF' },
-];
 
 const MAX_SLIDES = 5;
 
@@ -149,7 +144,29 @@ export default function Settings() {
   const { tenant, reloadTenant } = useTenant();
   const log = useAudit(); // records who changed what (Activity log)
 
-  const [accent, setAccent] = useState('copper');
+  const [tab, setTab] = useState('appearance');
+  const [accent, setAccent] = useState(DEFAULT_ACCENT);
+  const [appearance, setAppearance] = useState({
+    mode: 'auto',
+    font: DEFAULT_FONT,
+    radius: DEFAULT_RADIUS,
+    annEnabled: false,
+    annTextEn: '',
+    annTextAr: '',
+    annLink: '',
+  });
+  const [contact, setContact] = useState({
+    whatsapp: '',
+    phone: '',
+    email: '',
+    instagram: '',
+    facebook: '',
+    tiktok: '',
+    addressEn: '',
+    addressAr: '',
+    floatingWhatsapp: false,
+  });
+  const tabClass = (name) => (tab === name ? '' : 'hidden');
   const [logoUrl, setLogoUrl] = useState('');
   const [slides, setSlides] = useState([]);
   const [seconds, setSeconds] = useState(HERO_DEFAULT_SECONDS);
@@ -174,7 +191,29 @@ export default function Settings() {
 
   useEffect(() => {
     if (!tenant) return;
-    setAccent(tenant.theme?.accent || 'copper');
+    setAccent(tenant.theme?.accent || DEFAULT_ACCENT);
+    const a = tenant.appearance || {};
+    setAppearance({
+      mode: a.mode || 'auto',
+      font: a.font || DEFAULT_FONT,
+      radius: a.radius || DEFAULT_RADIUS,
+      annEnabled: a.announcement?.enabled === true,
+      annTextEn: a.announcement?.text?.en || '',
+      annTextAr: a.announcement?.text?.ar || '',
+      annLink: a.announcement?.link || '',
+    });
+    const c = tenant.contact || {};
+    setContact({
+      whatsapp: c.whatsapp || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      instagram: c.instagram || '',
+      facebook: c.facebook || '',
+      tiktok: c.tiktok || '',
+      addressEn: c.address?.en || '',
+      addressAr: c.address?.ar || '',
+      floatingWhatsapp: c.floatingWhatsapp === true,
+    });
     setLogoUrl(tenant.brand?.logoUrl || '');
     setSlides((tenant.hero?.slides || []).map(slideToForm));
     setSeconds(tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS);
@@ -331,6 +370,29 @@ export default function Settings() {
       await updateTenantSettings(tenant.id, {
         defaultCountryCode: String(countryCode).replace(/\D/g, '') || '20',
         theme: { accent },
+        appearance: {
+          mode: appearance.mode,
+          font: appearance.font,
+          radius: appearance.radius,
+          announcement: {
+            enabled: appearance.annEnabled,
+            text: {
+              en: appearance.annTextEn.trim(),
+              ar: appearance.annTextAr.trim() || appearance.annTextEn.trim(),
+            },
+            link: safeBarLink(appearance.annLink),
+          },
+        },
+        contact: {
+          whatsapp: contact.whatsapp.trim(),
+          phone: contact.phone.trim(),
+          email: contact.email.trim(),
+          instagram: contact.instagram.trim(),
+          facebook: contact.facebook.trim(),
+          tiktok: contact.tiktok.trim(),
+          address: { en: contact.addressEn.trim(), ar: contact.addressAr.trim() || contact.addressEn.trim() },
+          floatingWhatsapp: contact.floatingWhatsapp,
+        },
         brand: { logoUrl: logoUrl.trim() },
         hero: {
           slides: slides.map(formToSlide),
@@ -347,7 +409,25 @@ export default function Settings() {
       // Note which parts of the settings were changed (compared with what was saved before).
       const saved = stable;
       const changed = [];
-      if ((tenant.theme?.accent || 'copper') !== accent) changed.push('accent');
+      if ((tenant.theme?.accent || DEFAULT_ACCENT) !== accent) changed.push('accent');
+      const before = tenant.appearance || {};
+      if (
+        (before.mode || 'auto') !== appearance.mode ||
+        (before.font || DEFAULT_FONT) !== appearance.font ||
+        (before.radius || DEFAULT_RADIUS) !== appearance.radius
+      ) changed.push('appearance');
+      if (
+        (before.announcement?.enabled === true) !== appearance.annEnabled ||
+        (before.announcement?.text?.en || '') !== appearance.annTextEn.trim()
+      ) changed.push('announcement');
+      const cBefore = tenant.contact || {};
+      if (
+        ['whatsapp', 'phone', 'email', 'instagram', 'facebook', 'tiktok'].some(
+          (k) => (cBefore[k] || '') !== contact[k].trim()
+        ) ||
+        (cBefore.floatingWhatsapp === true) !== contact.floatingWhatsapp ||
+        (cBefore.address?.en || '') !== contact.addressEn.trim()
+      ) changed.push('contact');
       if ((tenant.brand?.logoUrl || '') !== logoUrl.trim()) changed.push('logo');
       if (saved(tenant.hero?.slides || []) !== saved(slides.map(formToSlide)) ||
           (tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS) !== safeSeconds ||
@@ -385,41 +465,35 @@ export default function Settings() {
       </h1>
 
       <form onSubmit={handleSave} className="max-w-3xl space-y-10">
-        {/* ---------- Colour ---------- */}
-        <section>
-          <h2 className="font-display text-lg font-medium">
-            {t('settingsPage.accentTitle')}
-          </h2>
-          <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.accentHelp')}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {ACCENTS.map((a) => (
-              <label
-                key={a.id}
-                className={
-                  'flex cursor-pointer items-center gap-3 rounded border px-4 py-3 text-sm ' +
-                  (accent === a.id ? 'border-ink bg-paper-soft' : 'border-ink/15')
-                }
-              >
-                <input
-                  type="radio"
-                  name="accent"
-                  value={a.id}
-                  checked={accent === a.id}
-                  onChange={() => setAccent(a.id)}
-                  className="sr-only"
-                />
-                <span
-                  className="h-6 w-6 rounded-full border border-ink/20"
-                  style={{ backgroundColor: a.color }}
-                />
-                {t(`settingsPage.${a.id}`)}
-              </label>
-            ))}
-          </div>
+        <div role="tablist" className="-mt-2 flex flex-wrap gap-2 border-b border-ink/10 pb-3">
+          {['appearance', 'banner', 'checkout', 'shipping', 'contact', 'alerts', 'backup'].map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={tab === name}
+              onClick={() => setTab(name)}
+              className={
+                'rounded px-3 py-1.5 text-sm transition ' +
+                (tab === name ? 'bg-ink text-paper' : 'text-ink-soft hover:bg-paper-soft')
+              }
+            >
+              {t(`settingsPage.tab_${name}`)}
+            </button>
+          ))}
+        </div>
+        {/* ---------- Look: light/dark, colour, fonts, corners, top bar ---------- */}
+        <section className={tabClass('appearance')}>
+          <AppearanceFields
+            accent={accent}
+            onAccent={setAccent}
+            value={appearance}
+            onChange={setAppearance}
+          />
         </section>
 
         {/* ---------- Logo ---------- */}
-        <section>
+        <section className={tabClass('appearance')}>
           <h2 className="font-display text-lg font-medium">
             {t('settingsPage.logoTitle')}
           </h2>
@@ -434,7 +508,7 @@ export default function Settings() {
         </section>
 
         {/* ---------- Banner slides ---------- */}
-        <section>
+        <section className={tabClass('banner')}>
           <h2 className="font-display text-lg font-medium">
             {t('settingsPage.bannerTitle')}
           </h2>
@@ -637,7 +711,7 @@ export default function Settings() {
         </section>
 
         {/* ---------- Checkout form ---------- */}
-        <section>
+        <section className={tabClass('checkout')}>
           <h2 className="font-display text-lg font-medium">
             {t('settingsPage.checkoutTitle')}
           </h2>
@@ -813,7 +887,7 @@ export default function Settings() {
         </section>
 
         {/* ---------- Shipping zones ---------- */}
-        <section>
+        <section className={tabClass('shipping')}>
           <h2 className="font-display text-lg font-medium">
             {t('settingsPage.shippingTitle')}
           </h2>
@@ -897,8 +971,13 @@ export default function Settings() {
           </button>
         </section>
 
+        {/* ---------- Contact ---------- */}
+        <section className={tabClass('contact')}>
+          <ContactFields value={contact} onChange={setContact} />
+        </section>
+
         {/* ---------- Order alerts + WhatsApp ---------- */}
-        <section>
+        <section className={tabClass('alerts')}>
           <h2 className="font-display text-lg font-medium">
             {t('settingsPage.alertsTitle')}
           </h2>
@@ -993,7 +1072,7 @@ export default function Settings() {
         </section>
 
         {/* ---------- Backup ---------- */}
-        <section>
+        <section className={tabClass('backup')}>
           <h2 className="font-display text-lg font-medium">{t('settingsPage.backupTitle')}</h2>
           <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.backupHelp')}</p>
           <button

@@ -137,14 +137,14 @@ export default function Hero({ slides, intervalMs = 6000, fadeMs = 1000, autopla
                   {slide.to.startsWith('#') ? (
                     <a
                       href={slide.to}
-                      className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-paper transition hover:opacity-90"
+                      className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-on-brass transition hover:opacity-90"
                     >
                       {slide.ctaLabel}
                     </a>
                   ) : (
                     <Link
                       to={slide.to}
-                      className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-paper transition hover:opacity-90"
+                      className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-on-brass transition hover:opacity-90"
                     >
                       {slide.ctaLabel}
                     </Link>

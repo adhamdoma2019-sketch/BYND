@@ -126,7 +126,7 @@ export default function StorefrontHome() {
             ['03', 'step3'],
           ].map(([num, key]) => (
             <div key={num}>
-              <span className="font-display text-sm font-semibold tracking-widest text-brass">
+              <span className="font-display text-sm font-semibold tracking-widest text-brass-dark">
                 {num}
               </span>
               <h3 className="font-display mt-2 text-xl font-semibold">

@@ -32,7 +32,7 @@ export default function OrderConfirmation() {
           {t('checkout.total')}: {formatPrice(state.totalAmount, language)}
         </p>
       )}
-      <Link to={`/store/${slug}`} className="mt-8 text-brass hover:underline">
+      <Link to={`/store/${slug}`} className="mt-8 text-brass-dark hover:underline">
         {t('storefront.backToShop')}
       </Link>
     </div>

@@ -115,7 +115,7 @@ export default function CartDrawer({ onClose }) {
               </div>
               <button
                 onClick={goToCheckout}
-                className="mt-4 w-full rounded bg-ink py-2.5 text-paper transition hover:bg-brass"
+                className="mt-4 w-full rounded bg-ink py-2.5 text-paper transition hover:bg-brass hover:text-on-brass"
               >
                 {t('storefront.checkout')}
               </button>
