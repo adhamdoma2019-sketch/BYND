@@ -9,6 +9,7 @@
 // (the protection "fails open"): a real customer is never turned away because of it.
 
 import crypto from 'node:crypto';
+import { toLatinDigits } from './contactChecks.js';
 
 export const hashKey = (value) =>
   crypto.createHash('sha256').update(`bynd-rate|${String(value)}`).digest('hex').slice(0, 32);
@@ -26,6 +27,8 @@ export const LIMITS = {
   // One person rarely needs more than a few orders a day.
   orderPhone: { limit: 5, windowMs: 24 * 60 * 60 * 1000 }, // 5 orders / day / phone number
   promoIp: { limit: 60, windowMs: 10 * 60 * 1000 }, // 60 promo-code checks / 10 min / address
+  trackIp: { limit: 15, windowMs: 60 * 60 * 1000 }, // 15 tracking attempts / hour / address
+  trackOrder: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 WRONG tries / hour / order number
 };
 
 // Is there still room? (Does not count.)  Fails open.
@@ -60,4 +63,7 @@ export async function countUse(db, key, { windowMs }, now = Date.now()) {
   }
 }
 
-export const phoneDigits = (phone) => String(phone || '').replace(/\D/g, '').slice(-12);
+// The LAST 10 digits identify a phone number however it was written
+// (01012345678, +20 10 1234 5678, ٠١٠١٢٣٤٥٦٧٨ all give 1012345678), so writing the
+// number differently cannot dodge the per-phone limit. Also used by order tracking.
+export const phoneDigits = (phone) => toLatinDigits(phone).replace(/\D/g, '').slice(-10);

@@ -74,7 +74,9 @@
     "free": "Free",
     "total": "Total",
     "choose": "Choose...",
-    "chooseArea": "Choose your delivery area"
+    "chooseArea": "Choose your delivery area",
+    "emailDidYouMean": "Did you mean {{email}}?",
+    "emailUseThis": "Use this"
   },
   "admin": {
     "login": "Partner login",
@@ -435,7 +437,8 @@
     "PROMO_LIMIT": "This promo code has reached its usage limit.",
     "PROMO_MIN_ORDER": "This code needs an order of at least {{min}}.",
     "BAD_OPTION": "Please check your choice for: {{field}}",
-    "RATE_LIMITED": "Too many attempts from this phone number or connection. Please try again later, or contact us directly."
+    "RATE_LIMITED": "Too many attempts from this phone number or connection. Please try again later, or contact us directly.",
+    "TRACK_NOT_FOUND": "We could not find an order with these details. Please check the order number and the phone number you used when ordering."
   },
   "checkoutFields": {
     "name": "Full name",
@@ -821,5 +824,38 @@
     "returns": "Returns & exchanges",
     "shipping": "Shipping policy",
     "terms": "Terms of service"
+  },
+  "track": {
+    "footerLink": "Track my order",
+    "linkAfterOrder": "Track this order",
+    "title": "Track my order",
+    "intro": "Enter your order number and the phone number you used when ordering to see where your order is.",
+    "orderNumber": "Order number",
+    "orderNumberExample": "BYND-1001",
+    "phone": "Phone number used on the order",
+    "privacyNote": "We ask for your phone number only to make sure the order is yours. You will see the status and dates only.",
+    "submit": "Track order",
+    "checking": "Checking…",
+    "fillBoth": "Please enter the order number and the phone number.",
+    "timeline": "Order history",
+    "preorderNote": "This is a pre-order or made-to-order item, so it can take longer to be ready.",
+    "status": {
+      "pending": "Order received",
+      "confirmed": "Order confirmed",
+      "processing": "Being prepared",
+      "shipped": "On the way",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "returned": "Returned"
+    },
+    "desc": {
+      "pending": "We received your order and will confirm it soon.",
+      "confirmed": "Your order is confirmed.",
+      "processing": "Your order is being prepared.",
+      "shipped": "Your order has been handed over for delivery.",
+      "delivered": "Your order was delivered. Thank you!",
+      "cancelled": "This order was cancelled. Please contact us if you have questions.",
+      "returned": "This order was returned. Please contact us if you have questions."
+    }
   }
 }

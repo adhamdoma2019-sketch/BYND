@@ -39,16 +39,17 @@ Vite + React 18 + Tailwind 3 + react-router 6 + i18next + Firebase JS SDK (brows
 api/                 Vercel serverless functions (each file = one URL)
   create-order.js    place an order (public)         quote.js   price preview (public)
   telegram.js        alert setup helper (owner only) team.js    team accounts (owner only)
-  _lib/              placeOrder, quote, pricing, options, fields, rateLimit, notify, telegram,
+  track.js           "Track my order" (public, read-only: status + dates only)
+  _lib/              placeOrder, quote, pricing, options, fields, contactChecks, track, rateLimit, notify, telegram,
                      team, audit, db, errors   (server logic; imported by the functions)
 src/
   components/admin|storefront|shared    UI pieces
   context/           Auth, Tenant (shop + role), Language, Cart, Storefront (shop + light/dark)
   firebase/          *.service.js: ALL database/API calls live here (orders, products, stock, promos, team, tenants, ...)
   pages/admin|storefront|Landing.jsx    screens; routes/AppRoutes.jsx (admin pages lazy-loaded) + ProtectedRoute (role areas)
-  utils/             pure logic, all unit-tested: theme, roles, stock, stats, profit, orderRules, productOptions, csv, exports, contact, storefront (logo choice, top-bar messages, highlights, text pages, product status), ...
+  utils/             pure logic, all unit-tested: contactChecks (mirror of api/_lib/contactChecks.js), theme, roles, stock, stats, profit, orderRules, productOptions, csv, exports, contact, storefront (logo choice, top-bar messages, highlights, text pages, product status), ...
   i18n/en.json, ar.json                 every text, must stay in parity
-tests/               13 test files, `npm test`; `npm run build` runs them first (a broken update fails the build, live site stays on the old version)
+tests/               15 test files, `npm test`; `npm run build` runs them first (a broken update fails the build, live site stays on the old version)
 firestore.rules      security rules (publish by hand in Firebase console)
 ```
 Rendering helpers in tests use a pretend Firestore (tests/transactions.mjs bundles the real services with esbuild).
@@ -83,6 +84,8 @@ Queries use only equality filters (+ `orderBy` only on single fields in sub-coll
 
 9. "Coming soon" products are refused by the server (placeOrder + quote), not only hidden in the screen. Shop text pages (privacy etc.) are shown as plain text, never as HTML.
 10. Nothing is invented for a shop: highlights, text pages and top-bar messages show only what the shop wrote (no fake ratings/reviews).
+11. Phone + email checks live in api/_lib/contactChecks.js (server = real gate) and src/utils/contactChecks.js (browser copy, a test fails if they differ). Egyptian shops (defaultCountryCode 20): mobile only (010/011/012/015), any spelling incl. +20 / 0020 / Arabic digits, SAVED as 01XXXXXXXXX; other countries: simple 7-30 chars check, saved as typed. Email = shape only (saved lower-case) + "did you mean gmail.com?" hints that never block.
+12. Order tracking (/api/track) returns ONLY status + dates (never name, address, items, prices, staff ids); every mismatch = same "not found" answer; phone compared by its last 10 digits (old orders keep the phone as typed); limits: 15 attempts/hour/connection + 10 WRONG tries/hour/order number (fails open).
 
 ## 7. Known limits / gotchas
 - Safari on iPhone once showed "A problem repeatedly occurred" (memory); mitigated (lighter hero, no blur header, ErrorBoundary). Cloudinary-resized images help.
@@ -94,13 +97,14 @@ Queries use only equality filters (+ `orderBy` only on single fields in sub-coll
 - Update 16 (top bar with arrows, hero text card + ticks, highlight cards, light/dark logo, text pages, coming soon / made to order, fixed buy bar on phones) is tested by unit tests and a server-side render check only, NOT seen in a real browser yet: ask for phone screenshots (light + dark, English + Arabic).
 - BYND's logo has a black square background: it looks like a black box on the light shop. Fix = transparent PNG, or a second logo for dark screens (Settings > Look).
 - Photos: hero looked blurry on the owner's phone (Cloudinary not connected yet). The test product uses a picture from another seller's listing: replace with BYND's own photos before launch.
-- Home page "How it works" (3 steps) only shows when the shop has written no highlights. Footer shows social links as text (no icons yet). "Track my order" link is NOT in the footer yet (comes with update 17).
+- Home page "How it works" (3 steps) only shows when the shop has written no highlights. Footer shows social links as text (no icons yet).
+- Update 17 (phone/email checks, Track my order page + footer link + link on the thank-you page) is tested by unit tests and a successful build only, NOT seen in a real browser yet: ask for phone screenshots (checkout errors + email hint, track page, EN + AR). Email check = written correctly only, not proven to exist (real verification = paid codes). Anyone who fails 10 times on one order number locks that number's tracking for an hour (also the real customer). Per-phone order limit now uses the last 10 digits (counters restarted once). Orders placed before update 17 keep the phone as typed.
 - WhatsApp floating button is lifted above the buy bar on product pages (mobile).
 - Main storefront file is ~822 kB (build warning): split it when the shop feels slow.
 
 ## 8. Roadmap (ask the owner before starting)
 BYND team wish list (Oct 2026) and the agreed order. BYND's products are NOT final: mostly 3D-printed, new products/ideas later, so keep everything generic.
-17. Email/phone checks (Egyptian phone format on server + browser; email shape + typo hints; real verification needs SMS/email codes = paid, not now) and FREE order tracking page: customer enters order number + phone (needed because numbers are sequential), sees only status + timeline, rate-limited; new public function /api/track. Add "Track my order" to the footer. Automatic emails later (needs own domain); SMS/WhatsApp are paid.
+17. DONE (see changelog). Still open from it: automatic emails to customers (needs own domain); SMS/WhatsApp status messages are paid; real email/phone verification codes are paid.
 18. Stock per colour/option (today stock is per product: can oversell a colour). May be replaced by "made to order" for 3D-printed items: ASK the owner which products are stock vs made to order first. Own chat, most careful testing; existing products stay per-product.
 19. Quantity packages: price tiers by quantity on one product (like medalrise "1+ / 10+"), colours of the same product count together; decide how it works with promo codes; computed only on the server (pricing.js) + mirrored in the browser.
 20. Shipping companies / delivery persons: assign orders, count orders per courier, what they owe the team (ASK first: courier collects COD cash and keeps a fee? shop pays a fee?). Touches profit and firestore.rules.
@@ -112,4 +116,5 @@ Later: wall-designer (hexagon layout planner, client-only), real reviews section
 4 Arabic everywhere, slideshow timing · 5 shipping zones, address fields, promo codes, configurable checkout · 6 delivery-area dropdown, custom checkout fields ·
 7 Telegram alerts, WhatsApp/Call buttons, forgot password, signup closed, Cloudinary upload · 8 product options, slideshow arrows, phone hardening ·
 9 team accounts, roles, activity log · 10 several owners · 11 option pictures, tick box with text, gallery, linked products · 12 spam protection, tests in repo, build guard, lazy admin ·
-13 real dashboard, returned status, Excel exports, backup · 14 restock, stock history · 15 light/dark, any accent color, fonts, corners, top bar, contact/social, Settings tabs, character counters · 16 storefront look: rotating top bar (up to 4 messages), hero text card + tick points (or plain), highlight cards, light/dark logo, text pages (privacy/returns/shipping/terms) in footer, "Coming soon" + "Made to order" wording, fixed buy bar on phones, WhatsApp button lifted; server refuses coming-soon orders; 13th test file.
+13 real dashboard, returned status, Excel exports, backup · 14 restock, stock history · 15 light/dark, any accent color, fonts, corners, top bar, contact/social, Settings tabs, character counters · 16 storefront look: rotating top bar (up to 4 messages), hero text card + tick points (or plain), highlight cards, light/dark logo, text pages (privacy/returns/shipping/terms) in footer, "Coming soon" + "Made to order" wording, fixed buy bar on phones, WhatsApp button lifted; server refuses coming-soon orders; 13th test file. ·
+17 Egyptian phone check (server + browser, saved as 01XXXXXXXXX, Arabic digits ok) + email shape check with typo hints (never blocks), same rules for the shop's own phone/email questions, per-phone order limit now by last 10 digits, free "Track my order" page (/store/<shop>/track, new /api/track: order number + phone, status + dates only, guess limits), footer link + link on thank-you page; 14th and 15th test files.

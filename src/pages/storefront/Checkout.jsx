@@ -7,6 +7,7 @@ import OptionSummary from '../../components/storefront/OptionSummary';
 import { useLanguage } from '../../context/LanguageContext';
 import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
+import { checkPhone, checkEmail } from '../../utils/contactChecks';
 import {
   CHECKOUT_FIELDS,
   resolveFieldSettings,
@@ -63,6 +64,13 @@ export default function Checkout() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [website, setWebsite] = useState(''); // trap for bots (kept out of sight)
+  const [touched, setTouched] = useState({}); // which boxes the customer already left
+
+  // Friendly checks while typing (the server checks everything again).
+  const countryCode = tenant.defaultCountryCode || '20';
+  const phoneBad = form.phone.trim() !== '' && !checkPhone(form.phone, countryCode).ok;
+  const emailCheck = checkEmail(form.email);
+  const emailBad = form.email.trim() !== '' && !emailCheck.ok;
 
   // Ask the server for the real total whenever the cart, area or code changes.
   const requestId = useRef(0);
@@ -105,9 +113,25 @@ export default function Checkout() {
         return;
       }
     }
+    if (!checkPhone(form.phone, countryCode).ok) {
+      setError(t('errors.BAD_PHONE'));
+      return;
+    }
+    if (form.email.trim() && !checkEmail(form.email).ok) {
+      setError(t('errors.BAD_EMAIL'));
+      return;
+    }
     for (const f of customFields) {
       const answer = custom[f.id];
       const empty = f.type === 'checkbox' ? answer !== true : !String(answer || '').trim();
+      if (!empty && f.type === 'phone' && !checkPhone(answer, countryCode).ok) {
+        setError(t('errors.BAD_PHONE'));
+        return;
+      }
+      if (!empty && f.type === 'email' && !checkEmail(answer).ok) {
+        setError(t('errors.BAD_EMAIL'));
+        return;
+      }
       if (f.required && empty) {
         setError(
           t('errors.BAD_FIELD', { field: f.label?.[language] || f.label?.en || '' })
@@ -216,7 +240,8 @@ export default function Checkout() {
             </>
           );
           return (
-            <label key={f.key} className="block text-sm text-ink-soft">
+            <div key={f.key}>
+            <label className="block text-sm text-ink-soft">
               {label}
               {f.type === 'textarea' ? (
                 <textarea
@@ -232,10 +257,30 @@ export default function Checkout() {
                   dir={f.type === 'email' || f.type === 'tel' ? 'ltr' : undefined}
                   value={form[f.key]}
                   onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                  onBlur={() => setTouched({ ...touched, [f.key]: true })}
                   className={inputClass}
                 />
               )}
             </label>
+            {f.key === 'phone' && touched.phone && phoneBad && (
+              <p className="mt-1 text-xs text-rust">{t('errors.BAD_PHONE')}</p>
+            )}
+            {f.key === 'email' && touched.email && emailBad && (
+              <p className="mt-1 text-xs text-rust">{t('errors.BAD_EMAIL')}</p>
+            )}
+            {f.key === 'email' && touched.email && emailCheck.suggestion && (
+              <p className="mt-1 text-xs text-brass-dark">
+                {t('checkout.emailDidYouMean', { email: emailCheck.suggestion })}{' '}
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, email: emailCheck.suggestion })}
+                  className="font-semibold underline"
+                >
+                  {t('checkout.emailUseThis')}
+                </button>
+              </p>
+            )}
+            </div>
           );
         })}
 

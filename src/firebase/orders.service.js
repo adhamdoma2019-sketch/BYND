@@ -59,6 +59,12 @@ export function createOrder({ tenantId, customer, custom, items, zoneId, promoCo
   });
 }
 
+// "Track my order": the customer proves the order is theirs with the order number AND
+// the phone number. Returns { orderNumberLabel, orderType, status, history[{status, timestamp}] }.
+export function trackOrder({ tenantId, orderNumber, phone }) {
+  return callApi('/api/track', { tenantId, orderNumber, phone });
+}
+
 // Price preview for the checkout page. Returns
 // { subtotal, discount, shippingFee, total, promo, promoError, zoneProblem }.
 export function getQuote({ tenantId, items, zoneId, promoCode }) {

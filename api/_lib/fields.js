@@ -5,6 +5,7 @@
 // (a test checks that they are identical).
 
 import { OrderError } from './errors.js';
+import { checkPhone, checkEmail } from './contactChecks.js';
 
 export const FIELD_LIMITS = {
   name: 100,
@@ -73,7 +74,10 @@ export function applyCustomerRules(customer, tenant) {
   if (customer.name.length < 2) {
     throw new OrderError(400, 'BAD_NAME', 'Please enter your name.');
   }
-  if (!/^[0-9+\s()-]{7,30}$/.test(customer.phone)) {
+  // Egyptian shops need a real Egyptian mobile number (any way of writing it);
+  // it is saved in one standard form (01012345678). Other countries: simple check.
+  const phone = checkPhone(customer.phone, tenant?.defaultCountryCode || '20');
+  if (!phone.ok) {
     throw new OrderError(400, 'BAD_PHONE', 'Please enter a valid phone number.');
   }
 
@@ -87,8 +91,11 @@ export function applyCustomerRules(customer, tenant) {
     if (value) out[key] = value;
   }
 
-  if (out.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(out.email)) {
-    throw new OrderError(400, 'BAD_EMAIL', 'Please enter a valid email address.');
+  out.phone = phone.value;
+  if (out.email) {
+    const email = checkEmail(out.email);
+    if (!email.ok) throw new OrderError(400, 'BAD_EMAIL', 'Please enter a valid email address.');
+    out.email = email.value;
   }
 
   // One readable line for lists and printing (the parts are kept too).
@@ -167,9 +174,13 @@ export function applyCustomFields(answers, tenant) {
     else if (def.type === 'number') {
       if (!/^-?\d+(\.\d+)?$/.test(text) || text.length > 20) throw fail();
     } else if (def.type === 'email') {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) throw fail();
+      const email = checkEmail(text);
+      if (!email.ok) throw fail();
+      value = email.value;
     } else if (def.type === 'phone') {
-      if (!/^[0-9+\s()-]{7,30}$/.test(text)) throw fail();
+      const phone = checkPhone(text, tenant?.defaultCountryCode || '20');
+      if (!phone.ok) throw fail();
+      value = phone.value;
     } else if (def.type === 'date') {
       if (!isRealDate(text)) throw fail();
     } else if (def.type === 'select') {

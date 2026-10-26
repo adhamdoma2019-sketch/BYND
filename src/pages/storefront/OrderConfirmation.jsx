@@ -32,7 +32,14 @@ export default function OrderConfirmation() {
           {t('checkout.total')}: {formatPrice(state.totalAmount, language)}
         </p>
       )}
-      <Link to={`/store/${slug}`} className="mt-8 text-brass-dark hover:underline">
+      <Link
+        to={`/store/${slug}/track`}
+        state={{ orderNumberLabel: state?.orderNumberLabel }}
+        className="mt-6 rounded border border-ink/20 px-4 py-2 text-sm font-medium hover:border-brass"
+      >
+        {t('track.linkAfterOrder')}
+      </Link>
+      <Link to={`/store/${slug}`} className="mt-6 text-brass-dark hover:underline">
         {t('storefront.backToShop')}
       </Link>
     </div>

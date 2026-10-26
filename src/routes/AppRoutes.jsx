@@ -11,6 +11,8 @@ import ProtectedRoute from './ProtectedRoute';
 
 // The admin screens are loaded only when someone opens them, so customers visiting
 // the shop (often on a phone) don't download any admin code.
+// Loaded only when a customer opens "Track my order" (keeps the main shop file small).
+const TrackOrder = lazy(() => import('../pages/storefront/TrackOrder'));
 const Signup = lazy(() => import('../pages/admin/Signup'));
 const Login = lazy(() => import('../pages/admin/Login'));
 const Dashboard = lazy(() => import('../pages/admin/Dashboard'));
@@ -36,6 +38,7 @@ export default function AppRoutes() {
         <Route path="checkout" element={<Checkout />} />
         <Route path="thank-you" element={<OrderConfirmation />} />
         <Route path="page/:pageId" element={<PolicyPage />} />
+        <Route path="track" element={<TrackOrder />} />
       </Route>
 
       <Route path="/admin/signup" element={<Signup />} />

@@ -55,8 +55,10 @@ ok('keys are hashed: no phone number or address stored in readable form');
 assert.equal(clientIp({ headers: { 'x-real-ip': '1.2.3.4', 'x-forwarded-for': '9.9.9.9' } }), '1.2.3.4');
 assert.equal(clientIp({ headers: { 'x-forwarded-for': '5.6.7.8, 10.0.0.1' } }), '5.6.7.8');
 assert.equal(clientIp({ headers: {}, socket: { remoteAddress: '::1' } }), '::1'); assert.equal(clientIp({ headers: {} }), 'unknown');
-assert.equal(phoneDigits('+20 102 640 9664'), '201026409664'); assert.equal(phoneDigits('0102-640-9664'), '01026409664'); assert.equal(phoneDigits(''), '');
-ok('connection address and phone number read correctly in common formats');
+// the last 10 digits identify a phone however it is written, so a different spelling cannot dodge the limit
+assert.equal(phoneDigits('+20 102 640 9664'), '1026409664'); assert.equal(phoneDigits('0102-640-9664'), '1026409664'); assert.equal(phoneDigits(''), '');
+assert.equal(phoneDigits('٠١٠٢٦٤٠٩٦٦٤'), '1026409664'); assert.equal(phoneDigits('01026409664'), phoneDigits('+201026409664'));
+ok('connection address and phone number read correctly in common formats (any spelling of one phone = same key)');
 
 assert.ok(LIMITS.orderPhone.limit <= 10 && LIMITS.orderIp.limit >= LIMITS.orderPhone.limit && LIMITS.promoIp.limit >= 20);
 ok('limits are sensible: strict per phone, generous per connection (shared mobile networks)');

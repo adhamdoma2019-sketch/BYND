@@ -51,22 +51,26 @@ export default function StorefrontFooter({ tenant }) {
             </nav>
           )}
         </div>
-        {policies.length > 0 && (
-          <nav
-            aria-label={t('storefront.infoPages')}
-            className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-ink/10 pt-6 text-sm"
+        <nav
+          aria-label={t('storefront.infoPages')}
+          className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-ink/10 pt-6 text-sm"
+        >
+          <Link
+            to={`/store/${tenant.slug}/track`}
+            className="text-ink-soft underline-offset-4 transition hover:text-brass-dark hover:underline"
           >
-            {policies.map((id) => (
-              <Link
-                key={id}
-                to={`/store/${tenant.slug}/page/${id}`}
-                className="text-ink-soft underline-offset-4 transition hover:text-brass-dark hover:underline"
-              >
-                {t(`policies.${id}`)}
-              </Link>
-            ))}
-          </nav>
-        )}
+            {t('track.footerLink')}
+          </Link>
+          {policies.map((id) => (
+            <Link
+              key={id}
+              to={`/store/${tenant.slug}/page/${id}`}
+              className="text-ink-soft underline-offset-4 transition hover:text-brass-dark hover:underline"
+            >
+              {t(`policies.${id}`)}
+            </Link>
+          ))}
+        </nav>
         <p className="mt-8 text-sm text-ink-faint">
           {t('storefront.footerNote')} · © {new Date().getFullYear()} {shopName}
         </p>
