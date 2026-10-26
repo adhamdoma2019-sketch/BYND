@@ -111,9 +111,6 @@ export default function ProductPage() {
   const isPreorder = product.isPreorder === true; // preorder AND made-to-order: no stock needed
   const stock = Number(product.stock) || 0;
   const availability = productStatus(product); // comingSoon / preorder / madeToOrder / soldOut / inStock
-  const soldOut = availability === 'soldOut' || comboSoldOut;
-  const comingSoon = availability === 'comingSoon';
-  const canBuy = isBuyable(availability) && !comboSoldOut;
 
   // Stock counted per colour / option: how many of the CHOSEN combination are left (null = not chosen yet).
   const counted = !isPreorder && isOptionCounted(product);
@@ -133,6 +130,11 @@ export default function ProductPage() {
   const maxQty = isPreorder || backorder ? MAX_ORDER_QTY : Math.min(left ?? stock, MAX_ORDER_QTY);
   const qty = Math.max(1, Math.min(quantity, Math.max(maxQty, 1)));
   const partlyMade = backorder && left !== null && left > 0 && qty > left;
+
+  // (these three need comboSoldOut from above, so they come AFTER it)
+  const soldOut = availability === 'soldOut' || comboSoldOut;
+  const comingSoon = availability === 'comingSoon';
+  const canBuy = isBuyable(availability) && !comboSoldOut;
   const preorderMessage =
     product.preorderMessage?.[language] || product.preorderMessage?.en || '';
 
