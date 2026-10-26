@@ -15,7 +15,9 @@ const todayUtc = (now) => now.toISOString().slice(0, 10);
 
 // Checks a promo code document and returns the discount, or throws a
 // PROMO_* error. `promo` is the stored document (or null if it doesn't exist).
-export function evaluatePromo(promo, { tenantId, subtotal, now = new Date() }) {
+// `eligibleSubtotal` = the part of the order the code may take its discount from. It is smaller than
+// the subtotal only when the shop does not let codes apply to quantity-priced items (default: all of it).
+export function evaluatePromo(promo, { tenantId, subtotal, eligibleSubtotal, now = new Date() }) {
   if (!promo || promo.tenantId !== tenantId || promo.isActive !== true) {
     throw new OrderError(400, 'PROMO_INVALID', "This promo code isn't valid.");
   }
@@ -40,16 +42,25 @@ export function evaluatePromo(promo, { tenantId, subtotal, now = new Date() }) {
     );
   }
 
+  const base = eligibleSubtotal === undefined ? subtotal : eligibleSubtotal;
+  if (subtotal > 0 && base <= 0) {
+    throw new OrderError(
+      400,
+      'PROMO_NOT_ON_QTY',
+      "This code can't be used on items that already have a quantity price."
+    );
+  }
+
   const value = Number(promo.value) || 0;
   const discount =
     promo.type === 'percent'
-      ? round2((subtotal * Math.min(Math.max(value, 0), 100)) / 100)
-      : Math.min(Math.max(value, 0), subtotal);
+      ? round2((base * Math.min(Math.max(value, 0), 100)) / 100)
+      : Math.min(Math.max(value, 0), base);
 
   return { code: promo.code, type: promo.type, value, discount: round2(discount) };
 }
 
-// lines: [{ unitPrice, quantity, shippingExtra }]
+// lines: [{ unitPrice, quantity, shippingExtra, tiered }]   (tiered = a quantity price applies to this line)
 // strict = true for real orders (problems throw); false for the checkout
 // preview (problems are reported but totals are still returned).
 export function computeTotals({ tenant, lines, zoneId, promo, promoCode, strict }) {
@@ -58,11 +69,21 @@ export function computeTotals({ tenant, lines, zoneId, promo, promoCode, strict 
   );
 
   // ----- promo code -----
+  // The shop can decide that codes don't apply to items with a quantity price (default: they do).
+  const promoOnTiers = tenant.checkout?.promoOnQuantityPrices !== false;
+  const eligibleSubtotal = promoOnTiers
+    ? subtotal
+    : round2(
+        lines.reduce(
+          (sum, l) => (l.tiered ? sum : sum + Number(l.unitPrice) * Number(l.quantity)),
+          0
+        )
+      );
   let promoApplied = null;
   let promoError = null;
   if (promoCode) {
     try {
-      promoApplied = evaluatePromo(promo, { tenantId: tenant.id, subtotal });
+      promoApplied = evaluatePromo(promo, { tenantId: tenant.id, subtotal, eligibleSubtotal });
     } catch (e) {
       if (strict || !(e instanceof OrderError)) throw e;
       promoError = { code: e.code, meta: e.meta };

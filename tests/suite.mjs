@@ -55,7 +55,7 @@ await rejects(placeOrder(db, mk([{ productId: 'n1', quantity: 9 }])), 'OUT_OF_ST
 await rejects(placeOrder(db, mk([{ productId: 'nope', quantity: 1 }])), 'UNAVAILABLE'); ok('missing product rejected');
 r = await placeOrder(db, mk([{ productId: 'pre', quantity: 3 }])); assert.equal(db.store.get(`orders/${r.orderId}`).orderType, 'preorder'); assert.equal(db.store.get('products/pre').stock, 0); ok('preorder with zero stock');
 r = await placeOrder(db, mk([{ productId: 'n2', quantity: 1 }])); assert.equal(db.store.get(`orders/${r.orderId}`).items[0].unitCost, null); ok('wrong-shop cost ignored (null)');
-assert.throws(() => mk([]), OrderError); assert.throws(() => mk([{ productId: 'n1', quantity: -1 }]), OrderError); assert.throws(() => mk([{ productId: 'n1', quantity: 999 }]), (e) => e.code === 'TOO_MANY' && e.meta.max === 20); ok('cart shape validation');
+assert.throws(() => mk([]), OrderError); assert.throws(() => mk([{ productId: 'n1', quantity: -1 }]), OrderError); assert.throws(() => mk([{ productId: 'n1', quantity: 999 }]), (e) => e.code === 'TOO_MANY' && e.meta.max === 500); ok('cart shape validation');
 
 // ===== B. customer field rules =====
 db = makeDb(base());

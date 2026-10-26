@@ -25,7 +25,7 @@ await build({
     b.onLoad({ filter: /.*/, namespace: 'stub2' }, (a) => {
       const p = a.path;
       let c = 'export default ()=>null;';
-      if (/CartContext/.test(p)) c = 'export const useCart=()=>({addItem(){}}); export default ()=>null;';
+      if (/CartContext/.test(p)) c = 'export const useCart=()=>({addItem(){},items:[]}); export default ()=>null;';
       if (/LanguageContext/.test(p)) c = "export const useLanguage=()=>({language:'en'});";
       if (/StorefrontContext/.test(p)) c = "export const useStorefront=()=>({tenant:{id:'bynd',slug:'bynd',name:{en:'BYND'}}});";
       if (/usePageMeta/.test(p)) c = 'export const usePageMeta=()=>{};';
@@ -88,5 +88,28 @@ ok('"made to order" wording is used when the shop chose it');
 v = view({ ...base, countedOptions: [] }, { col: 'blue' });
 assert.deepEqual(v.swatches, [false, false]); assert.ok(!v.strike); assert.match(v.html, /storefront\.onlyLeft\[3\]/); assert.equal(v.button, 'storefront.addToCart');
 ok('a product that does not count by option looks and works exactly as before');
+
+// ---- update 19: quantity prices and limits ----
+const tiered = { ...base, options: [], countedOptions: [], optionStock: {}, stock: 50, priceTiers: [{ minQty: 5, price: 450 }, { minQty: 10, price: 400 }] };
+v = view(tiered);
+assert.match(v.html, /storefront\.qtyPricesTitle/);
+for (const x of ['fromQty\\[1\\]', 'fromQty\\[5\\]', 'fromQty\\[10\\]', 'savePercent\\[10\\]', 'savePercent\\[20\\]']) assert.match(v.html, new RegExp('storefront\\.' + x));
+assert.doesNotMatch(v.html, /line-through/);                     // 1 piece = the normal price, nothing crossed out
+assert.match(v.html, /<input[^>]*type="number"[^>]*value="1"/);   // typed quantity box
+ok('a product with quantity prices shows the price table (1+, 5+, 10+ with the saving) and a quantity box');
+
+v = view({ ...tiered, minQty: 10 });
+assert.match(v.html, /<input[^>]*type="number"[^>]*value="10"/); assert.match(v.html, /storefront\.minOrderNote\[10\]/);
+assert.match(v.html, /line-through/);                              // starts at 10 pieces -> the 10+ price, the normal price crossed out
+ok('with a minimum of 10 the box starts at 10 (so the 10+ price shows) and the minimum is explained');
+
+v = view({ ...tiered, stock: 6, minQty: 10 });
+assert.match(v.html, /storefront\.minNotInStock\[10\]/); assert.match(v.html, /<button disabled=""[^>]*>storefront\.addToCart/); assert.doesNotMatch(v.html, /type="number"/); // button off, no quantity box
+ok('stock below the shop minimum: the product explains it and cannot be added');
+
+v = view({ ...tiered, maxQty: 25 });
+assert.match(v.html, /storefront\.maxOrderNote\[25\]/);
+v = view({ ...tiered, priceTiers: [] }); assert.doesNotMatch(v.html, /storefront\.qtyPricesTitle/); assert.doesNotMatch(v.html, /storefront\.minOrderNote/);
+ok('a maximum is shown; a product without steps or limits shows none of this');
 
 console.log(`\nALL ${n} PRODUCT-PAGE CHECKS PASSED`);

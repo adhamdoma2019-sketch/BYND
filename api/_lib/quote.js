@@ -6,6 +6,7 @@
 import { OrderError } from './errors.js';
 import { computeTotals } from './pricing.js';
 import { resolveSelections } from './options.js';
+import { checkTotalQty, tierFor } from './quantityPrices.js';
 
 export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
@@ -26,6 +27,12 @@ export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
   }
   const tenant = { id: tenantId, ...tenantSnap.data() };
 
+  // How many of each product are in the cart (quantity prices and limits look at the total).
+  const totalQty = new Map();
+  for (const item of items) {
+    totalQty.set(item.productId, (totalQty.get(item.productId) || 0) + item.quantity);
+  }
+
   const lines = items.map((item) => {
     const snap = productSnaps[productIds.indexOf(item.productId)];
     const product = snap.exists ? snap.data() : null;
@@ -42,10 +49,27 @@ export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
         'Sorry, one of the items in your cart is no longer available.'
       );
     }
-    // The price includes what the customer's choices add (color, extension...).
+    const total = totalQty.get(item.productId) || 0;
+    const problem = checkTotalQty(product, total);
+    const name = product.name?.en || 'this item';
+    if (problem?.code === 'BELOW_MIN') {
+      throw new OrderError(400, 'BELOW_MIN', `"${name}" needs at least ${problem.min} pieces.`, {
+        name,
+        min: problem.min,
+      });
+    }
+    if (problem?.code === 'TOO_MANY') {
+      throw new OrderError(400, 'TOO_MANY', `You can order up to ${problem.max} of "${name}".`, {
+        name,
+        max: problem.max,
+      });
+    }
+    // The price includes the quantity price (if any) and what the customer's choices add (color, extension...).
     const choice = resolveSelections(product, item.selections);
+    const tier = tierFor(product, total);
     return {
-      unitPrice: (Number(product.price) || 0) + choice.priceDelta,
+      unitPrice: (tier ? tier.price : Number(product.price) || 0) + choice.priceDelta,
+      tiered: Boolean(tier),
       quantity: item.quantity,
       shippingExtra: Number(product.shippingExtra) || 0,
     };

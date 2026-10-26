@@ -17,17 +17,27 @@ import { usePageMeta } from '../../utils/usePageMeta';
 import { MAX_ORDER_QTY, LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { productStatus, isBuyable } from '../../utils/storefront';
 import { isOptionCounted, countedOptions, leftForSelections, stockKey } from '../../utils/optionStock';
+import {
+  SAFETY_MAX_QTY,
+  cleanTiers,
+  orderLimits,
+  tierFor,
+  unitBasePrice,
+  savingPercent,
+} from '../../utils/quantityPrices';
+import { productCountInCart } from '../../utils/cartPricing';
 
 export default function ProductPage() {
   const { slug, productId } = useParams();
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const { addItem } = useCart();
+  const { addItem, items: cartItems } = useCart();
   const { tenant } = useStorefront();
 
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState('loading');
   const [quantity, setQuantity] = useState(1);
+  const [qtyDraft, setQtyDraft] = useState(null); // what the customer is typing in the quantity box
   const [cartOpen, setCartOpen] = useState(false);
   const [selections, setSelections] = useState({});
   const [mainImage, setMainImage] = useState(''); // the picture shown big
@@ -127,14 +137,21 @@ export default function ProductPage() {
   const madeNow =
     isPreorder || (backorder && (left === null ? stock <= 0 : left <= 0));
   const madeStyle = product.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder';
-  const maxQty = isPreorder || backorder ? MAX_ORDER_QTY : Math.min(left ?? stock, MAX_ORDER_QTY);
-  const qty = Math.max(1, Math.min(quantity, Math.max(maxQty, 1)));
+  // The shop's minimum / maximum per order and quantity prices count ALL lines of this product in the cart.
+  const limits = orderLimits(product);
+  const inCart = productCountInCart(cartItems, product.id);
+  const minAdd = Math.max(1, limits.min - inCart); // fewest pieces to add now
+  const baseMax = isPreorder || backorder ? MAX_ORDER_QTY : Math.min(left ?? stock, MAX_ORDER_QTY);
+  const maxQty = Math.min(baseMax, Math.max(limits.max - inCart, 1));
+  const qty = Math.max(minAdd, Math.min(quantity, Math.max(maxQty, 1)));
+  // Counted stock is too low for the shop's minimum order: can't be bought right now.
+  const belowMinStock = !isPreorder && !backorder && baseMax > 0 && maxQty < minAdd;
   const partlyMade = backorder && left !== null && left > 0 && qty > left;
 
   // (these three need comboSoldOut from above, so they come AFTER it)
   const soldOut = availability === 'soldOut' || comboSoldOut;
   const comingSoon = availability === 'comingSoon';
-  const canBuy = isBuyable(availability) && !comboSoldOut;
+  const canBuy = isBuyable(availability) && !comboSoldOut && !belowMinStock;
   const preorderMessage =
     product.preorderMessage?.[language] || product.preorderMessage?.en || '';
 
@@ -144,7 +161,12 @@ export default function ProductPage() {
   // (a color or choice can have its own picture).
   const pictures = [...new Set([product.imageUrl, ...(product.images || [])].filter(Boolean))];
   const shownImage = mainImage || pictures[0] || '';
-  const unitPrice = (Number(product.price) || 0) + choice.priceDelta;
+  // Quantity price: the price of one piece depends on the total of this product (in the cart + now).
+  const tiers = cleanTiers(product.priceTiers, product.price);
+  const totalNow = inCart + qty;
+  const activeTier = tierFor(product, totalNow);
+  const unitPrice = unitBasePrice(product, totalNow) + choice.priceDelta;
+  const normalUnitPrice = (Number(product.price) || 0) + choice.priceDelta;
   const missingIds = new Set(choice.missing.map((o) => o.id));
   const productOptions = (product.options || []).filter((o) => o && o.type);
 
@@ -170,6 +192,7 @@ export default function ProductPage() {
       selections: cleanSelections(selections),
       labels: choice.labels,
       unitPrice,
+      priceDelta: choice.priceDelta,
       imageUrl: choice.imageUrl || pictures[0] || '',
     });
     setCartOpen(true);
@@ -230,7 +253,55 @@ export default function ProductPage() {
             <h1 className="font-display text-3xl font-semibold">{name}</h1>
             <p className="mt-2 text-2xl text-ink">
               {formatPrice(unitPrice, language)}
+              {activeTier && (
+                <span className="ms-2 text-base text-ink-faint line-through">
+                  {formatPrice(normalUnitPrice, language)}
+                </span>
+              )}
             </p>
+
+            {tiers.length > 0 && (
+              <div className="mt-4 rounded-md border border-ink/10 p-3">
+                <p className="text-sm font-medium">{t('storefront.qtyPricesTitle')}</p>
+                <div className="mt-2 divide-y divide-ink/10 text-sm">
+                  {[{ minQty: 1, price: Number(product.price) || 0 }, ...tiers].map((step) => {
+                    const active = (activeTier?.minQty || 1) === step.minQty;
+                    const saving = savingPercent(product.price, step.price);
+                    const pick = Math.max(step.minQty - inCart, minAdd, 1);
+                    return (
+                      <button
+                        key={step.minQty}
+                        type="button"
+                        disabled={!canBuy || pick > maxQty}
+                        onClick={() => {
+                          setQtyDraft(null);
+                          setQuantity(pick);
+                        }}
+                        className={
+                          'flex w-full items-center justify-between gap-3 px-2 py-2 text-start disabled:cursor-default ' +
+                          (active ? 'bg-brass/10 font-medium' : 'hover:bg-paper-soft')
+                        }
+                        aria-pressed={active}
+                      >
+                        <span>{t('storefront.fromQty', { n: step.minQty })}</span>
+                        <span>
+                          {formatPrice(step.price, language)} {t('storefront.each')}
+                          {saving > 0 && (
+                            <span className="ms-2 rounded bg-sage/20 px-1.5 py-0.5 text-xs text-sage-dark">
+                              {t('storefront.savePercent', { n: saving })}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-ink-faint">{t('storefront.qtyPricesHint')}</p>
+                {inCart > 0 && (
+                  <p className="mt-1 text-xs text-ink-soft">{t('storefront.qtyInCart', { n: inCart })}</p>
+                )}
+              </div>
+            )}
 
             <div className="mt-4">
               {comingSoon ? (
@@ -267,6 +338,12 @@ export default function ProductPage() {
                 </span>
               )}
             </div>
+
+            {belowMinStock && (
+              <p className="mt-3 rounded border border-rust/30 bg-rust/10 px-3 py-2 text-sm text-rust">
+                {t('storefront.minNotInStock', { n: limits.min })}
+              </p>
+            )}
 
             {description && (
               <p className="mt-6 whitespace-pre-line leading-relaxed text-ink-soft">
@@ -320,16 +397,36 @@ export default function ProductPage() {
                 </p>
                 <div className="mt-1 flex items-center gap-3">
                   <button
-                    onClick={() => setQuantity(() => Math.max(1, qty - 1))}
-                    disabled={qty <= 1}
+                    onClick={() => {
+                      setQtyDraft(null);
+                      setQuantity(Math.max(minAdd, qty - 1));
+                    }}
+                    disabled={qty <= minAdd}
                     className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
                     aria-label="-"
                   >
                     −
                   </button>
-                  <span className="w-8 text-center text-lg">{qty}</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={minAdd}
+                    max={maxQty}
+                    value={qtyDraft ?? qty}
+                    onChange={(e) => {
+                      setQtyDraft(e.target.value);
+                      const n = parseInt(e.target.value, 10);
+                      if (Number.isInteger(n) && n >= 1) setQuantity(n);
+                    }}
+                    onBlur={() => setQtyDraft(null)}
+                    aria-label={t('storefront.quantity')}
+                    className="h-10 w-20 rounded border border-ink/15 bg-transparent text-center text-lg outline-none focus-visible:border-brass"
+                  />
                   <button
-                    onClick={() => setQuantity(() => Math.min(maxQty, qty + 1))}
+                    onClick={() => {
+                      setQtyDraft(null);
+                      setQuantity(Math.min(maxQty, qty + 1));
+                    }}
                     disabled={qty >= maxQty}
                     className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
                     aria-label="+"
@@ -337,6 +434,12 @@ export default function ProductPage() {
                     +
                   </button>
                 </div>
+                {limits.min > 1 && (
+                  <p className="mt-2 text-xs text-ink-soft">{t('storefront.minOrderNote', { n: limits.min })}</p>
+                )}
+                {limits.max < SAFETY_MAX_QTY && (
+                  <p className="mt-1 text-xs text-ink-soft">{t('storefront.maxOrderNote', { n: limits.max })}</p>
+                )}
                 {partlyMade && (
                   <p className="mt-2 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
                     {t('storefront.partlyMadeToOrder', { n: left })}

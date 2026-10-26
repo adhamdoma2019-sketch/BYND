@@ -1,6 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { MAX_ORDER_QTY } from '../utils/constants';
 import { itemKey } from '../utils/productOptions';
+import { cleanTiers, orderLimits } from '../utils/quantityPrices';
+import { priceCartLines } from '../utils/cartPricing';
 
 // Older carts saved before options existed have no `key`; the product id works for them.
 export const keyOf = (item) => item.key || item.productId;
@@ -12,7 +14,9 @@ function storageKey(slug) {
 }
 
 export function CartProvider({ slug, children }) {
-  const [items, setItems] = useState([]);
+  const [rawItems, setItems] = useState([]);
+  // Quantity prices: the price of a line depends on how many of the product the whole cart holds.
+  const items = useMemo(() => priceCartLines(rawItems), [rawItems]);
 
   useEffect(() => {
     try {
@@ -25,11 +29,11 @@ export function CartProvider({ slug, children }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey(slug), JSON.stringify(items));
+      localStorage.setItem(storageKey(slug), JSON.stringify(rawItems));
     } catch {
       // Ignore storage errors — not critical.
     }
-  }, [slug, items]);
+  }, [slug, rawItems]);
 
   // choice = { selections, labels, unitPrice } from the product page
   // (color, extension...). Same product with different choices = separate lines.
@@ -60,6 +64,11 @@ export function CartProvider({ slug, children }) {
           productId: product.id,
           name: product.name,
           unitPrice: choice.unitPrice ?? product.price,
+          // For quantity prices: the normal price, what the choices add, the price steps.
+          basePrice: Number(product.price) || 0,
+          priceDelta: Number(choice.priceDelta) || 0,
+          tiers: cleanTiers(product.priceTiers, product.price),
+          minQty: orderLimits(product).min,
           quantity: Math.min(quantity, max),
           maxStock: max,
           isPreorder: product.isPreorder === true || choice.madeToOrder === true,
@@ -76,7 +85,18 @@ export function CartProvider({ slug, children }) {
       removeItem(key);
       return;
     }
-    setItems((prev) => prev.map((i) => (keyOf(i) === key ? { ...i, quantity } : i)));
+    setItems((prev) => {
+      const line = prev.find((i) => keyOf(i) === key);
+      // The shop's minimum per order counts all lines of the product: don't go below it
+      // (the customer can still remove the product).
+      if (line && line.minQty > 1 && quantity < line.quantity) {
+        const others = prev
+          .filter((i) => i.productId === line.productId && keyOf(i) !== key)
+          .reduce((n, i) => n + i.quantity, 0);
+        if (others + quantity < line.minQty) return prev;
+      }
+      return prev.map((i) => (keyOf(i) === key ? { ...i, quantity } : i));
+    });
   }
 
   function removeItem(key) {

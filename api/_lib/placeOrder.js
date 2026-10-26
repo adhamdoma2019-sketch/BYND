@@ -17,6 +17,7 @@ import {
   applyCustomFields,
 } from './fields.js';
 import { computeTotals } from './pricing.js';
+import { SAFETY_MAX_QTY, checkTotalQty, tierFor } from './quantityPrices.js';
 import { cleanSelections, selectionSignature, resolveSelections } from './options.js';
 import {
   isOptionCounted,
@@ -30,7 +31,7 @@ import {
 export { OrderError };
 
 const MAX_LINES = 20; // different products in one order
-const MAX_QTY = 20; // quantity of one product in one order
+const MAX_QTY = SAFETY_MAX_QTY; // most pieces of one product in one order (a shop can set a lower limit per product)
 const FIRST_ORDER_NUMBER = 1001;
 
 function cleanText(value, max) {
@@ -153,6 +154,26 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       productInfo.get(item.productId).totalQty += item.quantity;
     });
 
+    // The shop's minimum / maximum per order, and the quantity price: both look at the TOTAL
+    // of the product in this order (all colours and choices together).
+    for (const info of productInfo.values()) {
+      const problem = checkTotalQty(info.product, info.totalQty);
+      const name = info.product.name?.en || 'this item';
+      if (problem?.code === 'BELOW_MIN') {
+        throw new OrderError(400, 'BELOW_MIN', `\"${name}\" needs at least ${problem.min} pieces.`, {
+          name,
+          min: problem.min,
+        });
+      }
+      if (problem?.code === 'TOO_MANY') {
+        throw new OrderError(400, 'TOO_MANY', `You can order up to ${problem.max} of \"${name}\".`, {
+          name,
+          max: problem.max,
+        });
+      }
+      info.tier = tierFor(info.product, info.totalQty); // { minQty, price } or null
+    }
+
     // How each product sells:
     //   made to order / preorder  never uses stock;
     //   counted stock             one number per product, or one per colour / plate when the
@@ -232,7 +253,10 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
           );
         }
       }
-      const unitPrice = (Number(product.price) || 0) + choice.priceDelta;
+      // Price of one piece: the normal price, or the quantity price when the order is big enough,
+      // plus what the customer's choices add (extension plate, gold finish...).
+      const basePrice = info.tier ? info.tier.price : Number(product.price) || 0;
+      const unitPrice = basePrice + choice.priceDelta;
 
       // Cost snapshot: copied into the order so later cost changes never
       // rewrite past profit. null means "no cost was set for this product".
@@ -252,6 +276,8 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         unitPrice,
         unitCost,
         subtotal: unitPrice * item.quantity,
+        // Which quantity price was used (the "from X pieces" step), only when one applied.
+        ...(info.tier ? { tierMinQty: info.tier.minQty } : {}),
         isPreorder: madeToOrder,
         // (backorder: true = this line is made to order because the stock ran out)
         ...(madeToOrder && !info.isPreorder ? { backorder: true } : {}),
@@ -267,7 +293,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
     // Subtotal, promo discount, shipping and total (same maths as the preview).
     const totals = computeTotals({
       tenant,
-      lines: orderItems,
+      lines: orderItems.map((l) => ({ ...l, tiered: l.tierMinQty > 0 })),
       zoneId,
       promo: promoSnap && promoSnap.exists ? promoSnap.data() : null,
       promoCode,

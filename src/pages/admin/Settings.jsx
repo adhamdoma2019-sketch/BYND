@@ -178,6 +178,7 @@ export default function Settings() {
   const log = useAudit(); // records who changed what (Activity log)
 
   const [tab, setTab] = useState('appearance');
+  const [promoOnQty, setPromoOnQty] = useState(true);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [appearance, setAppearance] = useState({
     mode: 'auto',
@@ -265,6 +266,7 @@ export default function Settings() {
     setFieldSettings(resolveFieldSettings(tenant.checkout?.fields));
     setZones((tenant.shipping?.zones || []).map(zoneToForm));
     setCustomFields((tenant.checkout?.customFields || []).map(customToForm));
+    setPromoOnQty(tenant.checkout?.promoOnQuantityPrices !== false);
     setCountryCode(tenant.defaultCountryCode || '20');
     setLastBackup(localStorage.getItem(`backup:${tenant.id}`));
     getTenantPrivate(tenant.id).then((p) => {
@@ -462,6 +464,8 @@ export default function Settings() {
         checkout: {
           fields: fieldSettings,
           customFields: customFields.map(formToCustom),
+          // Do promo codes also apply to items that have a quantity price? (default: yes)
+          promoOnQuantityPrices: promoOnQty,
         },
         shipping: { zones: zones.map(formToZone) },
       });
@@ -499,7 +503,10 @@ export default function Settings() {
           (tenant.hero?.fade || 'normal') !== fade ||
           (tenant.hero?.autoplay !== false) !== autoplay ||
           (tenant.hero?.textStyle === 'plain' ? 'plain' : 'card') !== heroTextStyle) changed.push('banner');
-      if (saved(resolveFieldSettings(tenant.checkout?.fields)) !== saved(fieldSettings)) changed.push('checkoutForm');
+      if (
+        saved(resolveFieldSettings(tenant.checkout?.fields)) !== saved(fieldSettings) ||
+        (tenant.checkout?.promoOnQuantityPrices !== false) !== promoOnQty
+      ) changed.push('checkoutForm');
       if (saved(tenant.checkout?.customFields || []) !== saved(customFields.map(formToCustom))) changed.push('customFields');
       if (saved(tenant.shipping?.zones || []) !== saved(zones.map(formToZone))) changed.push('shipping');
       if ((tenant.defaultCountryCode || '20') !== (String(countryCode).replace(/\D/g, '') || '20')) changed.push('phoneCode');
@@ -953,6 +960,21 @@ export default function Settings() {
               </tbody>
             </table>
           </div>
+
+          {/* ----- promo codes and quantity prices ----- */}
+          <h3 className="mt-8 font-display text-base font-medium">{t('settingsPage.promoQtyTitle')}</h3>
+          <label className="mt-2 flex items-start gap-2 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={promoOnQty}
+              onChange={(e) => setPromoOnQty(e.target.checked)}
+            />
+            <span>
+              {t('settingsPage.promoQtyLabel')}
+              <span className="mt-1 block text-xs text-ink-faint">{t('settingsPage.promoQtyHelp')}</span>
+            </span>
+          </label>
 
           {/* ----- the shop's own extra fields ----- */}
           <h3 className="mt-8 font-display text-base font-medium">

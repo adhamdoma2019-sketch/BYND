@@ -17,6 +17,7 @@ import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { tracksStock } from '../../utils/storefront';
 import { COUNTABLE_TYPES, MAX_COUNTED, countedRows, isOptionCounted } from '../../utils/optionStock';
+import { MAX_TIERS, SAFETY_MAX_QTY, cleanTiers, tiersProblem, savingPercent } from '../../utils/quantityPrices';
 import {
   listProducts,
   listProductCostDetails,
@@ -35,6 +36,9 @@ const emptyForm = {
   descriptionEn: '',
   descriptionAr: '',
   price: '',
+  priceTiers: [], // quantity prices: rows of { minQty, price } (typed as text)
+  minQty: '', // optional: fewest pieces per order
+  maxQty: '', // optional: most pieces per order
   costPrice: '',
   stock: '',
   sku: '',
@@ -140,6 +144,9 @@ export default function Products() {
       descriptionEn: p.description?.en || '',
       descriptionAr: p.description?.ar || '',
       price: p.price,
+      priceTiers: (p.priceTiers || []).map((x) => ({ minQty: String(x.minQty), price: String(x.price) })),
+      minQty: p.minQty > 0 ? String(p.minQty) : '',
+      maxQty: p.maxQty > 0 ? String(p.maxQty) : '',
       costPrice: costs[p.id] ?? '',
       options: optionsToForm(p.options, optionCostsMap[p.id]),
       images: p.images || [],
@@ -181,6 +188,21 @@ export default function Products() {
       setError(t('products.badCost'));
       return;
     }
+    const tierProblem = tiersProblem(form.priceTiers, form.price);
+    if (tierProblem) {
+      setError(t(`products.tierErr_${tierProblem}`));
+      return;
+    }
+    const minNum = form.minQty === '' ? 0 : Number(form.minQty);
+    const maxNum = form.maxQty === '' ? 0 : Number(form.maxQty);
+    if (
+      (form.minQty !== '' && (!Number.isInteger(minNum) || minNum < 2)) ||
+      (form.maxQty !== '' && (!Number.isInteger(maxNum) || maxNum < 1)) ||
+      (minNum > 0 && maxNum > 0 && maxNum < minNum)
+    ) {
+      setError(t('products.limitsErr'));
+      return;
+    }
     if (!optionsAreValid(form.options)) {
       setError(t('options.errInvalid'));
       return;
@@ -219,6 +241,9 @@ export default function Products() {
           {
             name: original?.name?.en,
             price: original?.price,
+            qtyPrices: (original?.priceTiers || []).map((x) => `${x.minQty}:${x.price}`).join(','),
+            minQty: original?.minQty || 0,
+            maxQty: original?.maxQty || 0,
             cost: costs[editingId] ?? '',
             active: original?.isActive,
             preorder: original?.isPreorder === true,
@@ -232,6 +257,9 @@ export default function Products() {
           {
             name: form.nameEn,
             price: Number(form.price),
+            qtyPrices: cleanTiers(form.priceTiers, form.price).map((x) => `${x.minQty}:${x.price}`).join(','),
+            minQty: minNum,
+            maxQty: maxNum,
             cost: form.costPrice === '' ? '' : Number(form.costPrice),
             active: form.isActive,
             preorder: form.isPreorder,
@@ -409,6 +437,107 @@ export default function Products() {
               )}
             </span>
           </label>
+
+          {/* ----- quantity prices + limits per order ----- */}
+          <div className="rounded-md border border-ink/10 bg-paper-soft p-4 text-sm text-ink-soft">
+            <p className="font-medium text-ink">{t('products.qtyPricesTitle')}</p>
+            <p className="mt-1 text-xs text-ink-faint">{t('products.qtyPricesHelp')}</p>
+            <div className="mt-3 space-y-2">
+              {form.priceTiers.map((row, i) => {
+                const saving =
+                  Number(row.price) >= 0 && row.price !== '' ? savingPercent(form.price, Number(row.price)) : 0;
+                return (
+                  <div key={i} className="flex flex-wrap items-end gap-2">
+                    <label className="text-xs">
+                      {t('products.tierFrom')}
+                      <input
+                        type="number"
+                        min="2"
+                        step="1"
+                        value={row.minQty}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            priceTiers: form.priceTiers.map((r, idx) => (idx === i ? { ...r, minQty: e.target.value } : r)),
+                          })
+                        }
+                        className="mt-1 block w-24 rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                      />
+                    </label>
+                    <label className="text-xs">
+                      {t('products.tierPrice')}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={row.price}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            priceTiers: form.priceTiers.map((r, idx) => (idx === i ? { ...r, price: e.target.value } : r)),
+                          })
+                        }
+                        className="mt-1 block w-28 rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                      />
+                    </label>
+                    <span className="pb-2 text-xs text-ink-faint">
+                      {saving > 0 && t('products.tierSaving', { n: saving })}
+                      {form.costPrice !== '' && row.price !== '' && (
+                        <>
+                          {saving > 0 ? ' · ' : ''}
+                          {t('products.tierProfit', {
+                            amount: formatPrice(Number(row.price) - Number(form.costPrice), language),
+                          })}
+                        </>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, priceTiers: form.priceTiers.filter((_, idx) => idx !== i) })}
+                      className="pb-2 text-xs text-rust hover:underline"
+                    >
+                      {t('products.tierRemove')}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {form.priceTiers.length < MAX_TIERS && (
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, priceTiers: [...form.priceTiers, { minQty: '', price: '' }] })}
+                className="mt-3 text-sm text-brass hover:underline"
+              >
+                {t('products.tierAdd')}
+              </button>
+            )}
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="text-xs">
+                {t('products.minQty')}
+                <input
+                  type="number"
+                  min="2"
+                  step="1"
+                  value={form.minQty}
+                  onChange={(e) => setForm({ ...form, minQty: e.target.value })}
+                  className="mt-1 block w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                />
+              </label>
+              <label className="text-xs">
+                {t('products.maxQty')}
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={form.maxQty}
+                  onChange={(e) => setForm({ ...form, maxQty: e.target.value })}
+                  className="mt-1 block w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                />
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-ink-faint">{t('products.limitsHelp', { max: SAFETY_MAX_QTY })}</p>
+          </div>
 
           {countableInForm(form).some((o) => form.countedOptions.includes(o.id)) && !form.isPreorder ? (
             <div className="text-sm text-ink-soft">
@@ -733,6 +862,15 @@ export default function Products() {
                     })}
                   </p>
                   {isOptionCounted(p) && <CountedNumbers product={p} language={language} />}
+                  {(p.priceTiers || []).length > 0 && (
+                    <p className="text-xs text-sage-dark">
+                      {t('products.qtyPricesList', {
+                        steps: p.priceTiers
+                          .map((x) => `${x.minQty}+ → ${formatPrice(x.price, language)}`)
+                          .join(' · '),
+                      })}
+                    </p>
+                  )}
                   <p className="text-xs text-ink-faint">
                     {costs[p.id] !== null && costs[p.id] !== undefined
                       ? t('products.costLine', {

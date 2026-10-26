@@ -1,6 +1,6 @@
 // Shared numbers used by several screens.
-// MAX_ORDER_QTY must match MAX_QTY in api/_lib/placeOrder.js (the server enforces it).
-export const MAX_ORDER_QTY = 20;
+// MAX_ORDER_QTY = SAFETY_MAX_QTY in quantityPrices.js (the server enforces it; a shop can set a lower limit per product).
+export const MAX_ORDER_QTY = 500;
 export const LOW_STOCK_THRESHOLD = 3;
 
 // Home-page banner slideshow (editable in Admin > Settings).

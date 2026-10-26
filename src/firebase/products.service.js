@@ -14,6 +14,7 @@ import { db } from './config';
 import { formToOptions, formToOptionCosts } from '../utils/productOptionsForm';
 import { buildMovement } from '../utils/stock';
 import { COUNTABLE_TYPES, MAX_COUNTED, derivedStock } from '../utils/optionStock';
+import { cleanTiers, SAFETY_MAX_QTY } from '../utils/quantityPrices';
 
 const PRODUCTS = 'products';
 
@@ -54,6 +55,14 @@ function countedIdsOf(data, options) {
     .map((o) => o.id);
 }
 
+// A whole number between min and max, or 0 when the box is empty / not valid.
+function wholeNumber(value, min, max) {
+  const n = Number(value);
+  return value !== '' && value !== null && value !== undefined && Number.isInteger(n) && n >= min
+    ? Math.min(n, max)
+    : 0;
+}
+
 // Fields shared by "create" and "update".
 function productFields(data) {
   const isPreorder = data.isPreorder === true;
@@ -71,6 +80,11 @@ function productFields(data) {
       ar: data.descriptionAr || data.descriptionEn || '',
     },
     price: Number(data.price),
+    // Quantity prices: [{ minQty, price }] "from X pieces each costs Y" (only valid, cheaper-and-bigger steps are kept).
+    priceTiers: cleanTiers(data.priceTiers, data.price),
+    // Optional limits per order for the whole product (0 = no limit of the shop's own).
+    minQty: wholeNumber(data.minQty, 2, SAFETY_MAX_QTY),
+    maxQty: wholeNumber(data.maxQty, 1, SAFETY_MAX_QTY),
     // Preorder products don't need stock.
     stock: data.stock === '' || data.stock === undefined ? 0 : Number(data.stock),
     sku: data.sku || '',

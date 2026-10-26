@@ -51,7 +51,17 @@
     "soldOutShort": "sold out",
     "crossedMade": "A crossed-out colour is out of stock: you can still order it and it will be made for you.",
     "crossedSoldOut": "A crossed-out colour is out of stock.",
-    "partlyMadeToOrder": "Only {{n}} in stock. If you order more, this item will be made to order (it takes longer)."
+    "partlyMadeToOrder": "Only {{n}} in stock. If you order more, this item will be made to order (it takes longer).",
+    "qtyPricesTitle": "Buy more, pay less",
+    "fromQty": "{{n}}+ pieces",
+    "each": "each",
+    "savePercent": "Save {{n}}%",
+    "qtyPricesHint": "The price of each piece drops as you add more. All colours and choices of this product count together.",
+    "qtyInCart": "You already have {{n}} of this product in your cart. They count too.",
+    "qtyPriceApplied": "Quantity price",
+    "minOrderNote": "Minimum order: {{n}} pieces of this product.",
+    "maxOrderNote": "Maximum per order: {{n}} pieces.",
+    "minNotInStock": "This product is sold from {{n}} pieces, and there is not enough in stock right now."
   },
   "checkout": {
     "title": "Checkout",
@@ -237,7 +247,25 @@
     "countWarn": "Counting by option starts every number at 0 and replaces the single stock number ({{n}}). After saving, use \"Add stock\" for each colour.",
     "countedNow": "Stock now, by option:",
     "countedStockHint": "Use \"Add stock\" and \"Adjust\" on the product card to change these numbers (you choose which colour).",
-    "stockThenMadeBadge": "Stock, then made to order"
+    "stockThenMadeBadge": "Stock, then made to order",
+    "qtyPricesTitle": "Quantity prices (optional)",
+    "qtyPricesHelp": "Lower the price when a customer buys more. Example: normal price 100, from 5 pieces 90 each, from 10 pieces 85 each. All colours and choices of this product count together. What a choice adds (like a plate) is added on top, per piece.",
+    "tierFrom": "From (pieces)",
+    "tierPrice": "Price each",
+    "tierSaving": "{{n}}% less than the normal price",
+    "tierProfit": "profit per piece: {{amount}}",
+    "tierRemove": "Remove",
+    "tierAdd": "+ Add a price step",
+    "minQty": "Minimum per order (optional)",
+    "maxQty": "Maximum per order (optional)",
+    "limitsHelp": "Leave a box empty for no limit of your own. One order never has more than {{max}} pieces of one product, and counted stock limits it too.",
+    "limitsErr": "The minimum must be a whole number of 2 or more, the maximum a whole number of 1 or more, and the maximum cannot be below the minimum.",
+    "tierErr_incomplete": "Fill in both boxes (from and price) of each quantity price, or remove the row.",
+    "tierErr_qty": "\"From\" must be a whole number of 2 or more.",
+    "tierErr_price": "Each price must be lower than the step before it (the first one lower than the normal price).",
+    "tierErr_order": "Two price steps start at the same quantity. Use a different quantity for each.",
+    "tierErr_many": "Too many quantity prices (6 at most).",
+    "qtyPricesList": "Quantity prices: {{steps}}"
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -428,7 +456,10 @@
     "pagesTitle": "Text pages",
     "pagesHelp": "Write each page in your own words (plain text; a blank line starts a new paragraph). A page appears in the shop footer only when it has text. Please make sure the text follows the rules of your country.",
     "pageBodyEn": "Text (English)",
-    "pageBodyAr": "Text (Arabic)"
+    "pageBodyAr": "Text (Arabic)",
+    "promoQtyTitle": "Promo codes and quantity prices",
+    "promoQtyLabel": "Promo codes also apply to items that have a quantity price",
+    "promoQtyHelp": "On: a code takes its discount from the whole order. Off: a code only takes its discount from items without a quantity price, and cannot be used when every item has one."
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -438,7 +469,7 @@
     "BAD_ADDRESS": "Please enter your address.",
     "EMPTY_CART": "Your cart is empty.",
     "BAD_ITEM": "Something in your cart is invalid. Please review it.",
-    "TOO_MANY": "You can order up to {{max}} of each item.",
+    "TOO_MANY": "You can order up to {{max}} pieces of one product.",
     "NO_SHOP": "This shop is not available.",
     "UNAVAILABLE": "Sorry, one of the items in your cart is no longer available.",
     "OUT_OF_STOCK": "Sorry, \"{{name}}\" is out of stock.",
@@ -453,7 +484,9 @@
     "PROMO_MIN_ORDER": "This code needs an order of at least {{min}}.",
     "BAD_OPTION": "Please check your choice for: {{field}}",
     "RATE_LIMITED": "Too many attempts from this phone number or connection. Please try again later, or contact us directly.",
-    "TRACK_NOT_FOUND": "We could not find an order with these details. Please check the order number and the phone number you used when ordering."
+    "TRACK_NOT_FOUND": "We could not find an order with these details. Please check the order number and the phone number you used when ordering.",
+    "BELOW_MIN": "\"{{name}}\" needs at least {{min}} pieces.",
+    "PROMO_NOT_ON_QTY": "This code can't be used on items that already have a quantity price."
   },
   "checkoutFields": {
     "name": "Full name",

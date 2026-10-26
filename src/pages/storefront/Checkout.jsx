@@ -213,6 +213,9 @@ export default function Checkout() {
                 </span>
               )}
               <OptionSummary labels={item.optionLabels} />
+              {item.tierMinQty > 0 && (
+                <span className="mt-0.5 block text-xs text-sage-dark">{t('storefront.qtyPriceApplied')}</span>
+              )}
             </span>
             <span>{money(item.unitPrice * item.quantity)}</span>
           </div>

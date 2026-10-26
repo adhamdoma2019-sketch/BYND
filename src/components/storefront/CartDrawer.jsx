@@ -65,6 +65,11 @@ export default function CartDrawer({ onClose }) {
                     <OptionSummary labels={item.optionLabels} />
                     <p className="text-sm text-ink-soft">
                       {formatPrice(item.unitPrice, language)}
+                      {item.tierMinQty > 0 && (
+                        <span className="ms-2 rounded bg-sage/20 px-1.5 py-0.5 text-xs text-sage-dark">
+                          {t('storefront.qtyPriceApplied')}
+                        </span>
+                      )}
                       {item.isPreorder && (
                         <span className="ms-2 rounded bg-ink px-1.5 py-0.5 text-xs text-paper">
                           {t('storefront.preorder')}
