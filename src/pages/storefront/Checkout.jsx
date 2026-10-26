@@ -195,7 +195,7 @@ export default function Checkout() {
   const shown = quote || { subtotal, discount: 0, shippingFee: 0, total: subtotal };
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg px-4 py-12">
+    <div className="mx-auto min-h-screen max-w-lg px-4 pb-28 pt-12 md:pb-12">
       <Link to={`/store/${slug}`} className="text-sm text-brass-dark hover:underline">
         {t('storefront.backToShop')}
       </Link>
