@@ -7,9 +7,11 @@ import { useStorefront } from '../../context/StorefrontContext';
 import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import Hero from '../../components/storefront/Hero';
+import Highlights from '../../components/storefront/Highlights';
 import ProductCard from '../../components/storefront/ProductCard';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { usePageMeta } from '../../utils/usePageMeta';
+import { highlightsOf } from '../../utils/storefront';
 import {
   HERO_DEFAULT_SECONDS,
   HERO_MIN_SECONDS,
@@ -81,6 +83,9 @@ export default function StorefrontHome() {
   );
   const fadeMs = HERO_FADE_MS[tenant.hero?.fade] || HERO_FADE_MS.normal;
 
+  // The shop's own highlights: ticks inside the banner card + cards under the banner.
+  const highlights = highlightsOf(tenant, language);
+
   return (
     <div className="min-h-screen">
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
@@ -90,7 +95,11 @@ export default function StorefrontHome() {
         intervalMs={seconds * 1000}
         fadeMs={fadeMs}
         autoplay={tenant.hero?.autoplay !== false}
+        textStyle={tenant.hero?.textStyle === 'plain' ? 'plain' : 'card'}
+        points={highlights.slice(0, 3).map((h) => h.title)}
       />
+
+      <Highlights items={highlights} />
 
       <main className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <h2
@@ -119,6 +128,8 @@ export default function StorefrontHome() {
           </div>
         )}
 
+        {/* "How it works": only when the shop hasn't written its own highlights. */}
+        {highlights.length === 0 && (
         <section className="mt-20 grid gap-8 border-t border-ink/10 pt-14 sm:grid-cols-3">
           {[
             ['01', 'step1'],
@@ -136,6 +147,7 @@ export default function StorefrontHome() {
             </div>
           ))}
         </section>
+        )}
       </main>
 
       <StorefrontFooter tenant={tenant} />

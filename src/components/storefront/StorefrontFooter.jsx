@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { contactLinks } from '../../utils/contact';
+import { availablePolicyPages } from '../../utils/storefront';
 
 export default function StorefrontFooter({ tenant }) {
   const { t } = useTranslation();
@@ -21,6 +23,9 @@ export default function StorefrontFooter({ tenant }) {
     links.facebook && { key: 'facebook', href: links.facebook, label: 'Facebook' },
     links.tiktok && { key: 'tiktok', href: links.tiktok, label: 'TikTok' },
   ].filter(Boolean);
+
+  // Policy pages the shop wrote (privacy, returns, ...). Only pages with text are listed.
+  const policies = availablePolicyPages(tenant, language);
 
   return (
     <footer className="mt-20 border-t border-ink/10 px-5 py-10 sm:px-8">
@@ -46,6 +51,22 @@ export default function StorefrontFooter({ tenant }) {
             </nav>
           )}
         </div>
+        {policies.length > 0 && (
+          <nav
+            aria-label={t('storefront.infoPages')}
+            className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-ink/10 pt-6 text-sm"
+          >
+            {policies.map((id) => (
+              <Link
+                key={id}
+                to={`/store/${tenant.slug}/page/${id}`}
+                className="text-ink-soft underline-offset-4 transition hover:text-brass-dark hover:underline"
+              >
+                {t(`policies.${id}`)}
+              </Link>
+            ))}
+          </nav>
+        )}
         <p className="mt-8 text-sm text-ink-faint">
           {t('storefront.footerNote')} · © {new Date().getFullYear()} {shopName}
         </p>

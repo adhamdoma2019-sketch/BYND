@@ -128,7 +128,8 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         !product ||
         product.tenantId !== tenantId ||
         product.isActive !== true ||
-        product.deleted === true
+        product.deleted === true ||
+        product.comingSoon === true // announced only: can't be ordered yet
       ) {
         throw new OrderError(
           409,

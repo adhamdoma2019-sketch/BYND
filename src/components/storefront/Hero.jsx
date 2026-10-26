@@ -13,10 +13,21 @@ import { optimizedImage } from '../../utils/images';
 //
 // Only the picture on screen (and the one fading out) is kept on the page, which
 // keeps it light for phones.
-export default function Hero({ slides, intervalMs = 6000, fadeMs = 1000, autoplay = true }) {
+//
+// Text style: 'card' puts the text in a dark card with the shop's tick points under the
+// button; 'plain' puts the text straight on the picture (the older look).
+export default function Hero({
+  slides,
+  intervalMs = 6000,
+  fadeMs = 1000,
+  autoplay = true,
+  textStyle = 'card',
+  points = [],
+}) {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const rtl = language === 'ar';
+  const card = textStyle !== 'plain';
   const count = slides.length;
 
   const [index, setIndex] = useState(0);
@@ -124,33 +135,62 @@ export default function Hero({ slides, intervalMs = 6000, fadeMs = 1000, autopla
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
 
             <div className="relative mx-auto flex h-full min-h-[72svh] max-w-6xl flex-col justify-end px-5 pb-16 pt-24 sm:min-h-[80vh] sm:px-8 sm:pb-24">
-              {slide.headline && (
-                <h1 className="font-display max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight text-[#fff] sm:text-6xl lg:text-7xl">
-                  {slide.headline}
-                </h1>
-              )}
-              {slide.subtext && (
-                <p className="mt-4 max-w-xl text-base text-[#e7e6e2] sm:text-lg">{slide.subtext}</p>
-              )}
-              {slide.ctaLabel && active && (
-                <div className="mt-8">
-                  {slide.to.startsWith('#') ? (
-                    <a
-                      href={slide.to}
-                      className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-on-brass transition hover:opacity-90"
-                    >
-                      {slide.ctaLabel}
-                    </a>
-                  ) : (
-                    <Link
-                      to={slide.to}
-                      className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-on-brass transition hover:opacity-90"
-                    >
-                      {slide.ctaLabel}
-                    </Link>
-                  )}
-                </div>
-              )}
+              {/* The card has a plain dark background (no blur: blur is heavy for phones). */}
+              <div className={card ? 'max-w-2xl rounded-lg bg-black/60 p-5 sm:p-8' : ''}>
+                {slide.headline && (
+                  <h1
+                    className={
+                      'font-display max-w-3xl font-bold leading-[1.05] tracking-tight text-[#fff] ' +
+                      (card ? 'text-3xl sm:text-5xl' : 'text-4xl sm:text-6xl lg:text-7xl')
+                    }
+                  >
+                    {slide.headline}
+                  </h1>
+                )}
+                {slide.subtext && (
+                  <p className="mt-4 max-w-xl text-base text-[#e7e6e2] sm:text-lg">{slide.subtext}</p>
+                )}
+                {slide.ctaLabel && active && (
+                  <div className="mt-8">
+                    {slide.to.startsWith('#') ? (
+                      <a
+                        href={slide.to}
+                        className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-on-brass transition hover:opacity-90"
+                      >
+                        {slide.ctaLabel}
+                      </a>
+                    ) : (
+                      <Link
+                        to={slide.to}
+                        className="inline-block rounded bg-brass px-7 py-3 text-sm font-semibold uppercase tracking-wider text-on-brass transition hover:opacity-90"
+                      >
+                        {slide.ctaLabel}
+                      </Link>
+                    )}
+                  </div>
+                )}
+                {card && points.length > 0 && (
+                  <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#fff]">
+                    {points.map((point) => (
+                      <li key={point} className="flex items-center gap-2">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4 shrink-0 text-brass"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M5 13l4 4L19 7" />
+                        </svg>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
         );

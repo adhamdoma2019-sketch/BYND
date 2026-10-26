@@ -1,6 +1,7 @@
 // The numbers on the dashboard, worked out from the shop's orders, products and expenses.
 
 import { calcProfit, inPeriod, monthKey } from './profit.js';
+import { tracksStock } from './storefront.js';
 import { LOW_STOCK_THRESHOLD } from './constants.js';
 
 const createdAt = (o) => (o.createdAt?.seconds ? o.createdAt.seconds * 1000 : 0);
@@ -30,7 +31,7 @@ export function calcDashboard({
   ).length;
 
   // Stock on the shelf (preorder products don't use stock).
-  const shelf = products.filter((p) => !p.isPreorder);
+  const shelf = products.filter(tracksStock);
   let valueAtCost = 0;
   let valueKnown = true;
   for (const p of shelf) {

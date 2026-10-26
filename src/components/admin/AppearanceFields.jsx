@@ -11,6 +11,7 @@ import {
   resolveAccentHex,
   fontHref,
 } from '../../utils/theme';
+import { MAX_ANNOUNCEMENTS } from '../../utils/storefront';
 
 const input =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
@@ -246,6 +247,78 @@ export default function AppearanceFields({ accent, onAccent, value, onChange }) 
               />
               <span className="mt-1 block text-xs text-ink-faint">{t('appearance.barLinkHint')}</span>
             </label>
+
+            {/* More messages: they change by themselves, with arrows */}
+            <div className="col-span-full">
+              <p className="text-sm font-medium">{t('appearance.barMoreTitle')}</p>
+              <p className="mt-1 text-xs text-ink-faint">
+                {t('appearance.barMoreHelp', { max: MAX_ANNOUNCEMENTS - 1 })}
+              </p>
+              <div className="mt-3 space-y-3">
+                {value.annMore.map((m, i) => {
+                  const update = (patch) =>
+                    set({ annMore: value.annMore.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) });
+                  return (
+                    <div key={i} className="rounded-md border border-ink/10 bg-paper-soft p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-medium">{t('appearance.barMessageN', { n: i + 2 })}</span>
+                        <button
+                          type="button"
+                          onClick={() => set({ annMore: value.annMore.filter((_, idx) => idx !== i) })}
+                          className="text-sm text-rust hover:underline"
+                        >
+                          {t('common.remove')}
+                        </button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="text-sm text-ink-soft">
+                          {t('appearance.barTextEn')}
+                          <input
+                            type="text"
+                            dir="ltr"
+                            maxLength={120}
+                            value={m.textEn}
+                            onChange={(e) => update({ textEn: e.target.value })}
+                            className={input}
+                          />
+                        </label>
+                        <label className="text-sm text-ink-soft">
+                          {t('appearance.barTextAr')}
+                          <input
+                            type="text"
+                            dir="rtl"
+                            maxLength={120}
+                            value={m.textAr}
+                            onChange={(e) => update({ textAr: e.target.value })}
+                            className={input}
+                          />
+                        </label>
+                        <label className="col-span-full text-sm text-ink-soft">
+                          {t('appearance.barLink')}
+                          <input
+                            type="text"
+                            dir="ltr"
+                            placeholder="https://..."
+                            value={m.link}
+                            onChange={(e) => update({ link: e.target.value })}
+                            className={input}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {value.annMore.length < MAX_ANNOUNCEMENTS - 1 && (
+                <button
+                  type="button"
+                  onClick={() => set({ annMore: [...value.annMore, { textEn: '', textAr: '', link: '' }] })}
+                  className="mt-3 rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass"
+                >
+                  {t('appearance.barAddMessage')}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

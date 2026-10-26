@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import { hasOptions } from '../../utils/productOptions';
+import { productStatus, isBuyable } from '../../utils/storefront';
 
 export default function ProductCard({ product, onAddToCart }) {
   const { t } = useTranslation();
@@ -12,8 +13,8 @@ export default function ProductCard({ product, onAddToCart }) {
   const navigate = useNavigate();
 
   const name = product.name?.[language] || product.name?.en;
-  const isPreorder = product.isPreorder === true;
-  const outOfStock = !isPreorder && product.stock <= 0;
+  const status = productStatus(product); // comingSoon / preorder / madeToOrder / soldOut / inStock
+  const buyable = isBuyable(status);
   const productUrl = `/store/${slug}/product/${product.id}`;
 
   return (
@@ -31,9 +32,9 @@ export default function ProductCard({ product, onAddToCart }) {
             {name}
           </div>
         )}
-        {isPreorder && (
+        {['preorder', 'madeToOrder', 'comingSoon'].includes(status) && (
           <span className="absolute start-2 top-2 rounded bg-ink px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-paper">
-            {t('storefront.preorder')}
+            {t(`storefront.${status}`)}
           </span>
         )}
       </Link>
@@ -48,16 +49,20 @@ export default function ProductCard({ product, onAddToCart }) {
       <button
         // Products with options (color, extension...) are configured on their own page.
         onClick={() => (hasOptions(product) ? navigate(productUrl) : onAddToCart(product))}
-        disabled={outOfStock}
+        disabled={!buyable}
         className="mt-3 rounded bg-ink py-2.5 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass hover:text-on-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
       >
-        {outOfStock
-          ? t('storefront.outOfStock')
-          : hasOptions(product)
-            ? t('storefront.selectOptions')
-            : isPreorder
-              ? t('storefront.preorderNow')
-              : t('storefront.addToCart')}
+        {status === 'comingSoon'
+          ? t('storefront.comingSoon')
+          : status === 'soldOut'
+            ? t('storefront.outOfStock')
+            : hasOptions(product)
+              ? t('storefront.selectOptions')
+              : status === 'preorder'
+                ? t('storefront.preorderNow')
+                : status === 'madeToOrder'
+                  ? t('storefront.madeToOrderNow')
+                  : t('storefront.addToCart')}
       </button>
     </div>
   );

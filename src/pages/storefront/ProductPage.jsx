@@ -15,6 +15,7 @@ import { resolveChoice, cleanSelections, textKey } from '../../utils/productOpti
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { MAX_ORDER_QTY, LOW_STOCK_THRESHOLD } from '../../utils/constants';
+import { productStatus, isBuyable } from '../../utils/storefront';
 
 export default function ProductPage() {
   const { slug, productId } = useParams();
@@ -106,9 +107,12 @@ export default function ProductPage() {
     );
   }
 
-  const isPreorder = product.isPreorder === true;
+  const isPreorder = product.isPreorder === true; // preorder AND made-to-order: no stock needed
   const stock = Number(product.stock) || 0;
-  const soldOut = !isPreorder && stock <= 0;
+  const availability = productStatus(product); // comingSoon / preorder / madeToOrder / soldOut / inStock
+  const soldOut = availability === 'soldOut';
+  const comingSoon = availability === 'comingSoon';
+  const canBuy = isBuyable(availability);
   const maxQty = isPreorder ? MAX_ORDER_QTY : Math.min(stock, MAX_ORDER_QTY);
   const preorderMessage =
     product.preorderMessage?.[language] || product.preorderMessage?.en || '';
@@ -123,9 +127,22 @@ export default function ProductPage() {
   const missingIds = new Set(choice.missing.map((o) => o.id));
   const productOptions = (product.options || []).filter((o) => o && o.type);
 
+  const buttonLabel = comingSoon
+    ? t('storefront.comingSoon')
+    : soldOut
+      ? t('storefront.outOfStock')
+      : availability === 'preorder'
+        ? t('storefront.preorderNow')
+        : availability === 'madeToOrder'
+          ? t('storefront.madeToOrderNow')
+          : t('storefront.addToCart');
+
   function handleAdd() {
+    if (!canBuy) return;
     if (choice.missing.length > 0) {
       setShowMissing(true);
+      // On a phone the options may be out of sight (the buy bar is always visible): scroll to them.
+      document.getElementById('product-options')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     addItem(product, quantity, {
@@ -141,7 +158,7 @@ export default function ProductPage() {
     <div className="min-h-screen">
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      <main className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:px-6 sm:py-12 md:pb-12">
         <Link
           to={`/store/${slug}`}
           className="text-sm text-brass-dark hover:underline"
@@ -195,10 +212,19 @@ export default function ProductPage() {
             </p>
 
             <div className="mt-4">
-              {isPreorder ? (
+              {comingSoon ? (
                 <>
                   <span className="rounded bg-ink px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-paper">
-                    {t('storefront.preorder')}
+                    {t('storefront.comingSoon')}
+                  </span>
+                  <p className="mt-3 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
+                    {t('storefront.comingSoonNote')}
+                  </p>
+                </>
+              ) : isPreorder ? (
+                <>
+                  <span className="rounded bg-ink px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-paper">
+                    {t(`storefront.${availability}`)}
                   </span>
                   {preorderMessage && (
                     <p className="mt-3 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
@@ -228,7 +254,7 @@ export default function ProductPage() {
             )}
 
             {productOptions.length > 0 && (
-              <div className="mt-6 space-y-5">
+              <div id="product-options" className="mt-6 scroll-mt-24 space-y-5">
                 {productOptions.map((option) => (
                   <OptionPicker
                     key={option.id}
@@ -264,7 +290,7 @@ export default function ProductPage() {
               </div>
             )}
 
-            {!soldOut && (
+            {canBuy && (
               <div className="mt-8">
                 <p className="text-sm text-ink-soft">
                   {t('storefront.quantity')}
@@ -293,14 +319,10 @@ export default function ProductPage() {
 
             <button
               onClick={handleAdd}
-              disabled={soldOut}
+              disabled={!canBuy}
               className="mt-6 w-full rounded bg-ink py-3 text-paper transition hover:bg-brass hover:text-on-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
             >
-              {soldOut
-                ? t('storefront.outOfStock')
-                : isPreorder
-                  ? t('storefront.preorderNow')
-                  : t('storefront.addToCart')}
+              {buttonLabel}
             </button>
           </div>
         </div>
@@ -335,6 +357,28 @@ export default function ProductPage() {
       </main>
 
       <StorefrontFooter tenant={tenant} />
+
+      {/* Always-visible buy bar on phones (hidden on bigger screens, where the button is in view). */}
+      {canBuy && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-ink/10 bg-paper px-4 pt-3 md:hidden"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        >
+          <div className="mx-auto flex max-w-5xl items-center gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-xs text-ink-soft">{name}</p>
+              <p className="text-lg font-semibold">{formatPrice(unitPrice, language)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="ms-auto shrink-0 rounded bg-brass px-6 py-3 text-sm font-semibold uppercase tracking-wider text-on-brass transition hover:opacity-90"
+            >
+              {buttonLabel}
+            </button>
+          </div>
+        </div>
+      )}
       {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   );

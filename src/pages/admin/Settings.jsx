@@ -10,6 +10,7 @@ import AppearanceFields from '../../components/admin/AppearanceFields';
 import ContactFields from '../../components/admin/ContactFields';
 import { DEFAULT_ACCENT, DEFAULT_FONT, DEFAULT_RADIUS } from '../../utils/theme';
 import { safeBarLink } from '../../utils/contact';
+import { MAX_ANNOUNCEMENTS, MAX_HIGHLIGHTS, MAX_PAGE_CHARS, POLICY_PAGES } from '../../utils/storefront';
 import { useAudit } from '../../hooks/useAudit';
 import { fieldsOnly, stable } from '../../utils/audit';
 import { getTenantPrivate, saveTenantPrivate } from '../../firebase/private.service';
@@ -66,6 +67,38 @@ function formToSlide(f) {
     productId: f.productId || '',
   };
 }
+
+// ----- Highlights ("why us" points), policy pages and extra top-bar messages -----
+const emptyHighlight = () => ({ titleEn: '', titleAr: '', textEn: '', textAr: '' });
+const highlightToForm = (h) => ({
+  titleEn: h.title?.en || '',
+  titleAr: h.title?.ar || '',
+  textEn: h.text?.en || '',
+  textAr: h.text?.ar || '',
+});
+const formToHighlight = (f) => ({
+  title: { en: f.titleEn.trim() || f.titleAr.trim(), ar: f.titleAr.trim() || f.titleEn.trim() },
+  text: { en: f.textEn.trim() || f.textAr.trim(), ar: f.textAr.trim() || f.textEn.trim() },
+});
+
+const pagesToForm = (pages) =>
+  Object.fromEntries(
+    POLICY_PAGES.map((id) => [id, { en: pages?.[id]?.body?.en || '', ar: pages?.[id]?.body?.ar || '' }])
+  );
+const formToPages = (form) =>
+  Object.fromEntries(
+    POLICY_PAGES.map((id) => {
+      const en = (form[id]?.en || '').trim();
+      const ar = (form[id]?.ar || '').trim();
+      return [id, { body: { en: en || ar, ar: ar || en } }];
+    })
+  );
+
+const moreToForm = (m) => ({ textEn: m.text?.en || '', textAr: m.text?.ar || '', link: m.link || '' });
+const formToMore = (f) => ({
+  text: { en: f.textEn.trim() || f.textAr.trim(), ar: f.textAr.trim() || f.textEn.trim() },
+  link: safeBarLink(f.link),
+});
 
 const newZoneId = () => 'z' + Math.random().toString(36).slice(2, 8);
 
@@ -154,6 +187,7 @@ export default function Settings() {
     annTextEn: '',
     annTextAr: '',
     annLink: '',
+    annMore: [], // extra top-bar messages
   });
   const [contact, setContact] = useState({
     whatsapp: '',
@@ -168,6 +202,10 @@ export default function Settings() {
   });
   const tabClass = (name) => (tab === name ? '' : 'hidden');
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoDarkUrl, setLogoDarkUrl] = useState('');
+  const [heroTextStyle, setHeroTextStyle] = useState('card');
+  const [highlights, setHighlights] = useState([]);
+  const [pages, setPages] = useState(() => pagesToForm(undefined));
   const [slides, setSlides] = useState([]);
   const [seconds, setSeconds] = useState(HERO_DEFAULT_SECONDS);
   const [fade, setFade] = useState('normal');
@@ -201,6 +239,7 @@ export default function Settings() {
       annTextEn: a.announcement?.text?.en || '',
       annTextAr: a.announcement?.text?.ar || '',
       annLink: a.announcement?.link || '',
+      annMore: (a.announcement?.more || []).slice(0, MAX_ANNOUNCEMENTS - 1).map(moreToForm),
     });
     const c = tenant.contact || {};
     setContact({
@@ -215,6 +254,10 @@ export default function Settings() {
       floatingWhatsapp: c.floatingWhatsapp === true,
     });
     setLogoUrl(tenant.brand?.logoUrl || '');
+    setLogoDarkUrl(tenant.brand?.logoDarkUrl || '');
+    setHeroTextStyle(tenant.hero?.textStyle === 'plain' ? 'plain' : 'card');
+    setHighlights((tenant.highlights || []).slice(0, MAX_HIGHLIGHTS).map(highlightToForm));
+    setPages(pagesToForm(tenant.pages));
     setSlides((tenant.hero?.slides || []).map(slideToForm));
     setSeconds(tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS);
     setFade(tenant.hero?.fade || 'normal');
@@ -328,7 +371,7 @@ export default function Settings() {
     setError('');
     setMessage('');
 
-    const urls = [logoUrl, ...slides.map((s) => s.imageUrl)].filter((u) => u.trim());
+    const urls = [logoUrl, logoDarkUrl, ...slides.map((s) => s.imageUrl)].filter((u) => u.trim());
     if (urls.some((u) => !/^https:\/\//i.test(u.trim()))) {
       setError(t('settingsPage.errHttps'));
       return;
@@ -364,6 +407,17 @@ export default function Settings() {
       Math.max(HERO_MIN_SECONDS, Number(seconds) || HERO_DEFAULT_SECONDS)
     );
 
+    // What gets saved for the new "shop content" parts (empty entries are dropped).
+    const moreToSave = appearance.annMore
+      .filter((m) => m.textEn.trim() || m.textAr.trim())
+      .slice(0, MAX_ANNOUNCEMENTS - 1)
+      .map(formToMore);
+    const highlightsToSave = highlights
+      .filter((h) => h.titleEn.trim() || h.titleAr.trim())
+      .slice(0, MAX_HIGHLIGHTS)
+      .map(formToHighlight);
+    const pagesToSave = formToPages(pages);
+
     setSaving(true);
     try {
       await saveTenantPrivate(tenant.id, { telegramChatId, notifyLanguage });
@@ -381,6 +435,8 @@ export default function Settings() {
               ar: appearance.annTextAr.trim() || appearance.annTextEn.trim(),
             },
             link: safeBarLink(appearance.annLink),
+            // up to 3 more messages (empty ones are dropped)
+            more: moreToSave,
           },
         },
         contact: {
@@ -393,13 +449,16 @@ export default function Settings() {
           address: { en: contact.addressEn.trim(), ar: contact.addressAr.trim() || contact.addressEn.trim() },
           floatingWhatsapp: contact.floatingWhatsapp,
         },
-        brand: { logoUrl: logoUrl.trim() },
+        brand: { logoUrl: logoUrl.trim(), logoDarkUrl: logoDarkUrl.trim() },
         hero: {
           slides: slides.map(formToSlide),
           intervalSeconds: safeSeconds,
           fade,
           autoplay,
+          textStyle: heroTextStyle,
         },
+        highlights: highlightsToSave,
+        pages: pagesToSave,
         checkout: {
           fields: fieldSettings,
           customFields: customFields.map(formToCustom),
@@ -418,7 +477,8 @@ export default function Settings() {
       ) changed.push('appearance');
       if (
         (before.announcement?.enabled === true) !== appearance.annEnabled ||
-        (before.announcement?.text?.en || '') !== appearance.annTextEn.trim()
+        (before.announcement?.text?.en || '') !== appearance.annTextEn.trim() ||
+        saved(before.announcement?.more || []) !== saved(moreToSave)
       ) changed.push('announcement');
       const cBefore = tenant.contact || {};
       if (
@@ -428,11 +488,17 @@ export default function Settings() {
         (cBefore.floatingWhatsapp === true) !== contact.floatingWhatsapp ||
         (cBefore.address?.en || '') !== contact.addressEn.trim()
       ) changed.push('contact');
-      if ((tenant.brand?.logoUrl || '') !== logoUrl.trim()) changed.push('logo');
+      if (
+        (tenant.brand?.logoUrl || '') !== logoUrl.trim() ||
+        (tenant.brand?.logoDarkUrl || '') !== logoDarkUrl.trim()
+      ) changed.push('logo');
+      if (saved(tenant.highlights || []) !== saved(highlightsToSave)) changed.push('highlights');
+      if (saved(tenant.pages || {}) !== saved(pagesToSave)) changed.push('pages');
       if (saved(tenant.hero?.slides || []) !== saved(slides.map(formToSlide)) ||
           (tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS) !== safeSeconds ||
           (tenant.hero?.fade || 'normal') !== fade ||
-          (tenant.hero?.autoplay !== false) !== autoplay) changed.push('banner');
+          (tenant.hero?.autoplay !== false) !== autoplay ||
+          (tenant.hero?.textStyle === 'plain' ? 'plain' : 'card') !== heroTextStyle) changed.push('banner');
       if (saved(resolveFieldSettings(tenant.checkout?.fields)) !== saved(fieldSettings)) changed.push('checkoutForm');
       if (saved(tenant.checkout?.customFields || []) !== saved(customFields.map(formToCustom))) changed.push('customFields');
       if (saved(tenant.shipping?.zones || []) !== saved(zones.map(formToZone))) changed.push('shipping');
@@ -466,7 +532,7 @@ export default function Settings() {
 
       <form onSubmit={handleSave} className="max-w-3xl space-y-10">
         <div role="tablist" className="-mt-2 flex flex-wrap gap-2 border-b border-ink/10 pb-3">
-          {['appearance', 'banner', 'checkout', 'shipping', 'contact', 'alerts', 'backup'].map((name) => (
+          {['appearance', 'banner', 'content', 'checkout', 'shipping', 'contact', 'alerts', 'backup'].map((name) => (
             <button
               key={name}
               type="button"
@@ -503,6 +569,14 @@ export default function Settings() {
               label={t('settingsPage.logoLink')}
               value={logoUrl}
               onChange={setLogoUrl}
+            />
+          </div>
+          <p className="mt-5 text-sm text-ink-soft">{t('settingsPage.logoDarkHelp')}</p>
+          <div className="mt-3">
+            <ImageField
+              label={t('settingsPage.logoDarkLink')}
+              value={logoDarkUrl}
+              onChange={setLogoDarkUrl}
             />
           </div>
         </section>
@@ -560,6 +634,32 @@ export default function Settings() {
             <p className="mt-2 text-xs text-ink-faint">
               {t('settingsPage.timingNote')}
             </p>
+          </div>
+
+          {/* Text style */}
+          <div className="mt-4 rounded-md border border-ink/10 bg-paper-soft p-4">
+            <p className="text-sm font-medium">{t('settingsPage.heroStyleTitle')}</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              {['card', 'plain'].map((style) => (
+                <label
+                  key={style}
+                  className={
+                    'cursor-pointer rounded border px-4 py-3 text-sm ' +
+                    (heroTextStyle === style ? 'border-ink bg-paper' : 'border-ink/15')
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="heroTextStyle"
+                    checked={heroTextStyle === style}
+                    onChange={() => setHeroTextStyle(style)}
+                    className="sr-only"
+                  />
+                  <span className="font-medium">{t(`settingsPage.heroStyle_${style}`)}</span>
+                  <span className="block text-xs text-ink-faint">{t(`settingsPage.heroStyle_${style}_help`)}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="mt-5 space-y-5">
@@ -708,6 +808,97 @@ export default function Settings() {
               {t('settingsPage.addSlide')}
             </button>
           )}
+        </section>
+
+        {/* ---------- Shop content: highlights + text pages ---------- */}
+        <section className={tabClass('content') + ' space-y-10'}>
+          <div>
+            <h2 className="font-display text-lg font-medium">{t('settingsPage.highlightsTitle')}</h2>
+            <p className="mt-1 text-sm text-ink-soft">
+              {t('settingsPage.highlightsHelp', { max: MAX_HIGHLIGHTS })}
+            </p>
+            <div className="mt-4 space-y-4">
+              {highlights.map((h, i) => (
+                <div key={i} className="rounded-md border border-ink/10 bg-paper-soft p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-medium">{t('settingsPage.highlightN', { n: i + 1 })}</p>
+                    <button
+                      type="button"
+                      onClick={() => setHighlights((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="text-sm text-rust hover:underline"
+                    >
+                      {t('common.remove')}
+                    </button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      ['titleEn', 'highlightTitleEn', 'ltr', 60],
+                      ['titleAr', 'highlightTitleAr', 'rtl', 60],
+                      ['textEn', 'highlightTextEn', 'ltr', 120],
+                      ['textAr', 'highlightTextAr', 'rtl', 120],
+                    ].map(([field, label, dir, max]) => (
+                      <label key={field} className="text-sm text-ink-soft">
+                        {t(`settingsPage.${label}`)}
+                        <input
+                          type="text"
+                          dir={dir}
+                          maxLength={max}
+                          value={h[field]}
+                          onChange={(e) =>
+                            setHighlights((prev) =>
+                              prev.map((x, idx) => (idx === i ? { ...x, [field]: e.target.value } : x))
+                            )
+                          }
+                          className={inputClass}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {highlights.length < MAX_HIGHLIGHTS && (
+              <button
+                type="button"
+                onClick={() => setHighlights((prev) => [...prev, emptyHighlight()])}
+                className="mt-4 rounded border border-ink/15 px-4 py-2 text-sm hover:border-brass"
+              >
+                {t('settingsPage.addHighlight')}
+              </button>
+            )}
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg font-medium">{t('settingsPage.pagesTitle')}</h2>
+            <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.pagesHelp')}</p>
+            <div className="mt-4 space-y-5">
+              {POLICY_PAGES.map((id) => (
+                <div key={id} className="rounded-md border border-ink/10 bg-paper-soft p-4">
+                  <p className="text-sm font-medium">{t(`policies.${id}`)}</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {[
+                      ['en', 'pageBodyEn', 'ltr'],
+                      ['ar', 'pageBodyAr', 'rtl'],
+                    ].map(([lang, label, dir]) => (
+                      <label key={lang} className="text-sm text-ink-soft">
+                        {t(`settingsPage.${label}`)}
+                        <textarea
+                          rows={6}
+                          dir={dir}
+                          maxLength={MAX_PAGE_CHARS}
+                          value={pages[id][lang]}
+                          onChange={(e) =>
+                            setPages((prev) => ({ ...prev, [id]: { ...prev[id], [lang]: e.target.value } }))
+                          }
+                          className={inputClass}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* ---------- Checkout form ---------- */}

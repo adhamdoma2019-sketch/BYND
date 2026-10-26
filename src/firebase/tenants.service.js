@@ -51,21 +51,25 @@ export async function getUserTenantId(uid) {
 
 // Look & feel settings edited in Admin > Settings:
 //   theme: { accent }                 colour choice
-//   brand: { logoUrl }                optional logo image
-//   hero:  { slides: [...], intervalSeconds, fade }   home page banner
+//   brand: { logoUrl, logoDarkUrl }   optional logo (+ another one for dark screens)
+//   hero:  { slides: [...], intervalSeconds, fade, textStyle }   home page banner
+//   highlights: [{ title:{en,ar}, text:{en,ar} }]   the shop's own "why us" points
+//   pages: { privacy|returns|shipping|terms: { body:{en,ar} } }   text pages shown in the footer
 //   checkout: { fields }              which customer details are asked
 //   shipping: { zones }               delivery areas and their prices
 export async function updateTenantSettings(
   tenantId,
-  { theme, brand, hero, checkout, shipping, defaultCountryCode, appearance, contact }
+  { theme, brand, hero, checkout, shipping, defaultCountryCode, appearance, contact, highlights, pages }
 ) {
   await updateDoc(doc(db, 'tenants', tenantId), {
     defaultCountryCode, // for WhatsApp links, e.g. '20' for Egypt
-    appearance, // { mode, font, radius, announcement:{ enabled, text:{en,ar}, link } }
+    appearance, // { mode, font, radius, announcement:{ enabled, text:{en,ar}, link, more:[{ text:{en,ar}, link }] } }
     contact, // { whatsapp, phone, email, instagram, facebook, tiktok, address:{en,ar}, floatingWhatsapp }
     theme,
     brand,
     hero,
+    highlights,
+    pages,
     checkout, // { fields: { <field>: { show, required } } }
     shipping, // { zones: [{ id, name:{en,ar}, price, freeAbove, active }] }
     updatedAt: serverTimestamp(),

@@ -5,17 +5,19 @@ import { useCart } from '../../context/CartContext';
 import LanguageSwitch from '../shared/LanguageSwitch';
 import { useStorefront } from '../../context/StorefrontContext';
 import { optimizedImage } from '../../utils/images';
+import { pickLogo } from '../../utils/storefront';
 
 // Top bar shared by the shop pages: logo / shop name, language switch, cart.
-// The logo comes from Admin > Settings; until one is set, the shop name is
-// shown as a text wordmark.
+// The logo comes from Admin > Settings (one for light screens, optionally another for
+// dark ones); until one is set, the shop name is shown as a text wordmark.
 export default function StorefrontHeader({ tenant, onCartClick }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { itemCount } = useCart();
   const { mode, toggleMode } = useStorefront();
   const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
-  const logoUrl = tenant.brand?.logoUrl;
+  // The shop can give a second logo for dark screens (see Admin > Settings > Look).
+  const logoUrl = pickLogo(tenant.brand, mode);
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/10 bg-paper px-4 py-3 sm:px-8">

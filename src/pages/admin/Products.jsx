@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { optionsToForm, optionsAreValid } from '../../utils/productOptionsForm';
 import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
+import { tracksStock } from '../../utils/storefront';
 import {
   listProducts,
   listProductCostDetails,
@@ -40,6 +41,8 @@ const emptyForm = {
   imageUrl: '',
   isActive: true,
   isPreorder: false,
+  preorderStyle: 'preorder',
+  comingSoon: false,
   preorderMessageEn: '',
   preorderMessageAr: '',
 };
@@ -107,6 +110,8 @@ export default function Products() {
       imageUrl: p.imageUrl || '',
       isActive: p.isActive,
       isPreorder: p.isPreorder === true,
+      preorderStyle: p.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder',
+      comingSoon: p.comingSoon === true,
       preorderMessageEn: p.preorderMessage?.en || '',
       preorderMessageAr: p.preorderMessage?.ar || '',
     });
@@ -138,7 +143,7 @@ export default function Products() {
       setError(t('options.errInvalid'));
       return;
     }
-    if (editingId === 'new' && !form.isPreorder && (form.stock === '' || Number(form.stock) < 0)) {
+    if (editingId === 'new' && !form.isPreorder && !form.comingSoon && (form.stock === '' || Number(form.stock) < 0)) {
       setError(t('products.badStock'));
       return;
     }
@@ -168,6 +173,7 @@ export default function Products() {
             cost: costs[editingId] ?? '',
             active: original?.isActive,
             preorder: original?.isPreorder === true,
+            comingSoon: original?.comingSoon === true,
             sku: original?.sku || '',
             shippingExtra: original?.shippingExtra || 0,
             options: (original?.options || []).length,
@@ -178,6 +184,7 @@ export default function Products() {
             cost: form.costPrice === '' ? '' : Number(form.costPrice),
             active: form.isActive,
             preorder: form.isPreorder,
+            comingSoon: form.comingSoon,
             sku: form.sku || '',
             shippingExtra: Number(form.shippingExtra) || 0,
             options: form.options.length,
@@ -480,6 +487,17 @@ export default function Products() {
             </label>
             {form.isPreorder && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="col-span-full text-sm text-ink-soft">
+                  {t('products.preorderStyleLabel')}
+                  <select
+                    value={form.preorderStyle}
+                    onChange={(e) => setForm({ ...form, preorderStyle: e.target.value })}
+                    className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                  >
+                    <option value="preorder">{t('products.preorderStylePre')}</option>
+                    <option value="madeToOrder">{t('products.preorderStyleMade')}</option>
+                  </select>
+                </label>
                 <label className="text-sm text-ink-soft">
                   {t('products.preorderMsgEn')}
                   <input
@@ -507,6 +525,17 @@ export default function Products() {
                 </label>
               </div>
             )}
+          </div>
+
+          <div className="col-span-full rounded border border-ink/10 bg-white p-3">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={form.comingSoon}
+                onChange={(e) => setForm({ ...form, comingSoon: e.target.checked })}
+              />
+              {t('products.comingSoonCheck')}
+            </label>
           </div>
 
           {editingId !== 'new' && (
@@ -543,10 +572,10 @@ export default function Products() {
         </form>
       )}
 
-      {!loading && products.some((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD) && (
+      {!loading && products.some((p) => tracksStock(p) && p.stock <= LOW_STOCK_THRESHOLD) && (
         <p className="mb-4 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
           {t('products.lowBanner', {
-            n: products.filter((p) => !p.isPreorder && p.stock <= LOW_STOCK_THRESHOLD)
+            n: products.filter((p) => tracksStock(p) && p.stock <= LOW_STOCK_THRESHOLD)
               .length,
           })}
         </p>
@@ -600,17 +629,22 @@ export default function Products() {
                       {t('products.hidden')}
                     </span>
                   )}
-                  {p.isPreorder && (
+                  {p.comingSoon === true && (
                     <span className="rounded bg-ink/10 px-2 py-0.5 text-xs text-ink-soft">
-                      {t('storefront.preorder')}
+                      {t('storefront.comingSoon')}
                     </span>
                   )}
-                  {!p.isPreorder && p.stock <= 0 && (
+                  {p.isPreorder && (
+                    <span className="rounded bg-ink/10 px-2 py-0.5 text-xs text-ink-soft">
+                      {t(p.preorderStyle === 'madeToOrder' ? 'storefront.madeToOrder' : 'storefront.preorder')}
+                    </span>
+                  )}
+                  {tracksStock(p) && p.stock <= 0 && (
                     <span className="rounded bg-rust/15 px-2 py-0.5 text-xs text-rust">
                       {t('storefront.outOfStock')}
                     </span>
                   )}
-                  {!p.isPreorder && p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD && (
+                  {tracksStock(p) && p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD && (
                     <span className="rounded bg-brass/15 px-2 py-0.5 text-xs text-brass-dark">
                       {t('products.lowStockBadge')}
                     </span>

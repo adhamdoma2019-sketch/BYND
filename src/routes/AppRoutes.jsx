@@ -6,6 +6,7 @@ import StorefrontHome from '../pages/storefront/StorefrontHome';
 import ProductPage from '../pages/storefront/ProductPage';
 import Checkout from '../pages/storefront/Checkout';
 import OrderConfirmation from '../pages/storefront/OrderConfirmation';
+import PolicyPage from '../pages/storefront/PolicyPage';
 import ProtectedRoute from './ProtectedRoute';
 
 // The admin screens are loaded only when someone opens them, so customers visiting
@@ -34,6 +35,7 @@ export default function AppRoutes() {
         <Route path="product/:productId" element={<ProductPage />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="thank-you" element={<OrderConfirmation />} />
+        <Route path="page/:pageId" element={<PolicyPage />} />
       </Route>
 
       <Route path="/admin/signup" element={<Signup />} />

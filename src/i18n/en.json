@@ -38,7 +38,15 @@
     "chooseOptions": "Please choose: {{names}}",
     "prevSlide": "Previous picture",
     "nextSlide": "Next picture",
-    "related": "Extensions and accessories"
+    "related": "Extensions and accessories",
+    "comingSoon": "Coming soon",
+    "comingSoonNote": "This product isn't available to order yet.",
+    "madeToOrder": "Made to order",
+    "madeToOrderNow": "Order now",
+    "prevMessage": "Previous message",
+    "nextMessage": "Next message",
+    "infoPages": "Information",
+    "pageNotFound": "This page isn't available."
   },
   "checkout": {
     "title": "Checkout",
@@ -208,7 +216,11 @@
     "relatedHelp": "Shown on this product's page as \"Extensions and accessories\". Each one is still a normal product that can be bought on its own.",
     "startingStock": "Starting stock",
     "stockNow": "Stock now: {{n}}",
-    "stockHint": "To change stock, use \"Add stock\" or \"Adjust\" on the product card. This keeps the stock history correct."
+    "stockHint": "To change stock, use \"Add stock\" or \"Adjust\" on the product card. This keeps the stock history correct.",
+    "preorderStyleLabel": "Wording shown to customers",
+    "preorderStylePre": "Pre-order",
+    "preorderStyleMade": "Made to order",
+    "comingSoonCheck": "Coming soon: show it in the shop, but don't allow orders yet"
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -379,7 +391,27 @@
     "rose": "Rose",
     "violet": "Violet",
     "emerald": "Emerald",
-    "gold": "Gold"
+    "gold": "Gold",
+    "tab_content": "Shop content",
+    "logoDarkLink": "Logo for dark screens (optional)",
+    "logoDarkHelp": "Optional: a second logo that is shown instead of the main one when the shop is dark. Use a version that is clearly visible on a dark background (a transparent PNG works best). If you leave it empty, the main logo is used everywhere.",
+    "heroStyleTitle": "Banner text style",
+    "heroStyle_card": "Text card",
+    "heroStyle_card_help": "The text sits in a dark card, with your highlights as ticks under the button.",
+    "heroStyle_plain": "Plain text",
+    "heroStyle_plain_help": "The text sits directly on the picture (the older look).",
+    "highlightsTitle": "Highlights",
+    "highlightsHelp": "Up to {{max}} short promises about your shop (for example quality, returns, support). The titles appear as ticks on the banner, and as cards under it. Write only what is true for your shop.",
+    "highlightN": "Highlight {{n}}",
+    "highlightTitleEn": "Title (English)",
+    "highlightTitleAr": "Title (Arabic)",
+    "highlightTextEn": "Short text (English, optional)",
+    "highlightTextAr": "Short text (Arabic, optional)",
+    "addHighlight": "Add a highlight",
+    "pagesTitle": "Text pages",
+    "pagesHelp": "Write each page in your own words (plain text; a blank line starts a new paragraph). A page appears in the shop footer only when it has text. Please make sure the text follows the rules of your country.",
+    "pageBodyEn": "Text (English)",
+    "pageBodyAr": "Text (Arabic)"
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -606,7 +638,10 @@
       "restock": "Items back in stock",
       "appearance": "Look (mode, font, corners)",
       "announcement": "Top bar message",
-      "contact": "Contact details"
+      "contact": "Contact details",
+      "highlights": "Highlights",
+      "pages": "Text pages",
+      "comingSoon": "Coming soon"
     }
   },
   "stats": {
@@ -757,7 +792,11 @@
     "barTextEn": "Message (English)",
     "barTextAr": "Message (Arabic)",
     "barLink": "Link (optional)",
-    "barLinkHint": "A full https:// address, or #products to scroll down to the products."
+    "barLinkHint": "A full https:// address, or #products to scroll down to the products.",
+    "barMoreTitle": "More messages (optional)",
+    "barMoreHelp": "Up to {{max}} more messages. With several, the bar changes message by itself and shows arrows.",
+    "barMessageN": "Message {{n}}",
+    "barAddMessage": "Add another message"
   },
   "theme": {
     "toLight": "Switch to light mode",
@@ -776,5 +815,11 @@
     "whatsapp": "WhatsApp",
     "whatsappHello": "Hello {{shop}}, I have a question.",
     "whatsappLabel": "Chat on WhatsApp"
+  },
+  "policies": {
+    "privacy": "Privacy policy",
+    "returns": "Returns & exchanges",
+    "shipping": "Shipping policy",
+    "terms": "Terms of service"
   }
 }

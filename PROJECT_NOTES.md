@@ -46,20 +46,20 @@ src/
   context/           Auth, Tenant (shop + role), Language, Cart, Storefront (shop + light/dark)
   firebase/          *.service.js: ALL database/API calls live here (orders, products, stock, promos, team, tenants, ...)
   pages/admin|storefront|Landing.jsx    screens; routes/AppRoutes.jsx (admin pages lazy-loaded) + ProtectedRoute (role areas)
-  utils/             pure logic, all unit-tested: theme, roles, stock, stats, profit, orderRules, productOptions, csv, exports, contact, ...
+  utils/             pure logic, all unit-tested: theme, roles, stock, stats, profit, orderRules, productOptions, csv, exports, contact, storefront (logo choice, top-bar messages, highlights, text pages, product status), ...
   i18n/en.json, ar.json                 every text, must stay in parity
-tests/               12 test files, `npm test`; `npm run build` runs them first (a broken update fails the build, live site stays on the old version)
+tests/               13 test files, `npm test`; `npm run build` runs them first (a broken update fails the build, live site stays on the old version)
 firestore.rules      security rules (publish by hand in Firebase console)
 ```
 Rendering helpers in tests use a pretend Firestore (tests/transactions.mjs bundles the real services with esbuild).
 Page-render checks (server-side rendering with stubbed services) existed only in the previous assistant's sandbox and are NOT in the repo.
 
 ## 5. Data model (Firestore)
-- `tenants/{slug}`: PUBLIC shop record: name{en,ar}, slug, ownerUid, isActive, theme{accent}, appearance{mode,font,radius,announcement},
-  brand{logoUrl}, hero{slides,intervalSeconds,fade,autoplay}, checkout{fields,customFields}, shipping{zones}, contact{...}, defaultCountryCode, orderPrefix.
+- `tenants/{slug}`: PUBLIC shop record: name{en,ar}, slug, ownerUid, isActive, theme{accent}, appearance{mode,font,radius,announcement{enabled,text,link,more[]}} (up to 4 top-bar messages in total),
+  brand{logoUrl,logoDarkUrl}, hero{slides,intervalSeconds,fade,autoplay,textStyle card|plain}, highlights[{title{en,ar},text{en,ar}}] (max 4), pages{privacy|returns|shipping|terms:{body{en,ar}}}, checkout{fields,customFields}, shipping{zones}, contact{...}, defaultCountryCode, orderPrefix.
   Sub-collections: `auditLogs` (who changed what) and `stockMovements` (every stock change) — add-only.
 - `users/{uid}`: tenantId, role owner|manager|staff, name, email, active. Created at signup (owner) or by /api/team.
-- `products`: tenantId, name/description {en,ar}, price, stock, sku, imageUrl, images[], isActive, deleted, isPreorder, preorderMessage,
+- `products`: tenantId, name/description {en,ar}, price, stock, sku, imageUrl, images[], isActive, deleted, isPreorder, preorderStyle preorder|madeToOrder (wording only), comingSoon (visible, not orderable; the server refuses it), preorderMessage,
   shippingExtra, relatedIds[], options[] (color / choice / addon (optionally asks for text) / text; values can have priceDelta and imageUrl).
 - `productCosts/{productId}` PRIVATE (owner/manager): costPrice, optionCosts{"optionId.valueId": cost}.
 - `orders` (server-created only): orderNumber/Label (BYND-1001...), orderType normal|preorder, customer{...}, customFields[], items[] (name snapshot,
@@ -81,25 +81,35 @@ Queries use only equality filters (+ `orderBy` only on single fields in sub-coll
 7. Look: light/dark/auto + any accent color with guaranteed readable text (src/utils/theme.js, tested), fonts, corners; storefront colors are CSS variables, never hard-coded.
 8. Texts: add to BOTH languages; use logical CSS (ms-/me-/start/end) for RTL. Settings the shop controls live in its tenant record.
 
+9. "Coming soon" products are refused by the server (placeOrder + quote), not only hidden in the screen. Shop text pages (privacy etc.) are shown as plain text, never as HTML.
+10. Nothing is invented for a shop: highlights, text pages and top-bar messages show only what the shop wrote (no fake ratings/reviews).
+
 ## 7. Known limits / gotchas
 - Safari on iPhone once showed "A problem repeatedly occurred" (memory); mitigated (lighter hero, no blur header, ErrorBoundary). Cloudinary-resized images help.
 - Stock is per product, not per color/variant. A cancelled/returned order does not give back a promo use.
 - Dashboard reads all orders on each open (fine for thousands, later use stored totals).
 - Customer-side history lines and audit lines are written by the browser (cannot be edited/deleted, but a technical user with a login could forge a new one).
 - Old stock/orders before update 14 have no stock-history lines.
-- Update 15 (light/dark, look settings, contact tab) not yet seen in a real browser by the assistant.
+- Update 15: the owner's iPhone screenshots show light/dark and language switch working (home + product page). Contact tab / settings not seen.
+- Update 16 (top bar with arrows, hero text card + ticks, highlight cards, light/dark logo, text pages, coming soon / made to order, fixed buy bar on phones) is tested by unit tests and a server-side render check only, NOT seen in a real browser yet: ask for phone screenshots (light + dark, English + Arabic).
+- BYND's logo has a black square background: it looks like a black box on the light shop. Fix = transparent PNG, or a second logo for dark screens (Settings > Look).
+- Photos: hero looked blurry on the owner's phone (Cloudinary not connected yet). The test product uses a picture from another seller's listing: replace with BYND's own photos before launch.
+- Home page "How it works" (3 steps) only shows when the shop has written no highlights. Footer shows social links as text (no icons yet). "Track my order" link is NOT in the footer yet (comes with update 17).
+- WhatsApp floating button is lifted above the buy bar on product pages (mobile).
+- Main storefront file is ~822 kB (build warning): split it when the shop feels slow.
 
 ## 8. Roadmap (ask the owner before starting)
-1. Go-live: backup, delete test data (orders, rateLimits, counters/bynd, tenant sub-collections, test users), real products + starting stock,
-   Cloudinary, one rehearsal order, real domain, Vercel Pro when sales start.
-2. Update 16: storefront layout options (hero style, product card style, grid columns, sticky add-to-cart on mobile, editable home sections,
-   brand story, policy pages) — needs screenshots of the reference brand.
-3. Rules tests with the Firebase emulator on GitHub Actions; free uptime check; accessibility (cart drawer focus, contrast).
-4. Later: custom domain per shop, shop signup/onboarding, weight-based shipping, order tracking page, per-color stock, courier integration, official WhatsApp alerts (paid).
+BYND team wish list (Oct 2026) and the agreed order. BYND's products are NOT final: mostly 3D-printed, new products/ideas later, so keep everything generic.
+17. Email/phone checks (Egyptian phone format on server + browser; email shape + typo hints; real verification needs SMS/email codes = paid, not now) and FREE order tracking page: customer enters order number + phone (needed because numbers are sequential), sees only status + timeline, rate-limited; new public function /api/track. Add "Track my order" to the footer. Automatic emails later (needs own domain); SMS/WhatsApp are paid.
+18. Stock per colour/option (today stock is per product: can oversell a colour). May be replaced by "made to order" for 3D-printed items: ASK the owner which products are stock vs made to order first. Own chat, most careful testing; existing products stay per-product.
+19. Quantity packages: price tiers by quantity on one product (like medalrise "1+ / 10+"), colours of the same product count together; decide how it works with promo codes; computed only on the server (pricing.js) + mirrored in the browser.
+20. Shipping companies / delivery persons: assign orders, count orders per courier, what they owe the team (ASK first: courier collects COD cash and keeps a fee? shop pays a fee?). Touches profit and firestore.rules.
+Before launch: go-live list: backup, delete test data (orders, rateLimits, counters/bynd, tenant sub-collections, test users), real products + photos + starting stock, Cloudinary, one rehearsal order, real domain, Vercel Pro when sales start.
+Later: wall-designer (hexagon layout planner, client-only), real reviews section (only real reviews, moderated), rules tests with Firebase emulator on GitHub Actions, free uptime check, accessibility (cart drawer focus, contrast), custom domain per shop, shop signup/onboarding, weight-based shipping, courier integration, official WhatsApp alerts (paid), social icons in footer.
 
 ## 9. CHANGELOG
 1 server order function + new rules (orders BYND-1001) · 2 product page, preorder, private cost, profit report · 3 dark storefront, banner, Settings ·
 4 Arabic everywhere, slideshow timing · 5 shipping zones, address fields, promo codes, configurable checkout · 6 delivery-area dropdown, custom checkout fields ·
 7 Telegram alerts, WhatsApp/Call buttons, forgot password, signup closed, Cloudinary upload · 8 product options, slideshow arrows, phone hardening ·
 9 team accounts, roles, activity log · 10 several owners · 11 option pictures, tick box with text, gallery, linked products · 12 spam protection, tests in repo, build guard, lazy admin ·
-13 real dashboard, returned status, Excel exports, backup · 14 restock, stock history · 15 light/dark, any accent color, fonts, corners, top bar, contact/social, Settings tabs, character counters.
+13 real dashboard, returned status, Excel exports, backup · 14 restock, stock history · 15 light/dark, any accent color, fonts, corners, top bar, contact/social, Settings tabs, character counters · 16 storefront look: rotating top bar (up to 4 messages), hero text card + tick points (or plain), highlight cards, light/dark logo, text pages (privacy/returns/shipping/terms) in footer, "Coming soon" + "Made to order" wording, fixed buy bar on phones, WhatsApp button lifted; server refuses coming-soon orders; 13th test file.

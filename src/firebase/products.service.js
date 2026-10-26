@@ -68,6 +68,11 @@ function productFields(data) {
     // Other products offered on this product's page (e.g. extension plates).
     relatedIds: (data.relatedIds || []).slice(0, 6),
     isPreorder,
+    // How a no-stock product is labelled for customers: 'preorder' or 'madeToOrder'.
+    // Same behaviour either way (orderable without stock); only the wording differs.
+    preorderStyle: isPreorder && data.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder',
+    // Shown in the shop but can't be ordered yet (the server refuses orders for it too).
+    comingSoon: data.comingSoon === true,
     options: formToOptions(data.options), // colors, activity, extension... (public)
     preorderMessage: {
       en: isPreorder ? data.preorderMessageEn || '' : '',
