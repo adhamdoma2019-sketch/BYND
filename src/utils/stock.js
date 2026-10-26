@@ -18,7 +18,9 @@ export function averageCost({ stock, cost, quantity, unitCost }) {
 
 // Adding stock. `totalCost` = what the whole batch cost (empty = unknown, then the cost
 // price and expenses are left alone). Returns { error } or the plan.
-export function planRestock({ stock, cost, quantity, totalCost, updateCost = true }) {
+// `costUnits` (optional): how many units the cost price covers. Normally the stock itself; when stock
+// is counted per colour it is the total of that option, because the cost belongs to the whole product.
+export function planRestock({ stock, cost, quantity, totalCost, updateCost = true, costUnits }) {
   const q = Number(quantity);
   if (!Number.isInteger(q) || q < 1 || q > MAX_RESTOCK) return { error: 'BAD_QUANTITY' };
   let total = null;
@@ -31,7 +33,12 @@ export function planRestock({ stock, cost, quantity, totalCost, updateCost = tru
   const knownCost = isBlank(cost) ? null : Number(cost);
   const newCost =
     updateCost && unitCost !== null
-      ? averageCost({ stock: current, cost: knownCost, quantity: q, unitCost })
+      ? averageCost({
+          stock: costUnits === undefined ? current : Math.max(Number(costUnits) || 0, 0),
+          cost: knownCost,
+          quantity: q,
+          unitCost,
+        })
       : knownCost;
   return {
     quantity: q,
@@ -75,6 +82,7 @@ export function buildMovement({
   note = '',
   orderId = '',
   orderLabel = '',
+  optionChanges = null,
   actor,
 }) {
   return {
@@ -84,6 +92,8 @@ export function buildMovement({
     type,
     delta,
     stockAfter,
+    // When stock is counted per colour / option: [{ key, label:{en,ar}, delta, after }]
+    ...(Array.isArray(optionChanges) && optionChanges.length > 0 ? { optionChanges } : {}),
     unitCost,
     totalCost,
     note: String(note || '').slice(0, 200),

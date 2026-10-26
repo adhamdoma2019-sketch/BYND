@@ -46,7 +46,12 @@
     "prevMessage": "Previous message",
     "nextMessage": "Next message",
     "infoPages": "Information",
-    "pageNotFound": "This page isn't available."
+    "pageNotFound": "This page isn't available.",
+    "madeToOrderShort": "made to order",
+    "soldOutShort": "sold out",
+    "crossedMade": "A crossed-out colour is out of stock: you can still order it and it will be made for you.",
+    "crossedSoldOut": "A crossed-out colour is out of stock.",
+    "partlyMadeToOrder": "Only {{n}} in stock. If you order more, this item will be made to order (it takes longer)."
   },
   "checkout": {
     "title": "Checkout",
@@ -222,7 +227,17 @@
     "preorderStyleLabel": "Wording shown to customers",
     "preorderStylePre": "Pre-order",
     "preorderStyleMade": "Made to order",
-    "comingSoonCheck": "Coming soon: show it in the shop, but don't allow orders yet"
+    "comingSoonCheck": "Coming soon: show it in the shop, but don't allow orders yet",
+    "sellModeTitle": "How do you sell this product?",
+    "sellStock": "From stock: I count how many I have, and customers can only order what is left",
+    "sellMade": "Made to order / pre-order only: no counting, always orderable",
+    "sellStockThenMade": "From stock first, then made to order when the stock runs out",
+    "countTitle": "Count the stock separately for:",
+    "countHelp": "Each value (for example each colour) gets its own number. Customers must choose it. A sold-out choice cannot be ordered (or is made to order if you picked the third way above).",
+    "countWarn": "Counting by option starts every number at 0 and replaces the single stock number ({{n}}). After saving, use \"Add stock\" for each colour.",
+    "countedNow": "Stock now, by option:",
+    "countedStockHint": "Use \"Add stock\" and \"Adjust\" on the product card to change these numbers (you choose which colour).",
+    "stockThenMadeBadge": "Stock, then made to order"
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -644,7 +659,9 @@
       "contact": "Contact details",
       "highlights": "Highlights",
       "pages": "Text pages",
-      "comingSoon": "Coming soon"
+      "comingSoon": "Coming soon",
+      "backorder": "Stock first, then made to order",
+      "countedBy": "Stock counted per"
     }
   },
   "stats": {
@@ -755,8 +772,10 @@
       "NO_CHANGE": "That is already the current stock.",
       "TOO_MANY": "You can't remove more than what is in stock.",
       "BAD_MODE": "Choose what you want to do.",
-      "SERVER": "Could not save. Please try again."
-    }
+      "SERVER": "Could not save. Please try again.",
+      "NEED_OPTION": "Please choose which colour / option this is for."
+    },
+    "chooseOption": "Which colour / option?"
   },
   "appearance": {
     "modeTitle": "Light or dark",

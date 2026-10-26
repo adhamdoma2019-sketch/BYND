@@ -51,8 +51,13 @@ export default function StockHistory() {
         })
       : '';
   const money = (n) => formatPrice(n, language);
+  const optionText = (m) =>
+    (m.optionChanges || [])
+      .map((c) => `${c.label?.[language] || c.label?.en || c.key} ${c.delta > 0 ? '+' : ''}${c.delta}`)
+      .join(', ');
   const details = (m) =>
     [
+      optionText(m),
       m.orderLabel && `${t('stock.order')} ${m.orderLabel}`,
       m.unitCost !== null && m.unitCost !== undefined && m.type === 'restock' && `${t('stock.unitCost')} ${money(m.unitCost)}`,
       m.totalCost !== null && m.totalCost !== undefined && m.type === 'restock' && `${t('stock.totalCostShort')} ${money(m.totalCost)}`,

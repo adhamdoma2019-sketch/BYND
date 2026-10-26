@@ -61,7 +61,12 @@ export function productStatus(product) {
   if (product?.isPreorder === true) {
     return product.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder';
   }
-  return (Number(product?.stock) || 0) <= 0 ? 'soldOut' : 'inStock';
+  const gone = (Number(product?.stock) || 0) <= 0;
+  // "Stock first, then made to order": when the stock is gone it turns into made to order.
+  if (gone && product?.backorder === true) {
+    return product.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder';
+  }
+  return gone ? 'soldOut' : 'inStock';
 }
 
 export const isBuyable = (status) => status !== 'comingSoon' && status !== 'soldOut';

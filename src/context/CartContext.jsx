@@ -36,9 +36,13 @@ export function CartProvider({ slug, children }) {
   function addItem(product, quantity = 1, choice = {}) {
     // Most we allow in the cart: the stock (preorders have no stock limit),
     // and never more than the server accepts per order.
-    const max = product.isPreorder
-      ? MAX_ORDER_QTY
-      : Math.min(Number(product.stock) || 0, MAX_ORDER_QTY);
+    // (the product page works out the limit for the chosen colour / option and passes it in)
+    const max =
+      choice.maxQty !== undefined
+        ? Math.min(Math.max(Number(choice.maxQty) || 0, 1), MAX_ORDER_QTY)
+        : product.isPreorder
+          ? MAX_ORDER_QTY
+          : Math.min(Number(product.stock) || 0, MAX_ORDER_QTY);
     const selections = choice.selections || {};
     const key = itemKey(product.id, selections);
 
@@ -58,7 +62,7 @@ export function CartProvider({ slug, children }) {
           unitPrice: choice.unitPrice ?? product.price,
           quantity: Math.min(quantity, max),
           maxStock: max,
-          isPreorder: product.isPreorder === true,
+          isPreorder: product.isPreorder === true || choice.madeToOrder === true,
           selections,
           optionLabels: choice.labels || [],
           imageUrl: choice.imageUrl || '',

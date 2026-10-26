@@ -31,6 +31,27 @@ export function stockToRestore(order) {
   return [...totals].map(([productId, quantity]) => ({ productId, quantity }));
 }
 
+// Same, but with the detail needed when stock is counted per colour / option:
+//   quantity       all units of the product on lines that used stock
+//   plainQuantity  units on lines that did NOT record which colour / option numbers they used
+//   keys           { "<optionId>.<valueId>": units } taken from each counted number
+export function stockToRestoreDetailed(order) {
+  const map = new Map();
+  for (const item of order.items || []) {
+    if (item.isPreorder) continue;
+    const q = Number(item.quantity) || 0;
+    const entry = map.get(item.productId) || { productId: item.productId, quantity: 0, plainQuantity: 0, keys: {} };
+    entry.quantity += q;
+    if (Array.isArray(item.stockKeys) && item.stockKeys.length > 0) {
+      for (const key of item.stockKeys) entry.keys[key] = (entry.keys[key] || 0) + q;
+    } else {
+      entry.plainQuantity += q;
+    }
+    map.set(item.productId, entry);
+  }
+  return [...map.values()];
+}
+
 // Colors of the little status label (same on the Orders page and the dashboard).
 export function statusBadgeClass(status) {
   if (status === 'delivered') return 'bg-sage/15 text-sage-dark';

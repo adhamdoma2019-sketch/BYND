@@ -16,6 +16,7 @@ import { listStorefrontProducts } from '../../firebase/products.service';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { MAX_ORDER_QTY, LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { productStatus, isBuyable } from '../../utils/storefront';
+import { isOptionCounted, countedOptions, leftForSelections, stockKey } from '../../utils/optionStock';
 
 export default function ProductPage() {
   const { slug, productId } = useParams();
@@ -110,10 +111,28 @@ export default function ProductPage() {
   const isPreorder = product.isPreorder === true; // preorder AND made-to-order: no stock needed
   const stock = Number(product.stock) || 0;
   const availability = productStatus(product); // comingSoon / preorder / madeToOrder / soldOut / inStock
-  const soldOut = availability === 'soldOut';
+  const soldOut = availability === 'soldOut' || comboSoldOut;
   const comingSoon = availability === 'comingSoon';
-  const canBuy = isBuyable(availability);
-  const maxQty = isPreorder ? MAX_ORDER_QTY : Math.min(stock, MAX_ORDER_QTY);
+  const canBuy = isBuyable(availability) && !comboSoldOut;
+
+  // Stock counted per colour / option: how many of the CHOSEN combination are left (null = not chosen yet).
+  const counted = !isPreorder && isOptionCounted(product);
+  const backorder = product.backorder === true && !isPreorder; // stock first, then made to order
+  const left = counted ? leftForSelections(product, selections) : stock;
+  const countedIds = counted ? countedOptions(product).map((o) => o.id) : [];
+  const leftOfValue = (option) =>
+    countedIds.includes(option.id)
+      ? (valueId) => Math.max(Number(product.optionStock?.[stockKey(option.id, valueId)]) || 0, 0)
+      : null;
+  // This colour / combination is sold out (and cannot be made to order).
+  const comboSoldOut = !isPreorder && !backorder && counted && left !== null && left <= 0;
+  // The customer would get a made-to-order item (nothing, or not enough, on the shelf).
+  const madeNow =
+    isPreorder || (backorder && (left === null ? stock <= 0 : left <= 0));
+  const madeStyle = product.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder';
+  const maxQty = isPreorder || backorder ? MAX_ORDER_QTY : Math.min(left ?? stock, MAX_ORDER_QTY);
+  const qty = Math.max(1, Math.min(quantity, Math.max(maxQty, 1)));
+  const partlyMade = backorder && left !== null && left > 0 && qty > left;
   const preorderMessage =
     product.preorderMessage?.[language] || product.preorderMessage?.en || '';
 
@@ -131,11 +150,9 @@ export default function ProductPage() {
     ? t('storefront.comingSoon')
     : soldOut
       ? t('storefront.outOfStock')
-      : availability === 'preorder'
-        ? t('storefront.preorderNow')
-        : availability === 'madeToOrder'
-          ? t('storefront.madeToOrderNow')
-          : t('storefront.addToCart');
+      : madeNow
+        ? t(madeStyle === 'madeToOrder' ? 'storefront.madeToOrderNow' : 'storefront.preorderNow')
+        : t('storefront.addToCart');
 
   function handleAdd() {
     if (!canBuy) return;
@@ -145,7 +162,9 @@ export default function ProductPage() {
       document.getElementById('product-options')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    addItem(product, quantity, {
+    addItem(product, qty, {
+      maxQty: isPreorder ? undefined : maxQty,
+      madeToOrder: backorder && (madeNow || partlyMade),
       selections: cleanSelections(selections),
       labels: choice.labels,
       unitPrice,
@@ -221,10 +240,10 @@ export default function ProductPage() {
                     {t('storefront.comingSoonNote')}
                   </p>
                 </>
-              ) : isPreorder ? (
+              ) : madeNow ? (
                 <>
                   <span className="rounded bg-ink px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-paper">
-                    {t(`storefront.${availability}`)}
+                    {t(`storefront.${madeStyle}`)}
                   </span>
                   {preorderMessage && (
                     <p className="mt-3 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
@@ -236,9 +255,9 @@ export default function ProductPage() {
                 <span className="rounded bg-rust/15 px-2.5 py-1 text-sm text-rust">
                   {t('storefront.outOfStock')}
                 </span>
-              ) : stock <= LOW_STOCK_THRESHOLD ? (
+              ) : (left ?? stock) <= LOW_STOCK_THRESHOLD ? (
                 <span className="rounded bg-brass/15 px-2.5 py-1 text-sm text-brass-dark">
-                  {t('storefront.onlyLeft', { n: stock })}
+                  {t('storefront.onlyLeft', { n: left ?? stock })}
                 </span>
               ) : (
                 <span className="rounded bg-sage/15 px-2.5 py-1 text-sm text-sage-dark">
@@ -271,6 +290,8 @@ export default function ProductPage() {
                       if (picked?.imageUrl) setMainImage(picked.imageUrl);
                       setShowMissing(false);
                     }}
+                    leftOf={leftOfValue(option)}
+                    backorder={backorder}
                     textValue={selections[textKey(option.id)] || ''}
                     onTextChange={(v) =>
                       setSelections((prev) => ({ ...prev, [textKey(option.id)]: v }))
@@ -297,23 +318,28 @@ export default function ProductPage() {
                 </p>
                 <div className="mt-1 flex items-center gap-3">
                   <button
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1}
+                    onClick={() => setQuantity(() => Math.max(1, qty - 1))}
+                    disabled={qty <= 1}
                     className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
                     aria-label="-"
                   >
                     −
                   </button>
-                  <span className="w-8 text-center text-lg">{quantity}</span>
+                  <span className="w-8 text-center text-lg">{qty}</span>
                   <button
-                    onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
-                    disabled={quantity >= maxQty}
+                    onClick={() => setQuantity(() => Math.min(maxQty, qty + 1))}
+                    disabled={qty >= maxQty}
                     className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
                     aria-label="+"
                   >
                     +
                   </button>
                 </div>
+                {partlyMade && (
+                  <p className="mt-2 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
+                    {t('storefront.partlyMadeToOrder', { n: left })}
+                  </p>
+                )}
               </div>
             )}
 

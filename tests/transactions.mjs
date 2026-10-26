@@ -187,4 +187,102 @@ s.set(`products/${id}`, { ...s.get(`products/${id}`), stock: 2 });   // sales ha
 await updateProduct('bynd', id, { ...form, stock: 99, price: 450, isActive: true });
 assert.equal(s.get(`products/${id}`).stock, 2); assert.equal(s.get(`products/${id}`).price, 450);
 ok('editing a product can no longer overwrite its stock (stock 2 stays 2 even though the form said 99)');
+
+// =============== stock counted per colour / option ===============
+const optsC = [
+  { id: 'col', type: 'color', label: { en: 'Colour', ar: 'اللون' }, required: true, values: [{ id: 'gold', label: { en: 'Gold', ar: 'ذهبي' } }, { id: 'black', label: { en: 'Black', ar: 'أسود' } }] },
+  { id: 'dist', type: 'choice', label: { en: 'Plate', ar: 'اللوح' }, required: true, values: [{ id: 'k10', label: { en: '10 km', ar: '١٠' } }, { id: 'half', label: { en: 'Half', ar: 'نصف' } }] },
+];
+const counted = () => {
+  globalThis.__store = new Map([
+    ['products/hex', { tenantId: 'bynd', name: { en: 'Hex' }, stock: 3, countedOptions: ['col', 'dist'], options: optsC,
+      optionStock: { 'col.gold': 3, 'col.black': 0, 'dist.k10': 2, 'dist.half': 5 } }],
+    ['productCosts/hex', { tenantId: 'bynd', costPrice: 100, optionCosts: {} }],
+    ['products/plain', { tenantId: 'bynd', name: { en: 'Plain' }, stock: 4 }],
+  ]);
+  globalThis.__counter = 0; return globalThis.__store;
+};
+const optStock = (st) => st.get('products/hex').optionStock;
+
+// ---- Add stock goes to ONE colour / plate ----
+s = counted();
+await rejects(restockProduct('bynd', 'hex', { quantity: 2 }, actor), 'NEED_OPTION');
+await rejects(restockProduct('bynd', 'hex', { quantity: 2, optionKey: 'col.zzz' }, actor), 'NEED_OPTION');
+assert.equal(lines(s).length, 0);
+let rr = await restockProduct('bynd', 'hex', { quantity: 4, optionKey: 'col.black', totalCost: 800 }, actor);
+assert.deepEqual([rr.before, rr.after], [0, 4]);
+assert.deepEqual([optStock(s)['col.black'], optStock(s)['col.gold'], s.get('products/hex').stock], [4, 3, 7]);   // colours 7, plates 7
+let mvo = lines(s).at(-1);
+assert.deepEqual([mvo.type, mvo.delta, mvo.stockAfter, mvo.optionChanges[0].key, mvo.optionChanges[0].label.en, mvo.optionChanges[0].delta, mvo.optionChanges[0].after], ['restock', 4, 7, 'col.black', 'Colour: Black', 4, 4]);
+assert.equal(s.get('productCosts/hex').costPrice, 157.14);      // (3 x 100 + 4 x 200) / 7: the cost averages over the COLOUR total
+ok('Add stock for a colour: only that colour goes up, the product number follows, history names the colour; cost averages over the colours');
+
+await restockProduct('bynd', 'hex', { quantity: 3, optionKey: 'dist.k10', totalCost: 300 }, actor);
+assert.equal(optStock(s)['dist.k10'], 5); assert.equal(s.get('productCosts/hex').costPrice, 157.14);
+ok('Add stock for a plate (not the main option) never changes the product cost price');
+
+// ---- Adjust ----
+await adjustStock('bynd', 'hex', { mode: 'count', value: 1, optionKey: 'dist.half' }, actor);
+assert.deepEqual([optStock(s)['dist.half'], s.get('products/hex').stock], [1, 6]);      // plates 5 + 1 = 6 is now the smaller total
+mvo = lines(s).at(-1); assert.deepEqual([mvo.type, mvo.delta, mvo.stockAfter, mvo.optionChanges[0].delta, mvo.optionChanges[0].after], ['adjustment', -4, 6, -4, 1]);
+await rejects(adjustStock('bynd', 'hex', { mode: 'remove', value: 9, optionKey: 'col.gold' }, actor), 'TOO_MANY');
+await rejects(adjustStock('bynd', 'hex', { mode: 'count', value: 1 }, actor), 'NEED_OPTION');
+await adjustStock('bynd', 'hex', { mode: 'remove', value: 1, optionKey: 'col.gold', note: 'Cracked' }, actor);
+assert.equal(optStock(s)['col.gold'], 2); assert.equal(lines(s).at(-1).type, 'damaged');
+ok('stocktake / damaged work on the chosen colour or plate; "which one?" is required; cannot remove more than that colour has');
+
+// ---- cancel / return give units back to the same numbers ----
+s = counted();
+s.set('orders/o9', { tenantId: 'bynd', orderNumberLabel: 'BYND-1009', status: 'pending', statusHistory: [], items: [
+  { productId: 'hex', quantity: 2, stockKeys: ['col.gold', 'dist.k10'], name: { en: 'Hex' } },
+  { productId: 'hex', quantity: 1, name: { en: 'Hex' } },                      // an older line: no record of which colour
+  { productId: 'hex', quantity: 5, isPreorder: true, backorder: true, stockKeys: [] },   // made to order: never goes back
+  { productId: 'plain', quantity: 1, name: { en: 'Plain' } } ] });
+await cancelOrder('o9', actor);
+assert.deepEqual([optStock(s)['col.gold'], optStock(s)['dist.k10'], optStock(s)['col.black'], optStock(s)['dist.half']], [5, 4, 0, 5]);
+assert.equal(s.get('products/hex').stock, 5); assert.equal(s.get('products/plain').stock, 5);
+let hx = lines(s).find((x) => x.productId === 'hex'); assert.deepEqual([hx.type, hx.delta, hx.stockAfter, hx.optionChanges.length, hx.orderLabel], ['cancel', 2, 5, 2, 'BYND-1009']);
+assert.equal(lines(s).find((x) => x.productId === 'plain').optionChanges, undefined);
+ok('cancel: units go back to the colour and plate the order used; old lines without a record and made-to-order lines are not put back');
+
+s = counted();
+s.set('orders/o8', { tenantId: 'bynd', status: 'shipped', statusHistory: [], items: [{ productId: 'hex', quantity: 1, stockKeys: ['col.gold', 'dist.half'] }] });
+s.set('orders/o7', { tenantId: 'bynd', status: 'shipped', statusHistory: [], items: [{ productId: 'hex', quantity: 1, stockKeys: ['col.gold', 'dist.half'] }] });
+await returnOrder('o8', { restock: true, actor }); assert.deepEqual([optStock(s)['col.gold'], optStock(s)['dist.half']], [4, 6]);
+await returnOrder('o7', { restock: false, actor }); assert.deepEqual([optStock(s)['col.gold'], optStock(s)['dist.half']], [4, 6]);
+ok('return: restock puts the colour/plate back, "damaged" leaves it');
+
+// ---- if the shop stops counting by option, an old order goes back into the one number ----
+s = counted(); s.set('products/hex', { ...s.get('products/hex'), countedOptions: [] });
+s.set('orders/o6', { tenantId: 'bynd', status: 'pending', statusHistory: [], items: [{ productId: 'hex', quantity: 2, stockKeys: ['col.gold'] }] });
+await cancelOrder('o6', actor); assert.equal(s.get('products/hex').stock, 5);
+ok('counting switched off later: the cancelled units are simply added to the product stock');
+
+// ---- new products and edits ----
+const fopts = [{ id: 'col', type: 'color', labelEn: 'Colour', labelAr: '', required: false, maxLength: '', values: [
+  { id: 'gold', labelEn: 'Gold', labelAr: '', color: '#d4af37', imageUrl: '', priceDelta: '', costDelta: '' },
+  { id: 'black', labelEn: 'Black', labelAr: '', color: '#111111', imageUrl: '', priceDelta: '', costDelta: '' }] }];
+globalThis.__store = new Map(); globalThis.__counter = 0; s = globalThis.__store;
+const cid = await createProduct('bynd', { ...form, stock: 5, options: fopts, countedOptions: ['col'] }, actor);
+let cp = s.get(`products/${cid}`);
+assert.deepEqual([cp.stock, cp.optionStock, cp.countedOptions, cp.options[0].required], [0, {}, ['col'], true]); assert.equal(lines(s).length, 0);
+ok('new product counted by colour: every number starts at 0, no starting-stock line, the colour becomes required');
+
+globalThis.__store = new Map([['products/old', { tenantId: 'bynd', name: { en: 'Old' }, stock: 5 }]]); s = globalThis.__store;
+await updateProduct('bynd', 'old', { ...form, options: fopts, countedOptions: ['col'], isActive: true }, actor);
+cp = s.get('products/old'); assert.deepEqual([cp.stock, cp.optionStock], [0, {}]);
+mvo = lines(s).at(-1); assert.deepEqual([mvo.type, mvo.delta, mvo.stockAfter], ['adjustment', -5, 0]);
+ok('switching an existing product to colour counting: the single number is replaced and a history line says so');
+
+s.set('products/old', { ...s.get('products/old'), stock: 7, optionStock: { 'col.gold': 3, 'col.black': 4 } });
+const goldOnly = [{ ...fopts[0], values: [fopts[0].values[0]] }];
+await updateProduct('bynd', 'old', { ...form, options: goldOnly, countedOptions: ['col'], isActive: true }, actor);
+assert.equal(s.get('products/old').stock, 3); assert.equal(lines(s).at(-1).delta, -4);
+ok('removing a colour from the product recalculates the product number (7 -> 3)');
+
+s.set('products/old', { ...s.get('products/old'), stock: 3 });
+await updateProduct('bynd', 'old', { ...form, options: fopts, countedOptions: ['col'], isPreorder: true, isActive: true }, actor);
+assert.deepEqual([s.get('products/old').countedOptions, s.get('products/old').stock], [[], 3]);
+ok('a made-to-order product stops counting (and its stock number is left alone)');
+
 console.log(`\nALL ${n} STOCK-CODE CHECK GROUPS PASSED`);

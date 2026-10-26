@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { restockProduct, adjustStock } from '../../firebase/stock.service';
 import { planRestock, planAdjust } from '../../utils/stock';
 import { formatPrice } from '../../utils/format';
+import { countedRows, optionTotal } from '../../utils/optionStock';
 
 const CATEGORIES = ['manufacturing', 'materials', 'packaging', 'marketing', 'shipping', 'software', 'other'];
 const input =
@@ -25,6 +26,20 @@ export default function StockPanel({ product, cost, mode, tenantId, actor, log, 
   const [updateCost, setUpdateCost] = useState(true);
   const [recordExpense, setRecordExpense] = useState(false);
   const [category, setCategory] = useState('manufacturing');
+  // ----- counted per colour / option: which number is this for? -----
+  const rows = useMemo(() => countedRows(product), [product]);
+  const counted = rows.length > 0;
+  const [optionKey, setOptionKey] = useState('');
+  const row = rows.find((r) => r.key === optionKey) || null;
+  const groups = [];
+  rows.forEach((r) => {
+    let g = groups.find((x) => x.id === r.optionId);
+    if (!g) {
+      g = { id: r.optionId, label: r.optionLabel?.[language] || r.optionLabel?.en || r.optionId, rows: [] };
+      groups.push(g);
+    }
+    g.rows.push(r);
+  });
   // ----- adjust -----
   const [adjMode, setAdjMode] = useState('count');
   const [value, setValue] = useState('');
@@ -34,17 +49,31 @@ export default function StockPanel({ product, cost, mode, tenantId, actor, log, 
 
   // What would happen, shown before saving.
   const plan = useMemo(() => {
+    if (counted && !row) return null;
+    const current = counted ? row.left : product.stock;
     if (mode === 'restock') {
       if (quantity === '') return null;
-      return planRestock({ stock: product.stock, cost, quantity, totalCost, updateCost });
+      return planRestock({
+        stock: current,
+        cost,
+        quantity,
+        totalCost,
+        // the cost price belongs to the whole product: only the first counted option may change it
+        updateCost: updateCost && (!counted || row.primary),
+        costUnits: counted ? optionTotal(product, row.optionId) : undefined,
+      });
     }
     if (value === '') return null;
-    return planAdjust({ stock: product.stock, mode: adjMode, value });
-  }, [mode, quantity, totalCost, updateCost, value, adjMode, product.stock, cost]);
+    return planAdjust({ stock: current, mode: adjMode, value });
+  }, [mode, quantity, totalCost, updateCost, value, adjMode, product, cost, counted, row]);
 
   async function handleSave(e) {
     e.preventDefault();
     setError('');
+    if (counted && !row) {
+      setError(t('stock.err.NEED_OPTION'));
+      return;
+    }
     if (!plan || plan.error) {
       setError(t(`stock.err.${plan?.error || 'BAD_QUANTITY'}`));
       return;
@@ -55,7 +84,7 @@ export default function StockPanel({ product, cost, mode, tenantId, actor, log, 
         const r = await restockProduct(
           tenantId,
           product.id,
-          { quantity, totalCost, note, updateCost, recordExpense, expenseCategory: category },
+          { quantity, totalCost, note, updateCost, recordExpense, expenseCategory: category, optionKey },
           actor
         );
         log({
@@ -72,7 +101,7 @@ export default function StockPanel({ product, cost, mode, tenantId, actor, log, 
         });
         onDone(t('stock.doneRestock', { q: quantity, name, n: r.after }));
       } else {
-        const r = await adjustStock(tenantId, product.id, { mode: adjMode, value, note }, actor);
+        const r = await adjustStock(tenantId, product.id, { mode: adjMode, value, note, optionKey }, actor);
         log({
           action: 'stock.adjust',
           entityType: 'product',
@@ -102,7 +131,30 @@ export default function StockPanel({ product, cost, mode, tenantId, actor, log, 
           {t('stock.close')}
         </button>
       </div>
-      <p className="mt-1 text-xs text-ink-faint">{t('stock.currentStock', { n: product.stock })}</p>
+      {counted ? (
+        <div className="mt-2">
+          <label className="block text-ink-soft">
+            {t('stock.chooseOption')}
+            <select value={optionKey} onChange={(e) => setOptionKey(e.target.value)} className={input}>
+              <option value="">{t('checkout.choose')}</option>
+              {groups.map((g) => (
+                <optgroup key={g.id} label={g.label}>
+                  {g.rows.map((r) => (
+                    <option key={r.key} value={r.key}>
+                      {r.valueLabel?.[language] || r.valueLabel?.en} ({r.left})
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          {row && (
+            <p className="mt-1 text-xs text-ink-faint">{t('stock.currentStock', { n: row.left })}</p>
+          )}
+        </div>
+      ) : (
+        <p className="mt-1 text-xs text-ink-faint">{t('stock.currentStock', { n: product.stock })}</p>
+      )}
 
       {mode === 'restock' ? (
         <div className="mt-3 space-y-3">
@@ -133,7 +185,7 @@ export default function StockPanel({ product, cost, mode, tenantId, actor, log, 
             {t('stock.note')}
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} className={input} />
           </label>
-          {totalCost !== '' && (
+          {totalCost !== '' && (!counted || !row || row.primary) && (
             <>
               <label className="flex items-center gap-2 text-ink-soft">
                 <input type="checkbox" checked={updateCost} onChange={(e) => setUpdateCost(e.target.checked)} />

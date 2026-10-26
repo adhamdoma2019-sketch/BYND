@@ -16,6 +16,7 @@ import { optionsToForm, optionsAreValid } from '../../utils/productOptionsForm';
 import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { tracksStock } from '../../utils/storefront';
+import { COUNTABLE_TYPES, MAX_COUNTED, countedRows, isOptionCounted } from '../../utils/optionStock';
 import {
   listProducts,
   listProductCostDetails,
@@ -41,11 +42,50 @@ const emptyForm = {
   imageUrl: '',
   isActive: true,
   isPreorder: false,
+  backorder: false, // stock first, then made to order
+  countedOptions: [], // ids of the options that count their own stock
   preorderStyle: 'preorder',
   comingSoon: false,
   preorderMessageEn: '',
   preorderMessageAr: '',
 };
+
+// Colour / choice lists of the form that can count their own stock (they need at least one named value).
+const countableInForm = (form) =>
+  (form.options || []).filter(
+    (o) =>
+      COUNTABLE_TYPES.includes(o.type) &&
+      (o.values || []).some((v) => (v.labelEn || '').trim() || (v.labelAr || '').trim())
+  );
+
+// The numbers of a product that counts stock per option, grouped by option: "Colour: Gold 3 · Black 0".
+function CountedNumbers({ product, language }) {
+  const rows = countedRows(product);
+  const groups = [];
+  rows.forEach((r) => {
+    let g = groups.find((x) => x.id === r.optionId);
+    if (!g) {
+      g = { id: r.optionId, label: r.optionLabel?.[language] || r.optionLabel?.en || r.optionId, rows: [] };
+      groups.push(g);
+    }
+    g.rows.push(r);
+  });
+  return (
+    <div className="mt-1 space-y-0.5 text-xs text-ink-soft">
+      {groups.map((g) => (
+        <p key={g.id}>
+          <span className="text-ink-faint">{g.label}: </span>
+          {g.rows.map((r, i) => (
+            <span key={r.key} className={r.left <= 0 ? 'text-rust' : ''}>
+              {i > 0 && ' · '}
+              {r.valueLabel?.[language] || r.valueLabel?.en} <strong dir="ltr">{r.left}</strong>
+            </span>
+          ))}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 export default function Products() {
   const { t } = useTranslation();
@@ -110,6 +150,8 @@ export default function Products() {
       imageUrl: p.imageUrl || '',
       isActive: p.isActive,
       isPreorder: p.isPreorder === true,
+      backorder: p.backorder === true,
+      countedOptions: p.countedOptions || [],
       preorderStyle: p.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder',
       comingSoon: p.comingSoon === true,
       preorderMessageEn: p.preorderMessage?.en || '',
@@ -143,7 +185,14 @@ export default function Products() {
       setError(t('options.errInvalid'));
       return;
     }
-    if (editingId === 'new' && !form.isPreorder && !form.comingSoon && (form.stock === '' || Number(form.stock) < 0)) {
+    const countingNow = !form.isPreorder && countableInForm(form).some((o) => form.countedOptions.includes(o.id));
+    if (
+      editingId === 'new' &&
+      !form.isPreorder &&
+      !form.comingSoon &&
+      !countingNow &&
+      (form.stock === '' || Number(form.stock) < 0)
+    ) {
       setError(t('products.badStock'));
       return;
     }
@@ -165,7 +214,7 @@ export default function Products() {
         });
       } else {
         const original = products.find((p) => p.id === editingId);
-        await updateProduct(tenant.id, editingId, form);
+        await updateProduct(tenant.id, editingId, form, actor);
         const changes = diffFields(
           {
             name: original?.name?.en,
@@ -173,6 +222,8 @@ export default function Products() {
             cost: costs[editingId] ?? '',
             active: original?.isActive,
             preorder: original?.isPreorder === true,
+            backorder: original?.backorder === true,
+            countedBy: (original?.countedOptions || []).join(','),
             comingSoon: original?.comingSoon === true,
             sku: original?.sku || '',
             shippingExtra: original?.shippingExtra || 0,
@@ -184,6 +235,11 @@ export default function Products() {
             cost: form.costPrice === '' ? '' : Number(form.costPrice),
             active: form.isActive,
             preorder: form.isPreorder,
+            backorder: form.backorder,
+            countedBy: countableInForm(form)
+              .filter((o) => form.countedOptions.includes(o.id))
+              .map((o) => o.id)
+              .join(','),
             comingSoon: form.comingSoon,
             sku: form.sku || '',
             shippingExtra: Number(form.shippingExtra) || 0,
@@ -354,7 +410,17 @@ export default function Products() {
             </span>
           </label>
 
-          {editingId === 'new' ? (
+          {countableInForm(form).some((o) => form.countedOptions.includes(o.id)) && !form.isPreorder ? (
+            <div className="text-sm text-ink-soft">
+              {editingId !== 'new' && products.find((p) => p.id === editingId) && isOptionCounted(products.find((p) => p.id === editingId)) && (
+                <>
+                  {t('products.countedNow')}
+                  <CountedNumbers product={products.find((p) => p.id === editingId)} language={language} />
+                </>
+              )}
+              <span className="mt-1 block text-xs text-ink-faint">{t('products.countedStockHint')}</span>
+            </div>
+          ) : editingId === 'new' ? (
           <label className="text-sm text-ink-soft">
               {t('products.startingStock')}
               <input
@@ -475,17 +541,69 @@ export default function Products() {
           />
 
           <div className="col-span-full rounded border border-ink/10 bg-white p-3">
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
-              <input
-                type="checkbox"
-                checked={form.isPreorder}
-                onChange={(e) =>
-                  setForm({ ...form, isPreorder: e.target.checked })
-                }
-              />
-              {t('products.preorderCheck')}
-            </label>
-            {form.isPreorder && (
+            <p className="text-sm font-medium">{t('products.sellModeTitle')}</p>
+            <div className="mt-2 flex flex-col gap-2 text-sm text-ink-soft">
+              {[
+                ['stock', 'products.sellStock'],
+                ['made', 'products.sellMade'],
+                ['stockThenMade', 'products.sellStockThenMade'],
+              ].map(([mode, label]) => {
+                const current = form.isPreorder ? 'made' : form.backorder ? 'stockThenMade' : 'stock';
+                return (
+                  <label key={mode} className="flex items-start gap-2">
+                    <input
+                      type="radio"
+                      name="sell-mode"
+                      className="mt-1"
+                      checked={current === mode}
+                      onChange={() =>
+                        setForm({ ...form, isPreorder: mode === 'made', backorder: mode === 'stockThenMade' })
+                      }
+                    />
+                    <span>{t(label)}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {!form.isPreorder && countableInForm(form).length > 0 && (
+              <div className="mt-4 border-t border-ink/10 pt-3">
+                <p className="text-sm font-medium">{t('products.countTitle')}</p>
+                <p className="mt-1 text-xs text-ink-faint">{t('products.countHelp')}</p>
+                <div className="mt-2 flex flex-col gap-2 text-sm text-ink-soft">
+                  {countableInForm(form).map((o) => {
+                    const on = form.countedOptions.includes(o.id);
+                    const full = !on && form.countedOptions.filter((id) => countableInForm(form).some((x) => x.id === id)).length >= MAX_COUNTED;
+                    return (
+                      <label key={o.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          disabled={full}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              countedOptions: e.target.checked
+                                ? [...form.countedOptions, o.id]
+                                : form.countedOptions.filter((id) => id !== o.id),
+                            })
+                          }
+                        />
+                        {(language === 'ar' ? o.labelAr : o.labelEn) || o.labelEn || o.labelAr}
+                      </label>
+                    );
+                  })}
+                </div>
+                {editingId !== 'new' &&
+                  countableInForm(form).some((o) => form.countedOptions.includes(o.id)) &&
+                  !isOptionCounted(products.find((p) => p.id === editingId) || {}) && (
+                    <p className="mt-2 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-xs text-brass-dark">
+                      {t('products.countWarn', { n: products.find((p) => p.id === editingId)?.stock ?? 0 })}
+                    </p>
+                  )}
+              </div>
+            )}
+            {(form.isPreorder || form.backorder) && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label className="col-span-full text-sm text-ink-soft">
                   {t('products.preorderStyleLabel')}
@@ -614,6 +732,7 @@ export default function Products() {
                       stock: p.stock,
                     })}
                   </p>
+                  {isOptionCounted(p) && <CountedNumbers product={p} language={language} />}
                   <p className="text-xs text-ink-faint">
                     {costs[p.id] !== null && costs[p.id] !== undefined
                       ? t('products.costLine', {
@@ -634,12 +753,17 @@ export default function Products() {
                       {t('storefront.comingSoon')}
                     </span>
                   )}
+                  {p.backorder === true && !p.isPreorder && (
+                    <span className="rounded bg-ink/10 px-2 py-0.5 text-xs text-ink-soft">
+                      {t('products.stockThenMadeBadge')}
+                    </span>
+                  )}
                   {p.isPreorder && (
                     <span className="rounded bg-ink/10 px-2 py-0.5 text-xs text-ink-soft">
                       {t(p.preorderStyle === 'madeToOrder' ? 'storefront.madeToOrder' : 'storefront.preorder')}
                     </span>
                   )}
-                  {tracksStock(p) && p.stock <= 0 && (
+                  {tracksStock(p) && p.backorder !== true && p.stock <= 0 && (
                     <span className="rounded bg-rust/15 px-2 py-0.5 text-xs text-rust">
                       {t('storefront.outOfStock')}
                     </span>

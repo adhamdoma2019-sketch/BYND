@@ -3,6 +3,7 @@ import {
   doc,
   updateDoc,
   writeBatch,
+  runTransaction,
   getDocs,
   getDoc,
   query,
@@ -12,6 +13,7 @@ import {
 import { db } from './config';
 import { formToOptions, formToOptionCosts } from '../utils/productOptionsForm';
 import { buildMovement } from '../utils/stock';
+import { COUNTABLE_TYPES, MAX_COUNTED, derivedStock } from '../utils/optionStock';
 
 const PRODUCTS = 'products';
 
@@ -41,9 +43,27 @@ export async function getProduct(productId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+// Which options count their own stock: only a colour list or a choice list that has values,
+// never on a made-to-order product (it uses no stock), at most MAX_COUNTED.
+function countedIdsOf(data, options) {
+  if (data.isPreorder === true) return [];
+  const ids = Array.isArray(data.countedOptions) ? data.countedOptions : [];
+  return options
+    .filter((o) => ids.includes(o.id) && COUNTABLE_TYPES.includes(o.type) && (o.values || []).length > 0)
+    .slice(0, MAX_COUNTED)
+    .map((o) => o.id);
+}
+
 // Fields shared by "create" and "update".
 function productFields(data) {
   const isPreorder = data.isPreorder === true;
+  // "Stock first, then made to order": sells from stock, and when it is gone customers can still order.
+  const backorder = !isPreorder && data.backorder === true;
+  const usesMessage = isPreorder || backorder;
+  const savedOptions = formToOptions(data.options);
+  const countedOptions = countedIdsOf(data, savedOptions);
+  // A customer must choose every counted option (we need to know which number to reduce).
+  const options = savedOptions.map((o) => (countedOptions.includes(o.id) ? { ...o, required: true } : o));
   return {
     name: { en: data.nameEn, ar: data.nameAr || data.nameEn },
     description: {
@@ -68,15 +88,17 @@ function productFields(data) {
     // Other products offered on this product's page (e.g. extension plates).
     relatedIds: (data.relatedIds || []).slice(0, 6),
     isPreorder,
+    backorder,
+    countedOptions,
     // How a no-stock product is labelled for customers: 'preorder' or 'madeToOrder'.
     // Same behaviour either way (orderable without stock); only the wording differs.
-    preorderStyle: isPreorder && data.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder',
+    preorderStyle: usesMessage && data.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder',
     // Shown in the shop but can't be ordered yet (the server refuses orders for it too).
     comingSoon: data.comingSoon === true,
-    options: formToOptions(data.options), // colors, activity, extension... (public)
+    options, // colors, activity, extension... (public)
     preorderMessage: {
-      en: isPreorder ? data.preorderMessageEn || '' : '',
-      ar: isPreorder ? data.preorderMessageAr || data.preorderMessageEn || '' : '',
+      en: usesMessage ? data.preorderMessageEn || '' : '',
+      ar: usesMessage ? data.preorderMessageAr || data.preorderMessageEn || '' : '',
     },
   };
 }
@@ -120,9 +142,13 @@ export async function createProduct(tenantId, data, actor) {
   const costRef = doc(db, 'productCosts', productRef.id);
   const batch = writeBatch(db); // all saved together, or none
   const fields = productFields(data);
+  // Counted per colour / option: every number starts at 0 (use "Add stock" for each).
+  const counted = fields.countedOptions.length > 0;
+  if (counted) fields.stock = 0;
   batch.set(productRef, {
     tenantId,
     ...fields,
+    ...(counted ? { optionStock: {} } : {}),
     isActive: true,
     deleted: false,
     createdAt: serverTimestamp(),
@@ -130,7 +156,7 @@ export async function createProduct(tenantId, data, actor) {
   });
   batch.set(costRef, costFields(tenantId, data));
   // The starting stock is the first line of the stock history.
-  if (!fields.isPreorder && fields.stock > 0) {
+  if (!fields.isPreorder && !counted && fields.stock > 0) {
     batch.set(doc(collection(db, 'tenants', tenantId, 'stockMovements')), {
       ...buildMovement({
         tenantId,
@@ -148,13 +174,53 @@ export async function createProduct(tenantId, data, actor) {
   return productRef.id;
 }
 
-export async function updateProduct(tenantId, productId, data) {
+export async function updateProduct(tenantId, productId, data, actor) {
   const productRef = doc(db, PRODUCTS, productId);
   const costRef = doc(db, 'productCosts', productId);
-  const batch = writeBatch(db);
   // Stock is NOT written here: it only changes through "Add stock", "Adjust" and orders
   // (editing it here could overwrite sales that arrived in the meantime).
   const { stock: _ignored, ...fields } = productFields(data);
+
+  // Counted per colour / option: the product's own stock number is recalculated from the
+  // colour numbers (a colour may have been added or removed). Done in a transaction so a sale
+  // that arrives at the same moment is never overwritten.
+  if (fields.countedOptions.length > 0) {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(productRef);
+      const old = snap.exists() ? snap.data() : {};
+      const optionStock = old.optionStock || {};
+      const newStock = derivedStock({ ...old, ...fields, optionStock }, optionStock);
+      const oldStock = Number(old.stock) || 0;
+
+      tx.update(productRef, {
+        ...fields,
+        optionStock,
+        stock: newStock,
+        isActive: data.isActive,
+        updatedAt: serverTimestamp(),
+      });
+      tx.set(costRef, costFields(tenantId, data));
+      // The number changed because of this edit (e.g. counting was just switched on): keep a history line.
+      if (newStock !== oldStock && actor?.uid) {
+        tx.set(doc(collection(db, 'tenants', tenantId, 'stockMovements')), {
+          ...buildMovement({
+            tenantId,
+            productId,
+            productName: fields.name,
+            type: 'adjustment',
+            delta: newStock - oldStock,
+            stockAfter: newStock,
+            note: 'Product edited: stock is now counted per option',
+            actor,
+          }),
+          at: serverTimestamp(),
+        });
+      }
+    });
+    return;
+  }
+
+  const batch = writeBatch(db);
   batch.update(productRef, {
     ...fields,
     isActive: data.isActive,

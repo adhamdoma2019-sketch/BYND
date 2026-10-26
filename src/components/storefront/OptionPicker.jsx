@@ -9,6 +9,10 @@ export default function OptionPicker({
   value,
   onChange,
   highlight,
+  // Stock per value, when the shop counts this option: (valueId) => number, or null when not counted.
+  leftOf = null,
+  // true = a sold-out value can still be ordered (made to order)
+  backorder = false,
   textValue = '',
   onTextChange = () => {},
 }) {
@@ -24,6 +28,11 @@ export default function OptionPicker({
     <span className="text-ink-faint"> ({t('checkout.optional')})</span>
   );
   const frame = highlight ? 'rounded border border-rust/60 p-2' : '';
+  // Sold out (cannot be picked) / made to order (can still be picked) for a value.
+  const gone = (v) => leftOf !== null && leftOf(v.id) <= 0;
+  const blocked = (v) => gone(v) && !backorder;
+  const tag = (v) =>
+    gone(v) ? ` — ${t(backorder ? 'storefront.madeToOrderShort' : 'storefront.soldOutShort')}` : '';
 
   // ----- tick box (an extension that adds to the price) -----
   if (option.type === 'addon') {
@@ -110,17 +119,32 @@ export default function OptionPicker({
               type="button"
               role="radio"
               aria-checked={value === v.id}
-              aria-label={valueName(v)}
-              title={valueName(v)}
+              aria-label={valueName(v) + tag(v)}
+              title={valueName(v) + tag(v)}
+              disabled={blocked(v)}
               onClick={() => onChange(value === v.id && !option.required ? '' : v.id)}
               className={
-                'h-9 w-9 rounded-full border-2 transition ' +
-                (value === v.id ? 'border-brass ring-2 ring-brass/40' : 'border-ink/25')
+                'relative h-9 w-9 overflow-hidden rounded-full border-2 transition ' +
+                (value === v.id ? 'border-brass ring-2 ring-brass/40' : 'border-ink/25') +
+                (gone(v) ? ' opacity-40' : '') +
+                (blocked(v) ? ' cursor-not-allowed' : '')
               }
               style={{ backgroundColor: v.color || '#999999' }}
-            />
+            >
+              {gone(v) && (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 rotate-45 bg-ink"
+                />
+              )}
+            </button>
           ))}
         </div>
+        {values.some(gone) && (
+          <p className="mt-2 text-xs text-ink-faint">
+            {t(backorder ? 'storefront.crossedMade' : 'storefront.crossedSoldOut')}
+          </p>
+        )}
       </div>
     );
   }
@@ -140,9 +164,10 @@ export default function OptionPicker({
         >
           <option value="">{t('checkout.choose')}</option>
           {values.map((v) => (
-            <option key={v.id} value={v.id}>
+            <option key={v.id} value={v.id} disabled={blocked(v)}>
               {valueName(v)}
               {plus(v)}
+              {tag(v)}
             </option>
           ))}
         </select>
@@ -162,16 +187,20 @@ export default function OptionPicker({
             type="button"
             role="radio"
             aria-checked={value === v.id}
+            disabled={blocked(v)}
             onClick={() => onChange(value === v.id && !option.required ? '' : v.id)}
             className={
               'rounded border px-3 py-1.5 transition ' +
               (value === v.id
                 ? 'border-brass bg-brass/15 text-ink'
-                : 'border-ink/20 text-ink-soft hover:border-brass')
+                : 'border-ink/20 text-ink-soft hover:border-brass') +
+              (gone(v) ? ' opacity-60' : '') +
+              (blocked(v) ? ' cursor-not-allowed line-through' : '')
             }
           >
             {valueName(v)}
             {plus(v)}
+            {tag(v)}
           </button>
         ))}
       </div>

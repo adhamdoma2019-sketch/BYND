@@ -18,6 +18,14 @@ import {
 } from './fields.js';
 import { computeTotals } from './pricing.js';
 import { cleanSelections, selectionSignature, resolveSelections } from './options.js';
+import {
+  isOptionCounted,
+  keysForSelections,
+  countedRows,
+  derivedStock,
+  applyDeltas,
+  rowText,
+} from './optionStock.js';
 
 export { OrderError };
 
@@ -145,31 +153,85 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       productInfo.get(item.productId).totalQty += item.quantity;
     });
 
-    // Preorder products can be ordered even with no stock, so they skip the
-    // stock check and never change the stock number.
+    // How each product sells:
+    //   made to order / preorder  never uses stock;
+    //   counted stock             one number per product, or one per colour / plate when the
+    //                             shop counts by option;
+    //   stock first, then made to order ("backorder")
+    //                             uses stock while there is some, otherwise the line is made to order.
+    // The real check happens line by line below (lines of one product share the same numbers).
     for (const info of productInfo.values()) {
       const stock = Number(info.product.stock) || 0;
       info.isPreorder = info.product.isPreorder === true;
+      info.backorder = info.product.backorder === true && !info.isPreorder;
       info.stock = stock;
-      if (!info.isPreorder && stock < info.totalQty) {
-        const name = info.product.name?.en || 'this item';
-        throw new OrderError(
-          409,
-          'OUT_OF_STOCK',
-          stock > 0
-            ? `Sorry, only ${stock} of "${name}" left in stock.`
-            : `Sorry, "${name}" is out of stock.`,
-          { name, stock }
-        );
-      }
+      info.remaining = stock; // plain products: what is left while we go through the lines
+      info.counted = !info.isPreorder && isOptionCounted(info.product);
+      info.optionLeft = { ...(info.product.optionStock || {}) }; // counted products
+      info.optionDelta = {}; // key -> units taken by this order (negative)
+      info.deducted = 0; // units taken from stock by this order
     }
 
     // Build the order lines from the REAL product data in the database.
     const orderItems = items.map((item) => {
-      const { product, costData, isPreorder } = productInfo.get(item.productId);
+      const info = productInfo.get(item.productId);
+      const { product, costData } = info;
 
       // The customer's choices (color, extension...) -> price and cost changes.
       const choice = resolveSelections(product, item.selections, costData?.optionCosts);
+
+      // Stock: does this line come from the shelf, or is it made to order?
+      let madeToOrder = info.isPreorder;
+      let stockKeys = [];
+      if (!info.isPreorder) {
+        const name = product.name?.en || 'this item';
+        if (info.counted) {
+          const { keys, missing } = keysForSelections(product, item.selections);
+          if (missing.length > 0) {
+            const label = missing[0].label || { en: missing[0].id, ar: missing[0].id };
+            throw new OrderError(400, 'BAD_OPTION', `Please choose: ${label.en}`, {
+              customLabel: label,
+            });
+          }
+          const short = keys.find((k) => (Number(info.optionLeft[k.key]) || 0) < item.quantity);
+          if (!short) {
+            for (const k of keys) {
+              info.optionLeft[k.key] = (Number(info.optionLeft[k.key]) || 0) - item.quantity;
+              info.optionDelta[k.key] = (info.optionDelta[k.key] || 0) - item.quantity;
+            }
+            info.deducted += item.quantity;
+            stockKeys = keys.map((k) => k.key);
+          } else if (info.backorder) {
+            madeToOrder = true; // sold out in this colour / size: made on request
+          } else {
+            const left = Math.max(Number(info.optionLeft[short.key]) || 0, 0);
+            const what = `${name} (${short.value.label?.en || short.value.id})`;
+            throw new OrderError(
+              409,
+              'OUT_OF_STOCK',
+              left > 0
+                ? `Sorry, only ${left} of \"${what}\" left in stock.`
+                : `Sorry, \"${what}\" is out of stock.`,
+              { name: what, stock: left }
+            );
+          }
+        } else if (info.remaining >= item.quantity) {
+          info.remaining -= item.quantity;
+          info.deducted += item.quantity;
+        } else if (info.backorder) {
+          madeToOrder = true;
+        } else {
+          const left = Math.max(info.remaining, 0);
+          throw new OrderError(
+            409,
+            'OUT_OF_STOCK',
+            left > 0
+              ? `Sorry, only ${left} of \"${name}\" left in stock.`
+              : `Sorry, \"${name}\" is out of stock.`,
+            { name, stock: left }
+          );
+        }
+      }
       const unitPrice = (Number(product.price) || 0) + choice.priceDelta;
 
       // Cost snapshot: copied into the order so later cost changes never
@@ -190,7 +252,11 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         unitPrice,
         unitCost,
         subtotal: unitPrice * item.quantity,
-        isPreorder,
+        isPreorder: madeToOrder,
+        // (backorder: true = this line is made to order because the stock ran out)
+        ...(madeToOrder && !info.isPreorder ? { backorder: true } : {}),
+        // which counted numbers this line took a unit from (needed to give them back on cancel/return)
+        stockKeys,
         options: choice.snapshot, // [{ id, label, type, value }] what the customer chose
         // Picture of what was chosen (for packing): the choice's own picture, else the product's.
         imageUrl: choice.imageUrl || product.imageUrl || '',
@@ -218,21 +284,35 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
     const orderType = orderItems.some((i) => i.isPreorder) ? 'preorder' : 'normal';
 
     // Writes (all-or-nothing).
-    // Stock goes down once per product, by the total ordered across its lines.
+    // Stock goes down once per product, by the units this order took from the shelf.
     for (const [id, info] of productInfo) {
-      if (info.isPreorder) continue; // preorders don't use stock
-      tx.update(productRefs[info.index], {
-        stock: info.stock - info.totalQty,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      if (info.isPreorder || info.deducted === 0) continue; // nothing taken from stock
+      let stockAfter = info.remaining;
+      const update = { updatedAt: FieldValue.serverTimestamp() };
+      let optionChanges = null;
+      if (info.counted) {
+        const newMap = applyDeltas(info.product.optionStock, info.optionDelta);
+        stockAfter = derivedStock(info.product, newMap);
+        update.optionStock = newMap;
+        const rows = countedRows(info.product);
+        optionChanges = Object.entries(info.optionDelta).map(([key, delta]) => ({
+          key,
+          label: rowText(rows.find((r) => r.key === key) || { optionLabel: {}, valueLabel: { en: key } }),
+          delta,
+          after: Number(newMap[key]) || 0,
+        }));
+      }
+      update.stock = stockAfter;
+      tx.update(productRefs[info.index], update);
       // ...and a line in the stock history (same shape the admin writes).
       tx.set(db.collection('tenants').doc(tenantId).collection('stockMovements').doc(), {
         tenantId,
         productId: id,
         productName: info.product.name || {},
         type: 'sale',
-        delta: -info.totalQty,
-        stockAfter: info.stock - info.totalQty,
+        delta: -info.deducted,
+        stockAfter,
+        ...(optionChanges ? { optionChanges } : {}),
         unitCost: null,
         totalCost: null,
         note: '',

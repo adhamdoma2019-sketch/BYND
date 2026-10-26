@@ -10,8 +10,9 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './config';
-import { stockToRestore, canReturnStatus } from '../utils/orderRules';
+import { stockToRestoreDetailed, canReturnStatus } from '../utils/orderRules';
 import { buildMovement } from '../utils/stock';
+import { isOptionCounted, countedRows, derivedStock, applyDeltas, rowText } from '../utils/optionStock';
 
 // The browser never calculates prices, discounts or shipping itself. It asks the
 // secure server functions (api/quote.js, api/create-order.js), which look up
@@ -110,7 +111,7 @@ export async function updateOrderStatus(orderId, newStatus) {
 // Puts the order's items back on the shelf (one total per product, never for preorder
 // lines). Must be called inside a transaction, BEFORE any write of that transaction.
 async function readStockToRestore(transaction, order) {
-  const restore = stockToRestore(order);
+  const restore = stockToRestoreDetailed(order);
   const refs = restore.map((r) => doc(db, 'products', r.productId));
   const snaps = await Promise.all(refs.map((ref) => transaction.get(ref)));
   return restore.map((r, i) => ({
@@ -118,6 +119,8 @@ async function readStockToRestore(transaction, order) {
     ref: refs[i],
     snap: snaps[i],
     quantity: r.quantity,
+    plainQuantity: r.plainQuantity,
+    keys: r.keys,
     name: (order.items || []).find((it) => it.productId === r.productId)?.name,
   }));
 }
@@ -125,18 +128,46 @@ async function readStockToRestore(transaction, order) {
 // ctx = { type: 'cancel' | 'return', tenantId, orderId, orderLabel, actor }
 // Besides the stock itself, a line is added to the stock history.
 function writeStockBack(transaction, plan, ctx) {
-  plan.forEach(({ productId, ref, snap, quantity, name }) => {
+  plan.forEach(({ productId, ref, snap, quantity, plainQuantity, keys, name }) => {
     if (!snap.exists()) return;
-    const stockAfter = (Number(snap.data().stock) || 0) + quantity;
-    transaction.update(ref, { stock: stockAfter });
+    const product = snap.data();
+    const hasKeys = Object.keys(keys || {}).length > 0;
+    let update;
+    let delta = quantity;
+    let stockAfter;
+    let optionChanges = null;
+
+    if (isOptionCounted(product)) {
+      // Stock is counted per colour / option: give back to the same numbers the order took from.
+      // (Lines that never recorded which numbers they used cannot be given back: skipped.)
+      if (!hasKeys) return;
+      const newMap = applyDeltas(product.optionStock, keys);
+      stockAfter = derivedStock(product, newMap);
+      delta = quantity - (plainQuantity || 0);
+      const rows = countedRows(product);
+      optionChanges = Object.keys(keys).map((key) => ({
+        key,
+        label: rowText(rows.find((r) => r.key === key) || { optionLabel: {}, valueLabel: { en: key } }),
+        delta: keys[key],
+        after: Number(newMap[key]) || 0,
+      }));
+      update = { stock: stockAfter, optionStock: newMap };
+    } else {
+      // One number for the whole product (also the case if the shop stopped counting by option).
+      stockAfter = (Number(product.stock) || 0) + quantity;
+      update = { stock: stockAfter };
+    }
+
+    transaction.update(ref, update);
     transaction.set(doc(collection(db, 'tenants', ctx.tenantId, 'stockMovements')), {
       ...buildMovement({
         tenantId: ctx.tenantId,
         productId,
         productName: name,
         type: ctx.type,
-        delta: quantity,
+        delta,
         stockAfter,
+        optionChanges,
         orderId: ctx.orderId,
         orderLabel: ctx.orderLabel,
         actor: ctx.actor,
