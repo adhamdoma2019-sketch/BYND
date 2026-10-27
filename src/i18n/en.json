@@ -981,6 +981,8 @@
     "dayDelivered": "Delivered that day",
     "dayReturned": "Returned that day",
     "dayHandedIn": "Cash handed to you that day",
-    "dayPaidOut": "Paid to the courier that day"
+    "dayPaidOut": "Paid to the courier that day",
+    "loadError": "The couriers could not be loaded. This usually means the latest security rules have not been published in Firebase yet (Firestore Database > Rules). Publish them, then try again.",
+    "retry": "Try again"
   }
 }

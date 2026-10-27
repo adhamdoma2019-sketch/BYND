@@ -67,6 +67,7 @@ export default function Couriers() {
   const [orders, setOrders] = useState([]);
   const [settlements, setSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [editingId, setEditingId] = useState(null); // courier id, or 'new'
   const [form, setForm] = useState(emptyForm);
@@ -82,14 +83,20 @@ export default function Couriers() {
   async function refresh() {
     if (!tenant) return;
     setLoading(true);
-    const [c, o, s] = await Promise.all([
-      listCouriers(tenant.id),
-      listOrders(tenant.id),
-      listSettlements(tenant.id),
-    ]);
-    setCouriers(c);
-    setOrders(o);
-    setSettlements(s);
+    setLoadFailed(false);
+    try {
+      const [c, o, s] = await Promise.all([
+        listCouriers(tenant.id),
+        listOrders(tenant.id),
+        listSettlements(tenant.id),
+      ]);
+      setCouriers(c);
+      setOrders(o);
+      setSettlements(s);
+    } catch {
+      // Usually: the latest security rules (couriers) are not published in Firebase yet.
+      setLoadFailed(true);
+    }
     setLoading(false);
   }
 
@@ -421,6 +428,16 @@ export default function Couriers() {
 
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
+      ) : loadFailed ? (
+        <div className="max-w-xl rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p>{t('couriers.loadError')}</p>
+          <button
+            onClick={refresh}
+            className="mt-3 rounded border border-red-300 px-3 py-1.5 hover:bg-red-100"
+          >
+            {t('couriers.retry')}
+          </button>
+        </div>
       ) : couriers.length === 0 ? (
         <p className="text-ink-soft">{t('couriers.none')}</p>
       ) : (

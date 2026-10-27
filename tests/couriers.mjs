@@ -222,6 +222,11 @@ const ordersPage = readFileSync(new URL('../src/pages/admin/Orders.jsx', import.
 assert.ok(ordersPage.includes('includeCourierFee: canCourier'));
 ok('Orders page passes the fee permission to the export');
 
+// update 22: a refused read (for example rules not published yet) must not leave the page on "Loading..." forever
+const couriersPage = readFileSync(new URL('../src/pages/admin/Couriers.jsx', import.meta.url), 'utf8');
+assert.ok(couriersPage.includes('setLoadFailed(true)') && couriersPage.includes("t('couriers.loadError')") && couriersPage.includes("t('couriers.retry')"));
+ok('Couriers page: a failed load shows a message and a Try again button (never "Loading..." forever)');
+
 // ---- rules text (the rules cannot be emulator-tested here, but the shape is checked) ----
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const block = (name) => {
