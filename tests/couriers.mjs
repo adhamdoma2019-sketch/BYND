@@ -137,6 +137,91 @@ assert.equal(p.courierFeesTotal, 0);
 assert.equal(p.netProfit, 100);
 ok('profit: courier fees (delivered + returned share) are taken off net profit, in the month of delivery / return; no courier = no change');
 
+// ---- update 21: cash to collect, exports with courier columns, daily report ----
+const { expectedCash, localDay, courierDayReport, round2 } = await import('../src/utils/couriers.js');
+const { ordersToCsv, courierDayToCsv } = await import('../src/utils/exports.js');
+
+const codCourier = { id: 'c1', name: 'Bosta', collectsCash: true, fee: 45, returnFeePercent: 50 };
+const shopCashCourier = { id: 'c2', name: 'Ali (own)', collectsCash: false, fee: 20, returnFeePercent: 100 };
+assert.equal(expectedCash({ courier: codCourier, status: 'shipped', totalAmount: 500 }), 500);
+assert.equal(expectedCash({ courier: codCourier, status: 'delivered', totalAmount: 500 }), 500);
+assert.equal(expectedCash({ courier: codCourier, status: 'cancelled', totalAmount: 500 }), 0);
+assert.equal(expectedCash({ courier: codCourier, status: 'returned', totalAmount: 500 }), 0);
+assert.equal(expectedCash({ courier: shopCashCourier, status: 'shipped', totalAmount: 500 }), 0);
+assert.equal(expectedCash({ status: 'shipped', totalAmount: 500 }), 0);
+ok('cash to collect: open/delivered orders of a cash-collecting courier only; cancelled, returned, shop-cash, no courier = 0');
+
+assert.equal(localDay(new Date(2026, 9, 27, 23, 30)), '2026-10-27');
+assert.equal(localDay(new Date(2026, 0, 5, 0, 5)), '2026-01-05');
+assert.equal(localDay('not a date'), '');
+ok('localDay: the shop team\'s own calendar day, zero-padded');
+
+const at = (y, m, d, h = 12) => new Date(y, m - 1, d, h).toISOString();
+const hist = (status, iso) => [{ status: 'pending', timestamp: at(2026, 10, 1) }, { status, timestamp: iso }];
+const o1 = { id: 'o1', orderNumberLabel: 'BYND-1001', status: 'delivered', totalAmount: 500, courier: codCourier, statusHistory: hist('delivered', at(2026, 10, 27, 9)), shipping: { zoneName: { en: 'Cairo', ar: 'القاهرة' } } };
+const o2 = { id: 'o2', orderNumberLabel: 'BYND-1002', status: 'returned', totalAmount: 300, courier: codCourier, statusHistory: hist('returned', at(2026, 10, 27, 20)) };
+const o3 = { id: 'o3', orderNumberLabel: 'BYND-1003', status: 'delivered', totalAmount: 200, courier: codCourier, statusHistory: hist('delivered', at(2026, 10, 26, 20)) }; // other day
+const o4 = { id: 'o4', orderNumberLabel: 'BYND-1004', status: 'delivered', totalAmount: 400, courier: shopCashCourier, statusHistory: hist('delivered', at(2026, 10, 27, 15)) };
+const o5 = { id: 'o5', orderNumberLabel: 'BYND-1005', status: 'cancelled', totalAmount: 100, courier: codCourier, statusHistory: hist('cancelled', at(2026, 10, 27, 10)) };
+const o6 = { id: 'o6', orderNumberLabel: 'BYND-1006', status: 'shipped', totalAmount: 100, courier: codCourier, statusHistory: hist('shipped', at(2026, 10, 27, 10)) };
+const o7 = { id: 'o7', orderNumberLabel: 'BYND-1007', status: 'delivered', totalAmount: 100, statusHistory: hist('delivered', at(2026, 10, 27, 10)) }; // no courier
+const o8 = { id: 'o8', orderNumberLabel: 'BYND-1008', status: 'delivered', totalAmount: 100, courier: codCourier, deleted: true, statusHistory: hist('delivered', at(2026, 10, 27, 10)) };
+const people = [{ id: 'c1', name: 'Bosta' }, { id: 'c2', name: 'Ali (own)' }];
+const sets = [
+  { courierId: 'c1', courierName: 'Bosta', amount: 300, date: '2026-10-27' },
+  { courierId: 'c1', courierName: 'Bosta', amount: -50, date: '2026-10-27' },
+  { courierId: 'c1', courierName: 'Bosta', amount: 999, date: '2026-10-26' },
+  { courierId: 'c3', courierName: 'Only paid', amount: -70, date: '2026-10-27' }, // no orders that day
+];
+const rep = courierDayReport([o1, o2, o3, o4, o5, o6, o7, o8], people, sets, '2026-10-27');
+assert.deepEqual(rep.map((r) => r.name), ['Ali (own)', 'Bosta', 'Only paid']);
+const bosta27 = rep.find((r) => r.courierId === 'c1');
+assert.equal(bosta27.delivered, 1);
+assert.equal(bosta27.returned, 1);
+assert.equal(bosta27.cash, 500);        // only the delivered order holds cash
+assert.equal(bosta27.fees, 45 + 22.5);  // full fee + 50% for the return
+assert.equal(bosta27.handedIn, 300);
+assert.equal(bosta27.paidOut, 50);
+assert.deepEqual(bosta27.orders.map((x) => x.order.id), ['o1', 'o2']);
+const ali27 = rep.find((r) => r.courierId === 'c2');
+assert.equal(ali27.cash, 0);            // the shop collects the cash for this courier
+assert.equal(ali27.fees, 20);
+const paidOnly = rep.find((r) => r.courierId === 'c3');
+assert.equal(paidOnly.paidOut, 70);
+assert.equal(paidOnly.orders.length, 0);
+assert.equal(courierDayReport([o1], people, [], '2026-10-28').length, 0);
+ok('daily report: groups by courier, uses the delivered/returned date, skips open/cancelled/deleted/no-courier orders, handovers of that day only, courier with only a handover still listed');
+
+// the day report must agree with the all-time statement
+const all = courierStatement('c1', [o1, o2, o3, o5, o6], []);
+const day26 = courierDayReport([o1, o2, o3, o5, o6], people, [], '2026-10-26')[0];
+assert.equal(round2(bosta27.cash + day26.cash), all.cash);
+assert.equal(round2(bosta27.fees + day26.fees), all.fees);
+ok('daily report adds up to the courier statement (cash and fees)');
+
+// ---- order export: courier columns, fee only for owner/manager ----
+const tt = (key, o) => ({ 'exports.courier': 'Courier', 'exports.courierCash': 'Cash the courier collects', 'exports.courierFee': 'Courier fee', 'exports.cashCollected': 'Cash collected', 'exports.orderNo': 'Order', 'exports.status': 'Status', 'exports.zone': 'Delivery area' }[key] || o?.defaultValue || key);
+const manager = ordersToCsv([o6, o7], { language: 'en', t: tt, includeCourierFee: true }).split('\r\n');
+const staff = ordersToCsv([o6, o7], { language: 'en', t: tt }).split('\r\n');
+assert.ok(manager[0].includes('Courier,Cash the courier collects,Courier fee'));
+assert.ok(staff[0].includes('Courier,Cash the courier collects'));
+assert.ok(!staff[0].includes('Courier fee'));
+assert.ok(manager[1].includes(',Bosta,100,45,'));       // courier, cash, fee
+assert.ok(staff[1].includes(',Bosta,100,') && !staff[1].includes(',Bosta,100,45'));
+assert.ok(manager[2].includes(',,,,') || manager[2].includes(',,,'));  // order without a courier: empty cells
+assert.equal(staff.length, 3);
+ok('order export: courier + cash columns for everyone, fee column only when allowed (staff file has no fee)');
+
+const dayCsv = courierDayToCsv(rep, { language: 'en', t: tt }).split('\r\n');
+assert.equal(dayCsv.length, 1 + 3); // header + o1, o2 (Bosta) + o4 (Ali)
+assert.ok(dayCsv.some((l) => l.startsWith('Bosta,BYND-1001,')) && dayCsv.some((l) => l.includes('BYND-1002')));
+ok('daily report file: one line per delivered/returned order');
+
+// the Orders page must ask for the fee column only for people who may manage couriers
+const ordersPage = readFileSync(new URL('../src/pages/admin/Orders.jsx', import.meta.url), 'utf8');
+assert.ok(ordersPage.includes('includeCourierFee: canCourier'));
+ok('Orders page passes the fee permission to the export');
+
 // ---- rules text (the rules cannot be emulator-tested here, but the shape is checked) ----
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const block = (name) => {

@@ -166,3 +166,81 @@ export function cleanSettlement({ amount, direction, note }) {
   const signed = direction === 'out' ? -round2(n) : round2(n);
   return { ok: true, value: { amount: signed, note: String(note || '').trim().slice(0, 200) } };
 }
+
+// ----- cash the courier is expected to collect (for the courier's handover sheet) -----
+
+// An order that is still open or delivered, with a courier who collects the cash:
+// the customer pays this to the courier. Cancelled / returned orders: nothing.
+export function expectedCash(order) {
+  if (!order?.courier || order.courier.collectsCash === false) return 0;
+  if (order.status === 'cancelled' || order.status === 'returned') return 0;
+  return round2(order.totalAmount);
+}
+
+// ----- one day, all couriers (the "Daily report") -----
+
+// 'YYYY-MM-DD' in the computer's own time zone (the same day the shop team sees).
+export function localDay(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// What happened on `day` ('YYYY-MM-DD'): per courier, the orders delivered or returned that
+// day (decided by the date of the status change), the cash they collected, the fees earned,
+// and the handovers recorded for that day. Couriers with nothing that day are left out.
+export function courierDayReport(orders, couriers, settlements, day) {
+  const rows = new Map();
+  const nameOf = (id, fallback) =>
+    couriers.find((c) => c.id === id)?.name || fallback || '';
+  const row = (id, fallback) => {
+    if (!rows.has(id)) {
+      rows.set(id, {
+        courierId: id,
+        name: nameOf(id, fallback),
+        delivered: 0,
+        returned: 0,
+        cash: 0,
+        fees: 0,
+        handedIn: 0,
+        paidOut: 0,
+        orders: [],
+      });
+    }
+    return rows.get(id);
+  };
+
+  for (const o of orders) {
+    if (o.deleted || !o.courier?.id) continue;
+    if (o.status !== 'delivered' && o.status !== 'returned') continue;
+    const d = courierFeeDate(o);
+    if (!d || localDay(d) !== day) continue;
+    const r = row(o.courier.id, o.courier.name);
+    const cash = orderCashHeld(o);
+    const fee = orderCourierFee(o);
+    if (o.status === 'delivered') r.delivered += 1;
+    else r.returned += 1;
+    r.cash += cash;
+    r.fees += fee;
+    r.orders.push({ order: o, status: o.status, cash, fee });
+  }
+
+  for (const x of settlements) {
+    if (x.date !== day || !x.courierId) continue;
+    const r = row(x.courierId, x.courierName);
+    const a = Number(x.amount) || 0;
+    if (a > 0) r.handedIn += a;
+    else r.paidOut += -a;
+  }
+
+  const list = [...rows.values()].map((r) => ({
+    ...r,
+    cash: round2(r.cash),
+    fees: round2(r.fees),
+    handedIn: round2(r.handedIn),
+    paidOut: round2(r.paidOut),
+  }));
+  list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  return list;
+}

@@ -355,7 +355,7 @@ export default function Orders() {
             onClick={() =>
               downloadFile(
                 `orders-${new Date().toISOString().slice(0, 10)}.csv`,
-                ordersToCsv(filteredOrders, { language, t })
+                ordersToCsv(filteredOrders, { language, t, includeCourierFee: canCourier })
               )
             }
             className="rounded border border-ink/15 px-3 py-2 text-sm text-ink-soft hover:border-brass hover:text-brass"

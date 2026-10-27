@@ -760,7 +760,11 @@
     "active": "Active",
     "category": "Category",
     "description": "Description",
-    "amount": "Amount"
+    "amount": "Amount",
+    "courier": "Courier",
+    "courierCash": "Cash the courier collects",
+    "courierFee": "Courier fee",
+    "cashCollected": "Cash collected"
   },
   "stock": {
     "title": "Stock history",
@@ -969,6 +973,14 @@
     "errFee": "Fees must be numbers, 0 or more.",
     "errPercent": "The return percentage must be between 0 and 100.",
     "errAmount": "Please write an amount above 0.",
-    "errSave": "Could not save. Please try again."
+    "errSave": "Could not save. Please try again.",
+    "dayTitle": "Daily report",
+    "dayHelp": "Pick a day to see, for each courier, the orders delivered or returned that day, the cash collected and the fees earned.",
+    "dayPick": "Day",
+    "dayNone": "No delivered or returned orders, and no handovers, on this day.",
+    "dayDelivered": "Delivered that day",
+    "dayReturned": "Returned that day",
+    "dayHandedIn": "Cash handed to you that day",
+    "dayPaidOut": "Paid to the courier that day"
   }
 }

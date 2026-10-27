@@ -13,11 +13,19 @@ import {
   listSettlements,
   addSettlement,
 } from '../../firebase/couriers.service';
-import { cleanCourierForm, cleanSettlement, courierStatement } from '../../utils/couriers';
+import {
+  cleanCourierForm,
+  cleanSettlement,
+  courierStatement,
+  courierDayReport,
+  localDay,
+} from '../../utils/couriers';
+import { courierDayToCsv } from '../../utils/exports';
+import { downloadFile } from '../../utils/csv';
 
 const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localDay(new Date());
 
 const emptyForm = {
   name: '',
@@ -64,6 +72,8 @@ export default function Couriers() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const [reportDay, setReportDay] = useState(today());
 
   const [payingId, setPayingId] = useState(null);
   const [pay, setPay] = useState({ amount: '', direction: 'in', date: today(), note: '' });
@@ -182,6 +192,12 @@ export default function Couriers() {
     }
     setSaving(false);
   }
+
+  const dayReport = useMemo(
+    () => courierDayReport(orders, couriers, settlements, reportDay),
+    [orders, couriers, settlements, reportDay]
+  );
+  const orderLabel = (o) => o.orderNumberLabel || `#${o.orderNumber}`;
 
   const zoneName = (z) => z.name?.[language] || z.name?.en || z.id;
 
@@ -327,6 +343,80 @@ export default function Couriers() {
             </button>
           </div>
         </form>
+      )}
+
+      {!loading && couriers.length > 0 && (
+        <section className="mb-8 max-w-3xl rounded-md border border-ink/10 bg-white p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-medium">{t('couriers.dayTitle')}</h2>
+              <p className="text-xs text-ink-faint">{t('couriers.dayHelp')}</p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block text-sm">
+                {t('couriers.dayPick')}
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={reportDay}
+                  onChange={(e) => setReportDay(e.target.value)}
+                />
+              </label>
+              {dayReport.some((r) => r.orders.length > 0) && (
+                <button
+                  onClick={() =>
+                    downloadFile(
+                      `couriers-${reportDay}.csv`,
+                      courierDayToCsv(dayReport, { language, t })
+                    )
+                  }
+                  className="rounded border border-ink/15 px-3 py-2 text-sm text-ink-soft hover:border-brass hover:text-brass"
+                >
+                  {t('exports.button')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!reportDay || dayReport.length === 0 ? (
+            <p className="mt-4 text-sm text-ink-soft">{t('couriers.dayNone')}</p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {dayReport.map((r) => (
+                <div key={r.courierId} className="rounded border border-ink/10 bg-paper-soft p-4">
+                  <h3 className="font-medium">{r.name}</h3>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <Line label={t('couriers.dayDelivered')} value={r.delivered} />
+                    <Line label={t('couriers.dayReturned')} value={r.returned} />
+                    <Line label={t('couriers.sCash')} value={money(r.cash)} />
+                    <Line label={t('couriers.sFees')} value={`− ${money(r.fees)}`} />
+                    {r.handedIn > 0 && (
+                      <Line label={t('couriers.dayHandedIn')} value={money(r.handedIn)} />
+                    )}
+                    {r.paidOut > 0 && (
+                      <Line label={t('couriers.dayPaidOut')} value={money(r.paidOut)} />
+                    )}
+                  </div>
+                  {r.orders.length > 0 && (
+                    <ul className="mt-3 space-y-1 border-t border-ink/10 pt-2 text-xs text-ink-soft">
+                      {r.orders.map((x) => (
+                        <li key={x.order.id} className="flex justify-between gap-3">
+                          <span>
+                            {orderLabel(x.order)} ·{' '}
+                            {t(`admin.status.${x.status}`, { defaultValue: x.status })}
+                          </span>
+                          <span>
+                            {money(x.cash)} · − {money(x.fee)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {loading ? (

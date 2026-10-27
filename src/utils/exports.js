@@ -2,6 +2,7 @@
 // products, expenses). `t` is the translate function, so headers follow the language.
 
 import { toCsv } from './csv.js';
+import { expectedCash } from './couriers.js';
 
 const pick = (obj, language) => (obj && (obj[language] || obj.en)) || '';
 
@@ -19,7 +20,8 @@ function optionText(o, language, yes) {
   return `${label}: ${typeof o.value === 'object' ? pick(o.value, language) : o.value}`;
 }
 
-export function ordersToCsv(orders, { language, t }) {
+// includeCourierFee: only owners / managers (the courier's fee is money information).
+export function ordersToCsv(orders, { language, t, includeCourierFee = false }) {
   const itemsText = (order) =>
     (order.items || [])
       .map((i) => {
@@ -31,6 +33,14 @@ export function ordersToCsv(orders, { language, t }) {
     (order.customFields || [])
       .map((f) => `${pick(f.label, language)}: ${typeof f.value === 'object' ? pick(f.value, language) : f.value === true ? t('orders.yes') : f.value}`)
       .join(' | ');
+
+  const courierColumns = [
+    { header: t('exports.courier'), value: (o) => o.courier?.name || '' },
+    { header: t('exports.courierCash'), value: (o) => (o.courier ? expectedCash(o) : '') },
+  ];
+  if (includeCourierFee) {
+    courierColumns.push({ header: t('exports.courierFee'), value: (o) => (o.courier ? o.courier.fee ?? 0 : '') });
+  }
 
   return toCsv(
     [
@@ -49,6 +59,7 @@ export function ordersToCsv(orders, { language, t }) {
       { header: t('exports.zone'), value: (o) => pick(o.shipping?.zoneName, language) },
       { header: t('exports.shipping'), value: (o) => o.shippingFee || 0 },
       { header: t('exports.total'), value: (o) => o.totalAmount ?? '' },
+      ...courierColumns,
       { header: t('exports.extra'), value: extras },
       { header: t('exports.notes'), value: (o) => o.customer?.notes || '' },
     ],
@@ -80,5 +91,23 @@ export function expensesToCsv(expenses, { t }) {
       { header: t('exports.amount'), value: (e) => e.amount },
     ],
     expenses
+  );
+}
+
+// The daily courier report as a spreadsheet: one line per delivered / returned order.
+// `report` comes from courierDayReport(...). Only owners / managers open this page.
+export function courierDayToCsv(report, { language, t }) {
+  const lines = [];
+  for (const r of report) for (const x of r.orders) lines.push({ courier: r.name, ...x });
+  return toCsv(
+    [
+      { header: t('exports.courier'), value: (l) => l.courier },
+      { header: t('exports.orderNo'), value: (l) => l.order.orderNumberLabel || l.order.orderNumber },
+      { header: t('exports.status'), value: (l) => t(`admin.status.${l.status}`, { defaultValue: l.status }) },
+      { header: t('exports.zone'), value: (l) => pick(l.order.shipping?.zoneName, language) },
+      { header: t('exports.cashCollected'), value: (l) => l.cash },
+      { header: t('exports.courierFee'), value: (l) => l.fee },
+    ],
+    lines
   );
 }
