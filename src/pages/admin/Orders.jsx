@@ -18,7 +18,9 @@ import { optimizedImage } from '../../utils/images';
 import OptionSummary from '../../components/storefront/OptionSummary';
 import { useAudit } from '../../hooks/useAudit';
 import { diffFields } from '../../utils/audit';
-import { canSeeCosts, canCancelOrders } from '../../utils/roles';
+import { canSeeCosts, canCancelOrders, canManageCouriers } from '../../utils/roles';
+import { listCouriers, setOrderCourier } from '../../firebase/couriers.service';
+import { feeForZone, courierSnapshot } from '../../utils/couriers';
 import {
   listOrders,
   updateOrderStatus,
@@ -47,6 +49,12 @@ export default function Orders() {
   const [updatingId, setUpdatingId] = useState(null);
   const [actionError, setActionError] = useState('');
 
+  // Couriers: only owners and managers choose them and see their fees.
+  const canCourier = canManageCouriers(role);
+  const [couriers, setCouriers] = useState([]);
+  const [courierFilter, setCourierFilter] = useState('all'); // all | none | <courier id>
+  const [courierPick, setCourierPick] = useState({}); // orderId -> { courierId, fee }
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -73,9 +81,17 @@ export default function Orders() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenant]);
 
+  useEffect(() => {
+    if (!tenant || !canCourier) return;
+    listCouriers(tenant.id).then(setCouriers).catch(() => {});
+  }, [tenant, canCourier]);
+
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+      if (courierFilter === 'none' && order.courier) return false;
+      if (courierFilter !== 'all' && courierFilter !== 'none' && order.courier?.id !== courierFilter)
+        return false;
 
       if (search.trim()) {
         const term = search.trim().toLowerCase();
@@ -90,7 +106,7 @@ export default function Orders() {
 
       return true;
     });
-  }, [orders, statusFilter, search, dateFrom, dateTo]);
+  }, [orders, statusFilter, courierFilter, search, dateFrom, dateTo]);
 
   async function handleAdvance(order) {
     const next = nextStatus(order.status);
@@ -168,6 +184,76 @@ export default function Orders() {
     }
   }
 
+  function startCourierPick(order) {
+    setCourierPick((p) => ({
+      ...p,
+      [order.id]: {
+        courierId: order.courier?.id || '',
+        fee: order.courier ? String(order.courier.fee) : '',
+      },
+    }));
+  }
+
+  function chooseCourier(order, courierId) {
+    const c = couriers.find((x) => x.id === courierId);
+    setCourierPick((p) => ({
+      ...p,
+      [order.id]: {
+        courierId,
+        fee: c ? String(feeForZone(c, order.shipping?.zoneId)) : '',
+      },
+    }));
+  }
+
+  async function saveCourierPick(order) {
+    const pick = courierPick[order.id];
+    const c = couriers.find((x) => x.id === pick?.courierId);
+    if (!c) return;
+    if (!(Number(pick.fee) >= 0) || pick.fee === '') {
+      setActionError(t('couriers.errFee'));
+      return;
+    }
+    setUpdatingId(order.id);
+    setActionError('');
+    try {
+      await setOrderCourier(order.id, courierSnapshot(c, pick.fee));
+      log({
+        action: 'order.courier',
+        entityType: 'order',
+        entityId: order.id,
+        entityLabel: orderLabel(order),
+        changes: [{ field: 'courier', from: order.courier?.name || '', to: c.name }],
+      });
+      setCourierPick((p) => {
+        const { [order.id]: _gone, ...rest } = p;
+        return rest;
+      });
+      await refresh();
+    } catch {
+      setActionError(t('couriers.errSave'));
+    }
+    setUpdatingId(null);
+  }
+
+  async function removeCourier(order) {
+    setUpdatingId(order.id);
+    setActionError('');
+    try {
+      await setOrderCourier(order.id, null);
+      log({
+        action: 'order.courier',
+        entityType: 'order',
+        entityId: order.id,
+        entityLabel: orderLabel(order),
+        changes: [{ field: 'courier', from: order.courier?.name || '', to: '' }],
+      });
+      await refresh();
+    } catch {
+      setActionError(t('couriers.errSave'));
+    }
+    setUpdatingId(null);
+  }
+
   function startEditCustomer(order) {
     setEditingCustomerId(order.id);
     setCustomerForm({
@@ -225,6 +311,22 @@ export default function Orders() {
             </option>
           ))}
         </select>
+
+        {canCourier && couriers.length > 0 && (
+          <select
+            value={courierFilter}
+            onChange={(e) => setCourierFilter(e.target.value)}
+            className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus-visible:border-brass"
+          >
+            <option value="all">{t('orders.allCouriers')}</option>
+            <option value="none">{t('orders.noCourier')}</option>
+            {couriers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         <input
           type="text"
@@ -312,6 +414,9 @@ export default function Orders() {
                     <span className="ms-3 text-sm text-ink-soft">
                       {order.customer?.name}
                     </span>
+                    {order.courier?.name && (
+                      <span className="ms-3 text-xs text-ink-faint">🚚 {order.courier.name}</span>
+                    )}
                     {order.orderType === 'preorder' && (
                       <span className="ms-3 rounded bg-ink px-2 py-0.5 text-xs text-paper">
                         {t('orders.preorder')}
@@ -554,6 +659,106 @@ export default function Orders() {
                         })()}
                       </div>
                     </div>
+
+                    {canCourier && order.status !== 'cancelled' && (() => {
+                      const pick = courierPick[order.id];
+                      const active = couriers.filter((c) => c.active !== false);
+                      const busy = updatingId === order.id;
+                      return (
+                        <div className="mt-4 rounded border border-ink/10 bg-paper-soft p-3 text-sm">
+                          <p className="font-medium text-ink-soft">{t('orders.courier')}</p>
+                          {pick ? (
+                            <div className="mt-2 space-y-2">
+                              <select
+                                value={pick.courierId}
+                                onChange={(e) => chooseCourier(order, e.target.value)}
+                                className="w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                              >
+                                <option value="">{t('orders.chooseCourier')}</option>
+                                {active.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <label className="block text-xs text-ink-faint">
+                                {t('orders.courierFee')}
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  inputMode="decimal"
+                                  value={pick.fee}
+                                  onChange={(e) =>
+                                    setCourierPick((p) => ({
+                                      ...p,
+                                      [order.id]: { ...pick, fee: e.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus-visible:border-brass"
+                                />
+                              </label>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => saveCourierPick(order)}
+                                  disabled={busy || !pick.courierId}
+                                  className="rounded bg-ink px-3 py-1.5 text-paper hover:bg-brass disabled:opacity-60"
+                                >
+                                  {t('common.save')}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setCourierPick((p) => {
+                                      const { [order.id]: _gone, ...rest } = p;
+                                      return rest;
+                                    })
+                                  }
+                                  className="rounded border border-ink/15 px-3 py-1.5"
+                                >
+                                  {t('common.cancel')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : order.courier ? (
+                            <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                              <span>
+                                {order.courier.name} —{' '}
+                                {t('orders.courierFeeLine', {
+                                  fee: formatPrice(order.courier.fee, language),
+                                })}
+                                {order.courier.collectsCash === false
+                                  ? ` · ${t('couriers.tagShopCash')}`
+                                  : ''}
+                              </span>
+                              <span className="flex gap-3">
+                                <button
+                                  onClick={() => startCourierPick(order)}
+                                  className="text-xs text-brass hover:underline"
+                                >
+                                  {t('orders.changeCourier')}
+                                </button>
+                                <button
+                                  onClick={() => removeCourier(order)}
+                                  disabled={busy}
+                                  className="text-xs text-rust hover:underline disabled:opacity-60"
+                                >
+                                  {t('common.remove')}
+                                </button>
+                              </span>
+                            </div>
+                          ) : active.length === 0 ? (
+                            <p className="mt-1 text-xs text-ink-faint">{t('orders.noCouriersYet')}</p>
+                          ) : (
+                            <button
+                              onClick={() => startCourierPick(order)}
+                              className="mt-1 rounded border border-ink/15 bg-white px-3 py-1.5 hover:border-brass"
+                            >
+                              {t('orders.assignCourier')}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {next && (

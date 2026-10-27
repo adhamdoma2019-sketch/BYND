@@ -146,6 +146,27 @@ service cloud.firestore {
       allow delete: if false; // deactivate instead
     }
 
+    // ---------- Couriers (delivery companies / people) ----------
+    // Only owners and managers. A courier is hidden (active = false), never erased.
+    match /couriers/{courierId} {
+      allow read: if canManage(resource.data.tenantId);
+      allow create: if canManage(request.resource.data.tenantId);
+      allow update: if canManage(resource.data.tenantId) && tenantIdUnchanged();
+      allow delete: if false;
+    }
+
+    // ---------- Courier handovers (cash given to the shop / fees paid out) ----------
+    // Add-only, like a ledger: an entry can never be edited or deleted. A mistake is
+    // fixed with a new opposite entry.
+    match /courierSettlements/{entryId} {
+      allow read: if canManage(resource.data.tenantId);
+      allow create: if canManage(request.resource.data.tenantId)
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount != 0;
+      allow update, delete: if false;
+    }
+
     // ---------- Orders ----------
 
     match /orders/{orderId} {

@@ -142,7 +142,9 @@
     "openOrders": "Open orders (not delivered yet)",
     "openOrdersNote": "Not counted as profit until they are delivered.",
     "missingCost": "{{n}} delivered order(s) have no cost recorded, so profit may look higher than it really is. Add a cost price to your products.",
-    "note": "Revenue counts delivered orders only. Expenses come from the Expenses screen."
+    "note": "Revenue counts delivered orders only. Expenses come from the Expenses screen.",
+    "courierFees": "Courier fees",
+    "courierNote": "Courier fees come from the courier chosen on each order. Do not also add the same delivery cost as a \"Shipping\" expense, or it is counted twice."
   },
   "login": {
     "invalid": "Invalid email or password.",
@@ -186,7 +188,8 @@
     "pending": "{{n}} new order(s) waiting for you",
     "activityDesc": "See who changed what, and when.",
     "teamDesc": "Give each person their own login and role.",
-    "stockDesc": "See every change of stock."
+    "stockDesc": "See every change of stock.",
+    "couriersDesc": "Delivery people, their fees and the cash they owe you."
   },
   "products": {
     "add": "+ Add product",
@@ -303,7 +306,16 @@
     "returnRestock": "Returned: put items back in stock",
     "returnNoRestock": "Returned: don't restock (damaged or lost)",
     "returnKeep": "Keep as is",
-    "returnFailed": "Could not mark this order as returned."
+    "returnFailed": "Could not mark this order as returned.",
+    "courier": "Courier",
+    "assignCourier": "Choose a courier",
+    "changeCourier": "Change",
+    "chooseCourier": "Choose a courier…",
+    "courierFee": "Courier fee for this order",
+    "courierFeeLine": "fee {{fee}}",
+    "noCouriersYet": "No couriers yet. Add one in the Couriers page.",
+    "allCouriers": "All couriers",
+    "noCourier": "No courier yet"
   },
   "expenses": {
     "category": "Category",
@@ -909,5 +921,54 @@
       "cancelled": "This order was cancelled. Please contact us if you have questions.",
       "returned": "This order was returned. Please contact us if you have questions."
     }
+  },
+  "couriers": {
+    "title": "Couriers",
+    "intro": "The delivery companies and people who deliver your orders. Set what each one charges per area, pick one on each order, and see how much cash they owe you.",
+    "add": "+ Add courier",
+    "addTitle": "Add courier",
+    "editTitle": "Edit courier",
+    "name": "Name",
+    "kind": "Type",
+    "kindCompany": "Delivery company",
+    "kindOwn": "Our own person",
+    "collectsCash": "This courier collects the cash from the customer",
+    "collectsCashHelp": "Switch off when the shop collects the money itself. The fee is still counted as owed to the courier.",
+    "feesTitle": "Fee per delivery",
+    "feesHelp": "What this courier charges for one delivered order, per area. Leave an area empty to use the \"other areas\" fee.",
+    "useOther": "Other areas fee",
+    "otherAreas": "Other areas",
+    "noZones": "Add delivery areas in Settings to set a different fee for each area.",
+    "returnPercent": "Fee when an order is returned (%)",
+    "returnPercentHelp": "100 = the full fee, 0 = no fee. Cancelled orders never cost a fee.",
+    "active": "Available for new orders",
+    "inactive": "not available",
+    "none": "No couriers yet. Add the first one.",
+    "tagCourierCash": "courier collects the cash",
+    "tagShopCash": "shop collects the cash",
+    "sOpen": "On the way",
+    "sDelivered": "Delivered",
+    "sReturned": "Returned",
+    "sCancelled": "Cancelled",
+    "sCash": "Cash collected from customers",
+    "sFees": "Courier fees earned",
+    "sSettled": "Already handed over / paid",
+    "owesYou": "Owes you",
+    "youOwe": "You owe the courier",
+    "allSettled": "All settled",
+    "recordHandover": "Record a handover",
+    "hDirection": "What happened?",
+    "hIn": "Courier gave me cash",
+    "hOut": "I paid the courier",
+    "hAmount": "Amount",
+    "hDate": "Date",
+    "hNote": "Note (optional)",
+    "hHelp": "A saved handover cannot be edited. If you made a mistake, save a new one in the opposite direction.",
+    "history": "Handovers ({{n}})",
+    "errName": "Please write the courier's name.",
+    "errFee": "Fees must be numbers, 0 or more.",
+    "errPercent": "The return percentage must be between 0 and 100.",
+    "errAmount": "Please write an amount above 0.",
+    "errSave": "Could not save. Please try again."
   }
 }

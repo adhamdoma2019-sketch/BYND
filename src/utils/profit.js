@@ -3,8 +3,11 @@
 //   Revenue            = money from DELIVERED orders
 //   - Cost of goods    = what the sold products cost us (snapshotted in each order)
 //   = Gross profit
-//   - Expenses         = packaging, marketing, shipping we paid, tools, ...
+//   - Courier fees     = what delivery companies / people earn (from the courier saved in each order)
+//   - Expenses         = packaging, marketing, tools, ...
 //   = Net profit
+
+import { orderCourierFee, courierFeeDate } from './couriers.js';
 
 // Cost of one order. `complete` is false if any item has no cost recorded
 // (for example orders placed before cost prices were set up).
@@ -73,13 +76,25 @@ export function calcProfit(orders, expenses, period = 'all', now = new Date()) {
     .filter((o) => !['delivered', 'cancelled', 'returned'].includes(o.status))
     .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
 
+  // Courier fees: delivered orders (full fee) and returned orders (the return share).
+  // Each fee counts in the month the order was delivered / returned.
+  let courierFeesTotal = 0;
+  for (const o of orders) {
+    const fee = orderCourierFee(o);
+    if (!fee) continue;
+    const d = courierFeeDate(o);
+    if (inPeriod(d ? monthKey(d) : null, period, now)) courierFeesTotal += fee;
+  }
+  courierFeesTotal = Math.round(courierFeesTotal * 100) / 100;
+
   const grossProfit = revenue - cogs;
   return {
     revenue,
     cogs,
     grossProfit,
     expensesTotal,
-    netProfit: grossProfit - expensesTotal,
+    courierFeesTotal,
+    netProfit: grossProfit - expensesTotal - courierFeesTotal,
     expectedRevenue,
     ordersMissingCost,
     deliveredCount: delivered.length,

@@ -25,6 +25,7 @@ const PromoCodes = lazy(() => import('../pages/admin/PromoCodes'));
 const Team = lazy(() => import('../pages/admin/Team'));
 const Activity = lazy(() => import('../pages/admin/Activity'));
 const StockHistory = lazy(() => import('../pages/admin/StockHistory'));
+const Couriers = lazy(() => import('../pages/admin/Couriers'));
 
 export default function AppRoutes() {
   return (
@@ -112,6 +113,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute area="stock">
             <StockHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/couriers"
+        element={
+          <ProtectedRoute area="couriers">
+            <Couriers />
           </ProtectedRoute>
         }
       />

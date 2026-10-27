@@ -99,6 +99,13 @@ export default function PnL() {
               value={`− ${money(r.expensesTotal)}`}
               tone="bad"
             />
+            {r.courierFeesTotal > 0 && (
+              <Row
+                label={t('pnl.courierFees')}
+                value={`− ${money(r.courierFeesTotal)}`}
+                tone="bad"
+              />
+            )}
             <Row
               strong
               label={t('pnl.netProfit')}
@@ -120,6 +127,10 @@ export default function PnL() {
             </div>
             <p className="mt-1 text-xs text-ink-faint">{t('pnl.openOrdersNote')}</p>
           </div>
+
+          {r.courierFeesTotal > 0 && (
+            <p className="mt-4 max-w-md text-sm text-ink-faint">{t('pnl.courierNote')}</p>
+          )}
 
           <p className="mt-6 max-w-md text-sm text-ink-faint">{t('pnl.note')}</p>
         </>

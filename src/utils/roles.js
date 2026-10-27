@@ -16,6 +16,7 @@ export const ACCESS = {
   promos: ['owner', 'manager'],
   activity: ['owner', 'manager'],
   stock: ['owner', 'manager'],
+  couriers: ['owner', 'manager'],
   settings: ['owner'],
   team: ['owner'],
 };
@@ -23,3 +24,5 @@ export const ACCESS = {
 export const can = (role, area) => (ACCESS[area] || []).includes(role);
 export const canSeeCosts = (role) => role === 'owner' || role === 'manager';
 export const canCancelOrders = (role) => role === 'owner' || role === 'manager';
+// Choosing a courier for an order, seeing courier fees and what couriers owe.
+export const canManageCouriers = (role) => role === 'owner' || role === 'manager';
