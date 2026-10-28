@@ -26,13 +26,15 @@ import {
   savingPercent,
 } from '../../utils/quantityPrices';
 import { productCountInCart } from '../../utils/cartPricing';
+import { applyProductDraft } from '../../utils/preview';
+import ProductCard from '../../components/storefront/ProductCard';
 
 export default function ProductPage() {
   const { slug, productId } = useParams();
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { addItem, items: cartItems } = useCart();
-  const { tenant } = useStorefront();
+  const { tenant, preview, previewProduct } = useStorefront();
 
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState('loading');
@@ -43,12 +45,24 @@ export default function ProductPage() {
   const [mainImage, setMainImage] = useState(''); // the picture shown big
   const [related, setRelated] = useState([]); // linked products (e.g. extensions)
   const [showMissing, setShowMissing] = useState(false);
+  // Live preview (Admin > Products): the saved product (or none for a new one) + the unsaved form on top.
+  const [base, setBase] = useState(null);
+  const [baseReady, setBaseReady] = useState(false);
+  const [shopList, setShopList] = useState([]); // other products, for the "card in the shop list" view
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setStatus('loading');
       try {
+        if (preview) {
+          // The saved product keeps its stock numbers; the unsaved form is put on top of it below.
+          const saved = productId === 'new' ? null : await getProduct(productId);
+          if (cancelled) return;
+          setBase(saved && saved.tenantId === tenant.id ? saved : null);
+          setBaseReady(true);
+          return; // the page stays on "Loading..." until the form's values arrive
+        }
         const productData = await getProduct(productId);
         if (cancelled) return;
         const valid =
@@ -66,7 +80,18 @@ export default function ProductPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenant.id, productId]);
+  }, [tenant.id, productId, preview]);
+
+  // Preview: show the form's values as soon as they arrive, and again after every change.
+  useEffect(() => {
+    if (!preview || !baseReady || !previewProduct) return;
+    setProduct(applyProductDraft(base, previewProduct.product, tenant.id));
+    setStatus('found');
+  }, [preview, baseReady, base, previewProduct, tenant.id]);
+  // A new main photo in the form replaces a picture picked earlier (e.g. from a colour).
+  useEffect(() => {
+    if (preview) setMainImage('');
+  }, [preview, product?.imageUrl]);
 
   const name = product ? product.name?.[language] || product.name?.en : '';
   const description = product
@@ -76,21 +101,26 @@ export default function ProductPage() {
 
   // Browser tab title + search-engine description.
   // Linked products ("Extensions and accessories") for this product.
+  const relatedKey = (product?.relatedIds || []).join(',');
   useEffect(() => {
-    if (!product?.relatedIds?.length) {
+    if (!relatedKey && !(preview && previewProduct?.view === 'card')) {
       setRelated([]);
+      setShopList([]);
       return;
     }
     let cancelled = false;
     listStorefrontProducts(tenant.id)
       .then((all) => {
-        if (!cancelled) setRelated(all.filter((p) => product.relatedIds.includes(p.id)));
+        if (cancelled) return;
+        const ids = relatedKey ? relatedKey.split(',') : [];
+        setRelated(all.filter((p) => ids.includes(p.id)));
+        setShopList(all.filter((p) => p.id !== productId));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [product, tenant.id]);
+  }, [relatedKey, tenant.id, preview, previewProduct?.view, productId]);
 
   usePageMeta(
     name ? `${name} — ${shopName}` : undefined,
@@ -114,6 +144,24 @@ export default function ProductPage() {
         <Link to={`/store/${slug}`} className="mt-4 text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
+      </div>
+    );
+  }
+
+  // Preview only: how the product looks as a card in the shop's product list.
+  if (preview && previewProduct?.view === 'card') {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <StorefrontHeader tenant={tenant} onCartClick={() => {}} />
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+          <div className="grid grid-cols-2 gap-3">
+            <ProductCard product={product} onAddToCart={() => {}} />
+            {shopList.slice(0, 3).map((p) => (
+              <ProductCard key={p.id} product={p} onAddToCart={() => {}} />
+            ))}
+          </div>
+        </main>
+        <StorefrontFooter tenant={tenant} />
       </div>
     );
   }

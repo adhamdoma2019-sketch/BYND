@@ -11,7 +11,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outfile = path.join(root, 'tests', `.page-${process.pid}.cjs`);
 
 const stubs = {
-  'react-router-dom': `import React from 'react'; export const useParams=()=>({slug:'bynd',productId:'p1'}); export const Link=({children,...p})=>React.createElement('a',p,children);`,
+  'react-router-dom': `import React from 'react'; export const useParams=()=>({slug:'bynd',productId:'p1'}); export const useNavigate=()=>()=>{}; export const Link=({children,...p})=>React.createElement('a',p,children);`,
   'react-i18next': `export const useTranslation=()=>({t:(k,o)=>k+(o&&o.n!==undefined?'['+o.n+']':'')});`,
 };
 await build({

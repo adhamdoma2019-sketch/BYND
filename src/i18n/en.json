@@ -193,6 +193,10 @@
   },
   "products": {
     "add": "+ Add product",
+    "previewView": "What to preview",
+    "previewViewPage": "Product page",
+    "previewViewCard": "In the shop list",
+    "previewNote": "Preview only. Nothing is saved until you press Save. Stock numbers are as saved (a new product shows plenty in stock).",
     "addTitle": "Add product",
     "editTitle": "Edit product",
     "nameEn": "Name (English)",

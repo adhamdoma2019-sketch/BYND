@@ -88,7 +88,8 @@ export default function StorefrontLayout() {
   // Live preview (Admin > Settings): the page shows unsaved values sent by the admin page and
   // never writes anything to the browser's storage, so it cannot change the real choices.
   const preview = useMemo(detectPreview, []);
-  const [draftMsg, setDraftMsg] = useState(null);
+  const [draftMsg, setDraftMsg] = useState(null); // unsaved shop settings (Admin > Settings)
+  const [previewProduct, setPreviewProduct] = useState(null); // unsaved product { product, view } (Admin > Products)
   const [tenant, setTenant] = useState(null);
   const [status, setStatus] = useState('loading');
 
@@ -152,7 +153,8 @@ export default function StorefrontLayout() {
     function onMessage(event) {
       const msg = acceptDraftMessage(event, { origin: window.location.origin, parent: window.parent });
       if (!msg) return;
-      setDraftMsg(msg);
+      if (msg.draft) setDraftMsg(msg);
+      if (msg.product) setPreviewProduct({ product: msg.product, view: msg.view });
       // The switches of the admin page are applied when they change, so the buttons inside the
       // preview keep working until the admin page's switch is used again.
       if (msg.mode !== seen.current.mode) {
@@ -214,7 +216,10 @@ export default function StorefrontLayout() {
     if (!preview) write(`mode:${slug}`, next);
   }, [mode, slug, preview]);
 
-  const value = useMemo(() => ({ tenant: shownTenant, mode, toggleMode }), [shownTenant, mode, toggleMode]);
+  const value = useMemo(
+    () => ({ tenant: shownTenant, mode, toggleMode, preview, previewProduct: preview ? previewProduct : null }),
+    [shownTenant, mode, toggleMode, preview, previewProduct]
+  );
 
   if (status === 'loading') {
     return (

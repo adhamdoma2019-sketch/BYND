@@ -12,6 +12,9 @@ import OptionsEditor from '../../components/admin/OptionsEditor';
 import StockPanel from '../../components/admin/StockPanel';
 import { useActor } from '../../hooks/useActor';
 import { Link } from 'react-router-dom';
+import PreviewPane from '../../components/admin/PreviewPane';
+import { usePreviewLayout } from '../../hooks/usePreviewLayout';
+import { productFields } from '../../utils/productForm';
 import { optionsToForm, optionsAreValid } from '../../utils/productOptionsForm';
 import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
@@ -108,6 +111,8 @@ export default function Products() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const wide = usePreviewLayout(); // computer: preview beside the form; phone: opens full-screen
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   async function refresh() {
     if (!tenant) return;
@@ -310,6 +315,16 @@ export default function Products() {
     await refresh();
   }
 
+  // The product as it would be saved right now (the live preview shows exactly this).
+  let draftProduct = null;
+  if (editingId !== null) {
+    try {
+      draftProduct = productFields(form);
+    } catch {
+      draftProduct = null; // a half-typed form never breaks the page
+    }
+  }
+
   return (
     <div className="min-h-screen px-6 py-10">
       <AdminTopBar />
@@ -348,9 +363,10 @@ export default function Products() {
       </div>
 
       {editingId !== null && (
+        <div className="mb-8 flex items-start gap-8">
         <form
           onSubmit={handleSave}
-          className="mb-8 grid max-w-2xl gap-4 rounded-md border border-ink/10 bg-paper-soft p-6 sm:grid-cols-2"
+          className="grid min-w-0 max-w-2xl flex-1 gap-4 rounded-md border border-ink/10 bg-paper-soft p-6 sm:grid-cols-2"
         >
           <h2 className="col-span-full font-display text-lg font-medium">
             {editingId === 'new' ? t('products.addTitle') : t('products.editTitle')}
@@ -817,6 +833,14 @@ export default function Products() {
             </button>
           </div>
         </form>
+
+        {/* Computer: the live preview sits beside the form. */}
+        {wide && (
+          <aside className="sticky top-6 shrink-0">
+            <PreviewPane slug={tenant.slug} product={draftProduct} productId={editingId} />
+          </aside>
+        )}
+        </div>
       )}
 
       {!loading && products.some((p) => tracksStock(p) && p.stock <= LOW_STOCK_THRESHOLD) && (
@@ -963,6 +987,27 @@ export default function Products() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Phone / small screen: a button opens the preview full-screen. */}
+      {editingId !== null && !wide && !previewOpen && (
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="fixed bottom-4 end-4 z-40 rounded-full bg-brass px-5 py-3 text-sm font-medium text-on-brass shadow-lg"
+        >
+          {t('settingsPage.previewShow')}
+        </button>
+      )}
+      {editingId !== null && !wide && previewOpen && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-paper p-4">
+          <PreviewPane
+            slug={tenant.slug}
+            product={draftProduct}
+            productId={editingId}
+            onClose={() => setPreviewOpen(false)}
+          />
         </div>
       )}
     </div>

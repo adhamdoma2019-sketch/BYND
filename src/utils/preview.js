@@ -7,6 +7,7 @@
 
 export const PREVIEW_DRAFT = 'shop-preview-draft';
 export const PREVIEW_READY = 'shop-preview-ready';
+export const PREVIEW_PRODUCT = 'shop-preview-product';
 
 // Only these parts of the shop record can be replaced by a draft.
 export const DRAFT_KEYS = ['theme', 'appearance', 'contact', 'brand', 'hero', 'highlights', 'pages'];
@@ -21,16 +22,24 @@ export function isPreviewMode(search, inFrame) {
   }
 }
 
-// A message from the Settings page to the shop frame. Returns the draft or null.
+// A message from the admin page to the shop frame. Returns { draft | product, mode, language } or null.
+//   type PREVIEW_DRAFT   = unsaved shop settings (Admin > Settings)
+//   type PREVIEW_PRODUCT = an unsaved product (Admin > Products) + which view to show
 export function acceptDraftMessage(event, { origin, parent }) {
   if (!event || event.origin !== origin || event.source !== parent) return null;
   const d = event.data;
-  if (!d || d.type !== PREVIEW_DRAFT || typeof d.draft !== 'object' || !d.draft) return null;
-  return {
-    draft: cleanDraft(d.draft),
+  if (!d || typeof d !== 'object') return null;
+  const common = {
     mode: d.mode === 'light' || d.mode === 'dark' ? d.mode : null, // null = what the shop setting says
     language: d.language === 'ar' ? 'ar' : d.language === 'en' ? 'en' : null,
   };
+  if (d.type === PREVIEW_DRAFT && typeof d.draft === 'object' && d.draft) {
+    return { draft: cleanDraft(d.draft), ...common };
+  }
+  if (d.type === PREVIEW_PRODUCT && typeof d.product === 'object' && d.product) {
+    return { product: cleanProductDraft(d.product), view: d.view === 'card' ? 'card' : 'page', ...common };
+  }
+  return null;
 }
 
 // A message from the shop frame saying "I am ready, send me the draft". Returns true/false.
@@ -68,4 +77,52 @@ export function cleanDraft(draft) {
 export function applyDraft(tenant, draft) {
   if (!tenant || !draft) return tenant;
   return { ...tenant, ...cleanDraft(draft) };
+}
+
+// ----- Product preview (Admin > Products) -----
+
+// Only these parts of a product can come from a draft. Stock numbers, id, shop and "active" always
+// stay as saved, and private costs are never part of a product record at all.
+export const PRODUCT_DRAFT_KEYS = [
+  'name', 'description', 'price', 'priceTiers', 'minQty', 'maxQty', 'shippingExtra', 'imageUrl', 'images',
+  'relatedIds', 'isPreorder', 'backorder', 'countedOptions', 'preorderStyle', 'comingSoon', 'options',
+  'preorderMessage',
+];
+
+export function cleanProductDraft(draft) {
+  const out = {};
+  PRODUCT_DRAFT_KEYS.forEach((k) => {
+    if (draft[k] !== undefined) out[k] = draft[k];
+  });
+  out.imageUrl = isHttps(out.imageUrl) ? out.imageUrl : '';
+  out.images = (Array.isArray(out.images) ? out.images : []).filter(isHttps);
+  out.options = (Array.isArray(out.options) ? out.options : []).map((o) => ({
+    ...o,
+    values: (Array.isArray(o?.values) ? o.values : []).map((v) => ({
+      ...v,
+      ...(v && v.imageUrl !== undefined ? { imageUrl: isHttps(v.imageUrl) ? v.imageUrl : '' } : {}),
+    })),
+  }));
+  return out;
+}
+
+// How many pieces a draft pretends to have when the product is new (nothing is stocked yet), so a
+// product that counts stock does not show every colour as sold out.
+export const PREVIEW_PLENTY = 99;
+
+// The product as the preview shows it: saved product (if any) with the draft on top.
+// `saved` = the stored product or null (new product).
+export function applyProductDraft(saved, draft, tenantId) {
+  const fields = cleanProductDraft(draft);
+  if (saved) {
+    return { ...saved, ...fields, isActive: true, deleted: false }; // id, shop, stock and optionStock stay as saved
+  }
+  const optionStock = {};
+  (fields.countedOptions || []).forEach((id) => {
+    const option = (fields.options || []).find((o) => o.id === id);
+    (option?.values || []).forEach((v) => {
+      optionStock[`${id}.${v.id}`] = PREVIEW_PLENTY;
+    });
+  });
+  return { id: 'new', tenantId, isActive: true, deleted: false, stock: PREVIEW_PLENTY, optionStock, ...fields };
 }

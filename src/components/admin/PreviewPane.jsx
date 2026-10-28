@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
-import { PREVIEW_DRAFT, acceptReadyMessage } from '../../utils/preview';
+import { PREVIEW_DRAFT, PREVIEW_PRODUCT, acceptReadyMessage } from '../../utils/preview';
 
-// The live preview: a phone-shaped frame showing the REAL shop home page.
+// The live preview: a phone-shaped frame showing the REAL shop.
+//   Settings:  the shop home page with the unsaved settings  -> <PreviewPane slug draft />
+//   Products:  the real product page (or the product's card in the shop list) with the unsaved
+//              product form                                   -> <PreviewPane slug product productId />
 // The shop page (opened with ?preview) gets the unsaved form values from here and shows them
 // instead of the saved ones. Nothing is saved from here.
-export default function PreviewPane({ slug, draft, onClose }) {
+export default function PreviewPane({ slug, draft, product, productId, onClose }) {
+  const isProduct = product !== undefined;
   const { t } = useTranslation();
   const { language: adminLanguage } = useLanguage();
   const frameRef = useRef(null);
@@ -14,16 +18,23 @@ export default function PreviewPane({ slug, draft, onClose }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [language, setLanguage] = useState(adminLanguage === 'ar' ? 'ar' : 'en');
   const [mode, setMode] = useState(null); // null = what the shop's Look setting says
+  const [view, setView] = useState('page'); // product preview: 'page' or 'card' (in the shop list)
+  const src = isProduct
+    ? `/store/${encodeURIComponent(slug)}/product/${encodeURIComponent(productId || 'new')}?preview=1`
+    : `/store/${encodeURIComponent(slug)}?preview=1`;
 
   // Always the newest values, so a message never sends old ones.
-  const latest = useRef({ draft, mode, language });
-  latest.current = { draft, mode, language };
+  const latest = useRef({});
+  latest.current = { draft, product, view, mode, language, isProduct };
 
   const send = useCallback(() => {
     const target = frameRef.current?.contentWindow;
     if (!target) return;
-    const { draft: d, mode: m, language: l } = latest.current;
-    target.postMessage({ type: PREVIEW_DRAFT, draft: d, mode: m, language: l }, window.location.origin);
+    const { draft: d, product: p, view: v, mode: m, language: l, isProduct: prod } = latest.current;
+    const message = prod
+      ? { type: PREVIEW_PRODUCT, product: p, view: v, mode: m, language: l }
+      : { type: PREVIEW_DRAFT, draft: d, mode: m, language: l };
+    target.postMessage(message, window.location.origin);
   }, []);
 
   // The shop frame says "ready" once it has loaded: then it gets the draft.
@@ -44,12 +55,17 @@ export default function PreviewPane({ slug, draft, onClose }) {
   }, [send]);
 
   // Every change in the form (or a switch here) reaches the frame a moment later.
-  const draftKey = JSON.stringify(draft);
+  const draftKey = JSON.stringify(isProduct ? product : draft);
   useEffect(() => {
     if (!ready) return undefined;
     const timer = setTimeout(send, 150);
     return () => clearTimeout(timer);
-  }, [draftKey, mode, language, ready, send]);
+  }, [draftKey, view, mode, language, ready, send]);
+
+  // Another product (or the settings) opened: the new frame says "ready" again.
+  useEffect(() => {
+    setReady(false);
+  }, [src]);
 
   const pill = (active) =>
     'rounded px-3 py-1.5 text-sm transition ' +
@@ -92,6 +108,16 @@ export default function PreviewPane({ slug, draft, onClose }) {
             العربية
           </button>
         </div>
+        {isProduct && (
+          <div className="flex gap-1" role="group" aria-label={t('products.previewView')}>
+            <button type="button" onClick={() => setView('page')} aria-pressed={view === 'page'} className={pill(view === 'page')}>
+              {t('products.previewViewPage')}
+            </button>
+            <button type="button" onClick={() => setView('card')} aria-pressed={view === 'card'} className={pill(view === 'card')}>
+              {t('products.previewViewCard')}
+            </button>
+          </div>
+        )}
         <div className="flex gap-1" role="group" aria-label={t('settingsPage.previewMode')}>
           <button type="button" onClick={() => setMode(null)} aria-pressed={mode === null} className={pill(mode === null)}>
             {t('settingsPage.previewModeShop')}
@@ -111,10 +137,10 @@ export default function PreviewPane({ slug, draft, onClose }) {
         style={{ height: 'min(720px, calc(100vh - 13rem))' }}
       >
         <iframe
-          key={reloadKey}
+          key={`${reloadKey}-${src}`}
           ref={frameRef}
           title={t('settingsPage.previewTitle')}
-          src={`/store/${encodeURIComponent(slug)}?preview=1`}
+          src={src}
           className="h-full w-full border-0"
         />
         {!ready && (
@@ -123,7 +149,7 @@ export default function PreviewPane({ slug, draft, onClose }) {
           </div>
         )}
       </div>
-      <p className="mt-3 text-center text-xs text-ink-faint">{t('settingsPage.previewNote')}</p>
+      <p className="mt-3 text-center text-xs text-ink-faint">{isProduct ? t('products.previewNote') : t('settingsPage.previewNote')}</p>
     </div>
   );
 }
