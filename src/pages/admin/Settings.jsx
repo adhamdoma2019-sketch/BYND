@@ -9,8 +9,17 @@ import ImageField from '../../components/admin/ImageField';
 import AppearanceFields from '../../components/admin/AppearanceFields';
 import ContactFields from '../../components/admin/ContactFields';
 import { DEFAULT_ACCENT, DEFAULT_FONT, DEFAULT_RADIUS } from '../../utils/theme';
-import { safeBarLink } from '../../utils/contact';
 import { MAX_ANNOUNCEMENTS, MAX_HIGHLIGHTS, MAX_PAGE_CHARS, POLICY_PAGES } from '../../utils/storefront';
+import {
+  slideToForm,
+  formToSlide,
+  highlightToForm,
+  pagesToForm,
+  moreToForm,
+  buildPublicSettings,
+} from '../../utils/settingsForm';
+import PreviewPane from '../../components/admin/PreviewPane';
+import { usePreviewLayout } from '../../hooks/usePreviewLayout';
 import { useAudit } from '../../hooks/useAudit';
 import { fieldsOnly, stable } from '../../utils/audit';
 import { getTenantPrivate, saveTenantPrivate } from '../../firebase/private.service';
@@ -33,6 +42,7 @@ import {
 } from '../../utils/checkoutFields';
 
 const MAX_SLIDES = 5;
+const PREVIEW_TABS = ['appearance', 'banner', 'content', 'contact']; // tabs that change the home page
 
 const emptySlide = () => ({
   imageUrl: '',
@@ -45,60 +55,8 @@ const emptySlide = () => ({
   productId: '',
 });
 
-function slideToForm(s) {
-  return {
-    imageUrl: s.imageUrl || '',
-    headlineEn: s.headline?.en || '',
-    headlineAr: s.headline?.ar || '',
-    subtextEn: s.subtext?.en || '',
-    subtextAr: s.subtext?.ar || '',
-    ctaEn: s.cta?.en || '',
-    ctaAr: s.cta?.ar || '',
-    productId: s.productId || '',
-  };
-}
-
-function formToSlide(f) {
-  return {
-    imageUrl: f.imageUrl.trim(),
-    headline: { en: f.headlineEn.trim(), ar: f.headlineAr.trim() || f.headlineEn.trim() },
-    subtext: { en: f.subtextEn.trim(), ar: f.subtextAr.trim() || f.subtextEn.trim() },
-    cta: { en: f.ctaEn.trim(), ar: f.ctaAr.trim() || f.ctaEn.trim() },
-    productId: f.productId || '',
-  };
-}
-
 // ----- Highlights ("why us" points), policy pages and extra top-bar messages -----
 const emptyHighlight = () => ({ titleEn: '', titleAr: '', textEn: '', textAr: '' });
-const highlightToForm = (h) => ({
-  titleEn: h.title?.en || '',
-  titleAr: h.title?.ar || '',
-  textEn: h.text?.en || '',
-  textAr: h.text?.ar || '',
-});
-const formToHighlight = (f) => ({
-  title: { en: f.titleEn.trim() || f.titleAr.trim(), ar: f.titleAr.trim() || f.titleEn.trim() },
-  text: { en: f.textEn.trim() || f.textAr.trim(), ar: f.textAr.trim() || f.textEn.trim() },
-});
-
-const pagesToForm = (pages) =>
-  Object.fromEntries(
-    POLICY_PAGES.map((id) => [id, { en: pages?.[id]?.body?.en || '', ar: pages?.[id]?.body?.ar || '' }])
-  );
-const formToPages = (form) =>
-  Object.fromEntries(
-    POLICY_PAGES.map((id) => {
-      const en = (form[id]?.en || '').trim();
-      const ar = (form[id]?.ar || '').trim();
-      return [id, { body: { en: en || ar, ar: ar || en } }];
-    })
-  );
-
-const moreToForm = (m) => ({ textEn: m.text?.en || '', textAr: m.text?.ar || '', link: m.link || '' });
-const formToMore = (f) => ({
-  text: { en: f.textEn.trim() || f.textAr.trim(), ar: f.textAr.trim() || f.textEn.trim() },
-  link: safeBarLink(f.link),
-});
 
 const newZoneId = () => 'z' + Math.random().toString(36).slice(2, 8);
 
@@ -227,6 +185,8 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const wide = usePreviewLayout(); // computer: preview beside the form; phone: opens full-screen
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!tenant) return;
@@ -368,6 +328,22 @@ export default function Settings() {
     setSlides((prev) => prev.filter((_, i) => i !== index));
   }
 
+  // The values currently in the form. The live preview and "Save settings" both use them.
+  const formValues = {
+    accent,
+    appearance,
+    contact,
+    logoUrl,
+    logoDarkUrl,
+    slides,
+    seconds,
+    fade,
+    autoplay,
+    heroTextStyle,
+    highlights,
+    pages,
+  };
+
   async function handleSave(e) {
     e.preventDefault();
     setError('');
@@ -403,64 +379,25 @@ export default function Settings() {
       return;
     }
 
-    // Keep the timing inside safe limits.
-    const safeSeconds = Math.min(
-      HERO_MAX_SECONDS,
-      Math.max(HERO_MIN_SECONDS, Number(seconds) || HERO_DEFAULT_SECONDS)
-    );
-
-    // What gets saved for the new "shop content" parts (empty entries are dropped).
-    const moreToSave = appearance.annMore
-      .filter((m) => m.textEn.trim() || m.textAr.trim())
-      .slice(0, MAX_ANNOUNCEMENTS - 1)
-      .map(formToMore);
-    const highlightsToSave = highlights
-      .filter((h) => h.titleEn.trim() || h.titleAr.trim())
-      .slice(0, MAX_HIGHLIGHTS)
-      .map(formToHighlight);
-    const pagesToSave = formToPages(pages);
+    // What customers see on the home page (the preview uses exactly the same function).
+    const publicSettings = buildPublicSettings(formValues);
+    const safeSeconds = publicSettings.hero.intervalSeconds;
+    const moreToSave = publicSettings.appearance.announcement.more;
+    const highlightsToSave = publicSettings.highlights;
+    const pagesToSave = publicSettings.pages;
 
     setSaving(true);
     try {
       await saveTenantPrivate(tenant.id, { telegramChatId, notifyLanguage });
       await updateTenantSettings(tenant.id, {
         defaultCountryCode: String(countryCode).replace(/\D/g, '') || '20',
-        theme: { accent },
-        appearance: {
-          mode: appearance.mode,
-          font: appearance.font,
-          radius: appearance.radius,
-          announcement: {
-            enabled: appearance.annEnabled,
-            text: {
-              en: appearance.annTextEn.trim(),
-              ar: appearance.annTextAr.trim() || appearance.annTextEn.trim(),
-            },
-            link: safeBarLink(appearance.annLink),
-            // up to 3 more messages (empty ones are dropped)
-            more: moreToSave,
-          },
-        },
-        contact: {
-          whatsapp: contact.whatsapp.trim(),
-          phone: contact.phone.trim(),
-          email: contact.email.trim(),
-          instagram: contact.instagram.trim(),
-          facebook: contact.facebook.trim(),
-          tiktok: contact.tiktok.trim(),
-          address: { en: contact.addressEn.trim(), ar: contact.addressAr.trim() || contact.addressEn.trim() },
-          floatingWhatsapp: contact.floatingWhatsapp,
-        },
-        brand: { logoUrl: logoUrl.trim(), logoDarkUrl: logoDarkUrl.trim() },
-        hero: {
-          slides: slides.map(formToSlide),
-          intervalSeconds: safeSeconds,
-          fade,
-          autoplay,
-          textStyle: heroTextStyle,
-        },
-        highlights: highlightsToSave,
-        pages: pagesToSave,
+        theme: publicSettings.theme,
+        appearance: publicSettings.appearance,
+        contact: publicSettings.contact,
+        brand: publicSettings.brand,
+        hero: publicSettings.hero,
+        highlights: publicSettings.highlights,
+        pages: publicSettings.pages,
         checkout: {
           fields: fieldSettings,
           customFields: customFields.map(formToCustom),
@@ -530,6 +467,10 @@ export default function Settings() {
 
   if (!tenant) return null;
 
+  // The preview shows the shop's home page, so it is offered on the tabs that change it.
+  const previewTab = PREVIEW_TABS.includes(tab);
+  const showSide = wide && previewTab;
+
   return (
     <div className="min-h-screen px-6 py-10">
       <AdminTopBar />
@@ -537,7 +478,8 @@ export default function Settings() {
         {t('admin.settings')}
       </h1>
 
-      <form onSubmit={handleSave} className="max-w-3xl space-y-10">
+      <div className={showSide ? 'flex items-start gap-8' : ''}>
+      <form onSubmit={handleSave} className="min-w-0 max-w-3xl flex-1 space-y-10">
         <div role="tablist" className="-mt-2 flex flex-wrap gap-2 border-b border-ink/10 pb-3">
           {['appearance', 'banner', 'content', 'checkout', 'shipping', 'contact', 'alerts', 'backup'].map((name) => (
             <button
@@ -1329,6 +1271,34 @@ export default function Settings() {
           {saving ? t('common.saving') : t('settingsPage.saveBtn')}
         </button>
       </form>
+
+      {/* Computer: the live preview sits beside the form. */}
+      {showSide && (
+        <aside className="sticky top-6 shrink-0">
+          <PreviewPane slug={tenant.slug} draft={buildPublicSettings(formValues)} />
+        </aside>
+      )}
+      </div>
+
+      {/* Phone / small screen: a button opens the preview full-screen. */}
+      {!wide && previewTab && !previewOpen && (
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="fixed bottom-4 end-4 z-40 rounded-full bg-brass px-5 py-3 text-sm font-medium text-on-brass shadow-lg"
+        >
+          {t('settingsPage.previewShow')}
+        </button>
+      )}
+      {!wide && previewOpen && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-paper p-4">
+          <PreviewPane
+            slug={tenant.slug}
+            draft={buildPublicSettings(formValues)}
+            onClose={() => setPreviewOpen(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

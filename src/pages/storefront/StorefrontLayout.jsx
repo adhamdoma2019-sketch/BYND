@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Outlet, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 import { CartProvider } from '../../context/CartContext';
 import { StorefrontContext } from '../../context/StorefrontContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { getTenant } from '../../firebase/tenants.service';
 import AnnouncementBar from '../../components/storefront/AnnouncementBar';
 import FloatingWhatsApp from '../../components/storefront/FloatingWhatsApp';
@@ -16,6 +18,7 @@ import {
   fontHref,
   resolveMode,
 } from '../../utils/theme';
+import { PREVIEW_READY, acceptDraftMessage, applyDraft, isPreviewMode } from '../../utils/preview';
 
 const read = (key) => {
   try {
@@ -66,12 +69,26 @@ function applyLook(root, look, mode) {
   }
 }
 
+// Is this page the live preview frame inside Admin > Settings? (opened with ?preview, inside a frame)
+function detectPreview() {
+  try {
+    return isPreviewMode(window.location.search, window.self !== window.top);
+  } catch {
+    return false;
+  }
+}
+
 const THEME_VARS = ['--brass', '--brass-dark', '--brass-light', '--on-brass', '--font-display', '--radius-sm', '--radius-md', '--radius-lg'];
 
 // Wraps every shop page: loads the shop once and gives the page its look.
 export default function StorefrontLayout() {
   const { slug } = useParams();
   const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
+  // Live preview (Admin > Settings): the page shows unsaved values sent by the admin page and
+  // never writes anything to the browser's storage, so it cannot change the real choices.
+  const preview = useMemo(detectPreview, []);
+  const [draftMsg, setDraftMsg] = useState(null);
   const [tenant, setTenant] = useState(null);
   const [status, setStatus] = useState('loading');
 
@@ -83,7 +100,7 @@ export default function StorefrontLayout() {
       return lookOf(null);
     }
   });
-  const [visitorMode, setVisitorMode] = useState(() => read(`mode:${slug}`));
+  const [visitorMode, setVisitorMode] = useState(() => (preview ? null : read(`mode:${slug}`)));
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
   );
@@ -97,7 +114,16 @@ export default function StorefrontLayout() {
     return () => query.removeEventListener?.('change', onChange);
   }, []);
 
-  const mode = resolveMode(look.mode, visitorMode, systemDark);
+  // The shop as shown: in the preview the unsaved draft sits on top of the saved shop.
+  const shownTenant = useMemo(
+    () => (preview && draftMsg ? applyDraft(tenant, draftMsg.draft) : tenant),
+    [preview, draftMsg, tenant]
+  );
+  const shownLook = useMemo(
+    () => (preview && draftMsg && shownTenant ? lookOf(shownTenant) : look),
+    [preview, draftMsg, shownTenant, look]
+  );
+  const mode = resolveMode(shownLook.mode, visitorMode, systemDark);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -111,8 +137,49 @@ export default function StorefrontLayout() {
   }, []);
 
   useLayoutEffect(() => {
-    applyLook(document.documentElement, look, mode);
-  }, [look, mode]);
+    applyLook(document.documentElement, shownLook, mode);
+  }, [shownLook, mode]);
+
+  // ----- Live preview only -----
+  const seen = useRef({ mode: undefined, language: undefined });
+  const languageNow = useRef(language);
+  languageNow.current = language;
+  useEffect(() => {
+    if (!preview) return undefined;
+    // The preview must not remember its language in the browser (that would also change the admin's).
+    if (i18n.services?.languageDetector) i18n.services.languageDetector.cacheUserLanguage = () => {};
+
+    function onMessage(event) {
+      const msg = acceptDraftMessage(event, { origin: window.location.origin, parent: window.parent });
+      if (!msg) return;
+      setDraftMsg(msg);
+      // The switches of the admin page are applied when they change, so the buttons inside the
+      // preview keep working until the admin page's switch is used again.
+      if (msg.mode !== seen.current.mode) {
+        seen.current.mode = msg.mode;
+        setVisitorMode(msg.mode);
+      }
+      if (msg.language !== seen.current.language) {
+        seen.current.language = msg.language;
+        if (msg.language && msg.language !== languageNow.current) setLanguage(msg.language);
+      }
+    }
+    // Links in the preview do nothing: it only shows the home page.
+    function blockLinks(event) {
+      if (event.target?.closest?.('a[href]')) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+    window.addEventListener('message', onMessage);
+    document.addEventListener('click', blockLinks, true);
+    // Tell the admin page that the preview is ready for its draft.
+    window.parent.postMessage({ type: PREVIEW_READY }, window.location.origin);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      document.removeEventListener('click', blockLinks, true);
+    };
+  }, [preview, setLanguage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +195,7 @@ export default function StorefrontLayout() {
         setTenant(data);
         const chosen = lookOf(data);
         setLook(chosen);
-        write(`look:${slug}`, JSON.stringify(chosen));
+        if (!preview) write(`look:${slug}`, JSON.stringify(chosen));
         setStatus('found');
       } catch {
         if (!cancelled) setStatus('not-found');
@@ -138,16 +205,16 @@ export default function StorefrontLayout() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, preview]);
 
   // The visitor's own light/dark choice (saved on their phone).
   const toggleMode = useCallback(() => {
     const next = mode === 'dark' ? 'light' : 'dark';
     setVisitorMode(next);
-    write(`mode:${slug}`, next);
-  }, [mode, slug]);
+    if (!preview) write(`mode:${slug}`, next);
+  }, [mode, slug, preview]);
 
-  const value = useMemo(() => ({ tenant, mode, toggleMode }), [tenant, mode, toggleMode]);
+  const value = useMemo(() => ({ tenant: shownTenant, mode, toggleMode }), [shownTenant, mode, toggleMode]);
 
   if (status === 'loading') {
     return (
@@ -172,11 +239,11 @@ export default function StorefrontLayout() {
   }
 
   return (
-    <CartProvider slug={slug}>
+    <CartProvider slug={preview ? '__preview__' : slug}>
       <StorefrontContext.Provider value={value}>
-        <AnnouncementBar tenant={tenant} />
+        <AnnouncementBar tenant={shownTenant} />
         <Outlet />
-        <FloatingWhatsApp tenant={tenant} />
+        <FloatingWhatsApp tenant={shownTenant} />
       </StorefrontContext.Provider>
     </CartProvider>
   );
