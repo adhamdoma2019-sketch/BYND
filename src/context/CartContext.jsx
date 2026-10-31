@@ -48,7 +48,9 @@ export function CartProvider({ slug, children }) {
           ? MAX_ORDER_QTY
           : Math.min(Number(product.stock) || 0, MAX_ORDER_QTY);
     const selections = choice.selections || {};
-    const key = itemKey(product.id, selections);
+    // Lines that belong to one planned wall carry the same wallId (a second wall is never merged into the first).
+    const wallId = choice.wallId || '';
+    const key = itemKey(product.id, selections) + (wallId ? `#${wallId}` : '');
 
     setItems((prev) => {
       const existing = prev.find((i) => keyOf(i) === key);
@@ -76,6 +78,9 @@ export function CartProvider({ slug, children }) {
           selections,
           optionLabels: choice.labels || [],
           imageUrl: choice.imageUrl || '',
+          ...(wallId ? { wallId } : {}),
+          // the pieces of the wall (only kept on the FIRST line of the wall): [{ q, r, c, h }]
+          ...(wallId && choice.wallCells ? { wallCells: choice.wallCells } : {}),
         },
       ];
     });
@@ -88,6 +93,7 @@ export function CartProvider({ slug, children }) {
     }
     setItems((prev) => {
       const line = prev.find((i) => keyOf(i) === key);
+      if (line?.wallId) return prev; // a wall's lines change only by planning the wall again
       // The shop's minimum per order counts all lines of the product: don't go below it
       // (the customer can still remove the product).
       if (line && line.minQty > 1 && quantity < line.quantity) {
@@ -104,6 +110,11 @@ export function CartProvider({ slug, children }) {
     setItems((prev) => prev.filter((i) => keyOf(i) !== key));
   }
 
+  // A planned wall is added and removed as a whole (its lines depend on each other).
+  function removeWall(wallId) {
+    setItems((prev) => prev.filter((i) => i.wallId !== wallId));
+  }
+
   function clearCart() {
     setItems([]);
   }
@@ -118,6 +129,7 @@ export function CartProvider({ slug, children }) {
         addItem,
         updateQuantity,
         removeItem,
+        removeWall,
         clearCart,
         subtotal,
         itemCount,

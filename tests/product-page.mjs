@@ -139,4 +139,22 @@ assert.equal((v.html.match(/data-cell/g) || []).length, 5);                     
 assert.match(v.html, /wall\.maxNote\[60\]/);
 ok('product page: the wall designer replaces the quantity box only when switched on; the wall starts at the shop minimum; at most 60 pieces');
 
+// ---- update 28: wall with colours ----
+const wcol = { id: 'col', type: 'color', label: { en: 'Colour' }, required: true, values: [{ id: 'blk', label: { en: 'Black' }, color: '#111111' }, { id: 'blu', label: { en: 'Blue' }, color: '#2244ff' }] };
+const wallC = { ...wallBase, wallDesigner: true, options: [wcol] };
+v = view(wallC, { col: 'blk' });
+assert.match(v.html, /data-wall-paint-hint/); assert.match(v.html, /fill:#111111/); assert.match(v.html, /data-wall-legend/);
+assert.match(v.html, /wall\.legendItem\[1\]/); assert.match(v.html, /wall\.total/);
+v = view(wallC);                                               // nothing picked yet: the wall still draws (with the first colour)
+assert.match(v.html, /data-wall-designer/);
+v = view({ ...wallC, minQty: 4 }, { col: 'blu' });
+assert.match(v.html, /fill:#2244ff/); assert.match(v.html, /wall\.legendItem\[4\]/);
+// stock per colour: the wall can have as many pieces as the colours hold together; all sold out = no designer
+const stockedC = { ...wallC, isPreorder: false, countedOptions: ['col'], optionStock: { 'col.blk': 2, 'col.blu': 3 }, stock: 2 };
+v = view(stockedC, { col: 'blk' });
+assert.match(v.html, /wall\.maxNote\[5\]/);
+v = view({ ...stockedC, optionStock: { 'col.blk': 0, 'col.blu': 0 }, stock: 0 }, { col: 'blk' });
+assert.doesNotMatch(v.html, /data-wall-designer/);
+ok('product page: a coloured wall paints with the picked colour, shows the mix, the limit is the stock of all colours together');
+
 console.log(`\nALL ${n} PRODUCT-PAGE CHECKS PASSED`);

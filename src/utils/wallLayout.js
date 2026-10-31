@@ -117,7 +117,7 @@ export function bestRemoval(cells, min = 1) {
 // Make the wall exactly `n` pieces: grow or shrink in the nicest way. Keeps what the customer already built.
 export function resizeLayout(cells, n, { min = 1, max = WALL_MAX } = {}) {
   const target = Math.max(min, Math.min(max, Math.floor(Number(n)) || min));
-  let out = cells.map((c) => ({ q: c.q, r: c.r }));
+  let out = cells.map((c) => ({ ...c })); // (keeps the colour of a piece, if it has one)
   while (out.length < target) out = [...out, bestSpot(out)];
   while (out.length > target) {
     const gone = bestRemoval(out, min);

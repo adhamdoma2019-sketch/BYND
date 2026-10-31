@@ -13,6 +13,7 @@ import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
 import WallDesigner from '../../components/storefront/WallDesigner';
 import { WALL_MAX } from '../../utils/wallLayout';
+import { wallColorOption, wallPalette, colourLimit, defaultPaint, wallLines } from '../../utils/wallColors';
 import { resolveChoice, cleanSelections, textKey, visibleOptions, stripHidden } from '../../utils/productOptions';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { usePageMeta } from '../../utils/usePageMeta';
@@ -48,6 +49,7 @@ export default function ProductPage() {
   const [mainImage, setMainImage] = useState(''); // the picture shown big
   const [related, setRelated] = useState([]); // linked products (e.g. extensions)
   const [showMissing, setShowMissing] = useState(false);
+  const [wallCells, setWallCells] = useState([]); // the pieces (with colours) the customer has planned
   // Live preview (Admin > Products): the saved product (or none for a new one) + the unsaved form on top.
   const [base, setBase] = useState(null);
   const [baseReady, setBaseReady] = useState(false);
@@ -125,6 +127,16 @@ export default function ProductPage() {
     };
   }, [relatedKey, tenant.id, preview, previewProduct?.view, productId]);
 
+  // A wall with colours starts painting with the first colour that is not sold out.
+  useEffect(() => {
+    if (!product || product.wallDesigner !== true) return;
+    const co = wallColorOption(product);
+    if (!co) return;
+    setSelections((prev) =>
+      co.values.some((v) => v.id === prev[co.id]) ? prev : { ...prev, [co.id]: defaultPaint(product, co) }
+    );
+  }, [product]);
+
   usePageMeta(
     name ? `${name} — ${shopName}` : undefined,
     description ? description.slice(0, 155) : undefined
@@ -176,6 +188,19 @@ export default function ProductPage() {
   // Stock counted per colour / option: how many of the CHOSEN combination are left (null = not chosen yet).
   const counted = !isPreorder && isOptionCounted(product);
   const backorder = product.backorder === true && !isPreorder; // stock first, then made to order
+  const wallOn = product.wallDesigner === true; // the customer plans a wall: the number of pieces = the quantity
+  // With colours: the wall's colour option, and how many pieces in all can be ordered from the stock of its colours.
+  const wallColorOpt = wallOn ? wallColorOption(product) : null;
+  const wallCap =
+    wallColorOpt && counted && !backorder
+      ? Math.min(
+          MAX_ORDER_QTY,
+          wallColorOpt.values.reduce(
+            (sum, v) => sum + Math.min(colourLimit(product, selections, wallColorOpt, v.id), MAX_ORDER_QTY),
+            0
+          )
+        )
+      : null;
   const left = counted ? leftForSelections(product, selections) : stock;
   const countedIds = counted ? countedOptions(product).map((o) => o.id) : [];
   const leftOfValue = (option) =>
@@ -183,7 +208,8 @@ export default function ProductPage() {
       ? (valueId) => Math.max(Number(product.optionStock?.[stockKey(option.id, valueId)]) || 0, 0)
       : null;
   // This colour / combination is sold out (and cannot be made to order).
-  const comboSoldOut = !isPreorder && !backorder && counted && left !== null && left <= 0;
+  const comboSoldOut =
+    !isPreorder && !backorder && counted && (wallCap !== null ? wallCap <= 0 : left !== null && left <= 0);
   // The customer would get a made-to-order item (nothing, or not enough, on the shelf).
   const madeNow =
     isPreorder || (backorder && (left === null ? stock <= 0 : left <= 0));
@@ -192,13 +218,12 @@ export default function ProductPage() {
   const limits = orderLimits(product);
   const inCart = productCountInCart(cartItems, product.id);
   const minAdd = Math.max(1, limits.min - inCart); // fewest pieces to add now
-  const baseMax = isPreorder || backorder ? MAX_ORDER_QTY : Math.min(left ?? stock, MAX_ORDER_QTY);
-  const wallOn = product.wallDesigner === true; // the customer plans a wall: the number of pieces = the quantity
+  const baseMax = isPreorder || backorder ? MAX_ORDER_QTY : (wallCap ?? Math.min(left ?? stock, MAX_ORDER_QTY));
   const maxQty = Math.min(baseMax, Math.max(limits.max - inCart, 1), wallOn ? WALL_MAX : Infinity);
   const qty = Math.max(minAdd, Math.min(quantity, Math.max(maxQty, 1)));
   // Counted stock is too low for the shop's minimum order: can't be bought right now.
   const belowMinStock = !isPreorder && !backorder && baseMax > 0 && maxQty < minAdd;
-  const partlyMade = backorder && left !== null && left > 0 && qty > left;
+  const partlyMade = !wallColorOpt && backorder && left !== null && left > 0 && qty > left;
 
   // (these three need comboSoldOut from above, so they come AFTER it)
   const soldOut = availability === 'soldOut' || comboSoldOut;
@@ -231,6 +256,18 @@ export default function ProductPage() {
   // only the options whose "show only when" rule is met (a hidden option is not asked, not charged, not sent)
   const productOptions = visibleOptions(product, selections);
 
+  // Wall with colours: the colour of every piece -> one cart line per colour, each with its own price.
+  const palette = wallColorOpt ? wallPalette(product, language) : null;
+  const paintId = wallColorOpt ? selections[wallColorOpt.id] || '' : '';
+  const wallNow =
+    wallCells.length === qty
+      ? wallCells
+      : Array.from({ length: qty }, (_, i) => ({ q: i, r: 0, c: paintId || wallColorOpt?.values[0]?.id }));
+  const wall = wallColorOpt
+    ? wallLines({ product, selections, cells: wallNow, cartItems, colorOpt: wallColorOpt })
+    : null;
+  const wallTotal = wall ? wall.subtotal : unitPrice * qty;
+
   const buttonLabel = comingSoon
     ? t('storefront.comingSoon')
     : soldOut
@@ -241,10 +278,38 @@ export default function ProductPage() {
 
   function handleAdd() {
     if (!canBuy) return;
-    if (choice.missing.length > 0) {
+    const missingNow = wall ? wall.missing : choice.missing;
+    if (missingNow.length > 0) {
       setShowMissing(true);
       // On a phone the options may be out of sight (the buy bar is always visible): scroll to them.
       document.getElementById('product-options')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (wall) {
+      // one cart line per colour; they belong together (wallId) and the first one keeps the picture of the wall
+      const wallId = `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      const picture = wallNow.map(({ q, r, c }) => ({
+        q,
+        r,
+        c,
+        h: wallColorOpt.values.find((v) => v.id === c)?.color || '',
+      }));
+      wall.lines.forEach((ln, idx) => {
+        const lineLeft = counted ? leftForSelections(product, ln.selections) : stock;
+        const limit = colourLimit(product, selections, wallColorOpt, ln.colorId);
+        addItem(product, ln.quantity, {
+          maxQty: isPreorder ? undefined : Number.isFinite(limit) ? limit : MAX_ORDER_QTY,
+          madeToOrder: backorder && (lineLeft === null ? stock <= 0 : ln.quantity > lineLeft),
+          selections: cleanSelections(stripHidden(product, ln.selections)),
+          labels: ln.choice.labels,
+          unitPrice: ln.unitPrice,
+          priceDelta: ln.choice.priceDelta,
+          imageUrl: ln.choice.imageUrl || pictures[0] || '',
+          wallId,
+          wallCells: idx === 0 ? picture : undefined,
+        });
+      });
+      setCartOpen(true);
       return;
     }
     addItem(product, qty, {
@@ -427,8 +492,8 @@ export default function ProductPage() {
             {productOptions.length > 0 && (
               <div id="product-options" className="mt-6 scroll-mt-24 space-y-5">
                 {productOptions.map((option) => (
+                  <div key={option.id}>
                   <OptionPicker
-                    key={option.id}
                     option={option}
                     value={selections[option.id]}
                     onChange={(v) => {
@@ -450,6 +515,12 @@ export default function ProductPage() {
                     }
                     highlight={showMissing && missingIds.has(option.id)}
                   />
+                  {wallColorOpt && option.id === wallColorOpt.id && (
+                    <p className="mt-2 text-xs text-ink-soft" data-wall-paint-hint>
+                      {t('wall.paintHint')}
+                    </p>
+                  )}
+                  </div>
                 ))}
                 {showMissing && choice.missing.length > 0 && (
                   <p className="text-sm text-rust">
@@ -474,6 +545,11 @@ export default function ProductPage() {
                       setQtyDraft(null);
                       setQuantity(n);
                     }}
+                    onCells={setWallCells}
+                    palette={palette}
+                    paint={paintId}
+                    limitOf={(id) => (wallColorOpt ? colourLimit(product, selections, wallColorOpt, id) : Infinity)}
+                    totalText={formatPrice(wallTotal, language)}
                   />
                 ) : (
                   <>

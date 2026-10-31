@@ -1031,6 +1031,13 @@
     "more": "One piece more",
     "random": "Random",
     "clear": "Delete all",
-    "maxNote": "Up to {{n}} pieces in one wall."
+    "maxNote": "Up to {{n}} pieces in one wall.",
+    "paintHint": "Pick a colour here, then tap the wall: a + adds a piece in this colour, a piece of another colour is repainted, a piece of this colour is removed.",
+    "pickColour": "Pick a colour first.",
+    "colourLimit": "Only {{n}} pieces of this colour are available.",
+    "legendItem": "{{n}} × {{name}}",
+    "total": "Total for this wall: {{price}}",
+    "cartTitle": "Wall of {{n}} pieces",
+    "cartLine": "{{n}} × {{name}} — {{price}} each"
   }
 }
