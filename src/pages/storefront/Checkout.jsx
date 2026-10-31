@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { createOrder, getQuote } from '../../firebase/orders.service';
 import { useCart, keyOf } from '../../context/CartContext';
 import OptionSummary from '../../components/storefront/OptionSummary';
+import WallCartCard from '../../components/storefront/WallCartCard';
+import { groupCartRows } from '../../utils/wallGroups';
 import { useLanguage } from '../../context/LanguageContext';
 import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
@@ -206,7 +208,16 @@ export default function Checkout() {
 
       {/* ----- items ----- */}
       <div className="mt-6 rounded-md border border-ink/10 bg-paper-soft p-4">
-        {items.map((item) => (
+        {groupCartRows(items).map((row) => {
+          if (row.wallId) {
+            return (
+              <div key={row.wallId} className="py-2">
+                <WallCartCard lines={row.lines} />
+              </div>
+            );
+          }
+          const { item } = row;
+          return (
           <div key={keyOf(item)} className="flex justify-between py-1 text-sm">
             <span>
               {item.name?.[language] || item.name?.en} × {item.quantity}
@@ -222,7 +233,8 @@ export default function Checkout() {
             </span>
             <span>{money(item.unitPrice * item.quantity)}</span>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {items.some((i) => i.isPreorder) && (

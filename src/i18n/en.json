@@ -1022,7 +1022,7 @@
   },
   "wall": {
     "title": "Plan your wall",
-    "hint": "Tap a + to add a piece next to the others. Tap a piece to take it away. The number of pieces is your quantity.",
+    "hint": "Tap a + to add a piece next to the others. Tap a piece to take it away. Use two fingers to zoom. The number of pieces is your quantity.",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "fit": "Fit",

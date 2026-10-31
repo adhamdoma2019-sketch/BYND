@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   WALL_MAX,
@@ -15,13 +15,16 @@ import {
   viewBoxFor,
 } from '../../utils/wallLayout';
 import { assignColours, shuffleColours } from '../../utils/wallColors';
+import { pinchZoom, fingerDistance, fingerMiddle, scrollAfterZoom } from '../../utils/pinch';
 
 // "Plan your wall" (update 27, step 1). The number of pieces IS the quantity of the order:
 // the page owns the quantity (`quantity` / `onQuantity`), this component draws the wall that matches it.
 // Colours per piece and saving the layout with the order come in step 2.
 const SIZE = 22; // size of one hexagon in the drawing (the picture scales to the screen)
 const ZOOM_MIN = 0.6;
-const ZOOM_MAX = 3;
+const ZOOM_MAX = 4;
+// (useLayoutEffect only exists in the browser; the server render just uses useEffect)
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 // Colours (update 28): with a `palette` ([{ id, label, color }]) every piece has a colour `c`. `paint` is the colour
 // the customer has picked in the page's colour list; `limitOf(id)` = how many pieces of that colour can be ordered.
@@ -49,6 +52,65 @@ export default function WallDesigner({
   const [draft, setDraft] = useState(null); // what the customer is typing in the count box
   const [notice, setNotice] = useState('');
   const noticeTimer = useRef(null);
+
+  // ----- two-finger zoom (phones): the box scrolls by itself with one finger, two fingers zoom -----
+  const boxRef = useRef(null);
+  const svgRef = useRef(null);
+  const fingers = useRef(new Map()); // pointerId -> { x, y }
+  const pinch = useRef(null); // { startDistance, startZoom } while two fingers are down
+  const pendingScroll = useRef(null); // where to scroll after the picture changed size
+  const quietUntil = useRef(0); // taps right after a pinch must not add / remove pieces
+
+  const onFingerDown = (e) => {
+    fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.current.size === 2) {
+      const [a, b] = [...fingers.current.values()];
+      pinch.current = { startDistance: fingerDistance(a, b), startZoom: zoom };
+      quietUntil.current = Date.now() + 500;
+    }
+  };
+  const onFingerMove = (e) => {
+    if (!fingers.current.has(e.pointerId)) return;
+    fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.current.size !== 2 || !pinch.current) return;
+    quietUntil.current = Date.now() + 500;
+    const [a, b] = [...fingers.current.values()];
+    const next = pinchZoom(pinch.current.startZoom, pinch.current.startDistance, fingerDistance(a, b), ZOOM_MIN, ZOOM_MAX);
+    if (next === zoom) return;
+    const box = boxRef.current;
+    const svg = svgRef.current;
+    if (box && svg) {
+      const rect = svg.getBoundingClientRect();
+      const boxRect = box.getBoundingClientRect();
+      pendingScroll.current = {
+        scroll: { left: box.scrollLeft, top: box.scrollTop },
+        point: fingerMiddle(a, b),
+        box: { left: boxRect.left, top: boxRect.top },
+        oldSize: { w: rect.width, h: rect.height },
+      };
+    }
+    setZoom(next);
+  };
+  const onFingerUp = (e) => {
+    fingers.current.delete(e.pointerId);
+    if (fingers.current.size < 2) {
+      if (pinch.current) quietUntil.current = Date.now() + 500;
+      pinch.current = null;
+    }
+  };
+
+  // after zooming: keep the spot between the fingers where it was
+  useIsoLayoutEffect(() => {
+    const p = pendingScroll.current;
+    pendingScroll.current = null;
+    const box = boxRef.current;
+    const svg = svgRef.current;
+    if (!p || !box || !svg) return;
+    const rect = svg.getBoundingClientRect();
+    const to = scrollAfterZoom({ ...p, newSize: { w: rect.width, h: rect.height } });
+    box.scrollLeft = to.left;
+    box.scrollTop = to.top;
+  }, [zoom]);
 
   // The quantity can also change from outside (a click in the price table): the wall follows it.
   useEffect(() => {
@@ -78,6 +140,7 @@ export default function WallDesigner({
   const hexAction = (fn) => (e) => {
     if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
+    if (Date.now() < quietUntil.current) return; // a pinch is not a tap
     fn();
   };
 
@@ -152,8 +215,20 @@ export default function WallDesigner({
           </button>
         </div>
 
-        <div className="max-h-[26rem] overflow-auto p-2" dir="ltr">
+        <div
+          ref={boxRef}
+          className="max-h-[26rem] overflow-auto p-2"
+          dir="ltr"
+          style={{ touchAction: 'pan-x pan-y' }}
+          onPointerDown={onFingerDown}
+          onPointerMove={onFingerMove}
+          onPointerUp={onFingerUp}
+          onPointerCancel={onFingerUp}
+          onPointerLeave={onFingerUp}
+          data-wall-box
+        >
           <svg
+            ref={svgRef}
             viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
             style={{ width: `${zoom * 100}%`, minWidth: 0 }}
             className="mx-auto block"
