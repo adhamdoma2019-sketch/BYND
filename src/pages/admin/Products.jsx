@@ -707,6 +707,7 @@ export default function Products() {
           <OptionsEditor
             options={form.options}
             onChange={(options) => setForm({ ...form, options })}
+            countedIds={form.isPreorder ? [] : form.countedOptions}
           />
 
           <div className="col-span-full rounded border border-ink/10 bg-white p-3">

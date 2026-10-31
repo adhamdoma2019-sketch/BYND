@@ -8,7 +8,7 @@ const input =
 
 // Where the shop defines the choices customers get on a product:
 // colors, an activity / sport list, an extension, a custom text.
-export default function OptionsEditor({ options, onChange }) {
+export default function OptionsEditor({ options, onChange, countedIds = [] }) {
   const { t } = useTranslation();
 
   const updateOption = (i, patch) =>
@@ -31,6 +31,9 @@ export default function OptionsEditor({ options, onChange }) {
     }
     updateOption(i, { type, values });
   }
+
+  const nameOf = (o, n) => o.labelEn.trim() || o.labelAr.trim() || t('options.optionN', { n });
+  const valueName = (v) => v.labelEn.trim() || v.labelAr.trim();
 
   return (
     <div className="col-span-full rounded border border-ink/10 bg-white p-4">
@@ -99,6 +102,63 @@ export default function OptionsEditor({ options, onChange }) {
                 />
               </label>
             </div>
+
+            {/* "Show this option only when ..." (only a colour / choice list ABOVE this option can control it) */}
+            {i > 0 &&
+              (() => {
+                const controllers = options
+                  .slice(0, i)
+                  .map((c, idx) => ({ c, n: idx + 1 }))
+                  .filter(({ c }) => (c.type === 'color' || c.type === 'choice') && c.values.some(valueName));
+                if (controllers.length === 0) return null;
+                if (countedIds.includes(o.id)) {
+                  return <p className="mt-3 text-xs text-ink-faint">{t('options.showWhenCounted')}</p>;
+                }
+                const ctrl = controllers.find(({ c }) => c.id === o.showWhenOption)?.c;
+                return (
+                  <div className="mt-3 rounded border border-ink/10 bg-white p-3">
+                    <p className="text-sm font-medium">{t('options.showWhenTitle')}</p>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      <label className="text-sm text-ink-soft">
+                        {t('options.showWhenOption')}
+                        <select
+                          value={ctrl ? ctrl.id : ''}
+                          onChange={(e) => updateOption(i, { showWhenOption: e.target.value, showWhenValue: '' })}
+                          className={input}
+                        >
+                          <option value="">{t('options.showAlways')}</option>
+                          {controllers.map(({ c, n }) => (
+                            <option key={c.id} value={c.id}>
+                              {nameOf(c, n)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {ctrl && (
+                        <label className="text-sm text-ink-soft">
+                          {t('options.showWhenValue')}
+                          <select
+                            value={ctrl.values.some((v) => v.id === o.showWhenValue) ? o.showWhenValue : ''}
+                            onChange={(e) => updateOption(i, { showWhenValue: e.target.value })}
+                            className={input}
+                          >
+                            <option value="">{t('options.showWhenPick')}</option>
+                            {ctrl.values.filter(valueName).map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {valueName(v)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                    </div>
+                    {ctrl && !ctrl.values.some((v) => v.id === o.showWhenValue) && (
+                      <p className="mt-2 text-xs text-rust">{t('options.showWhenIncomplete')}</p>
+                    )}
+                    <p className="mt-2 text-xs text-ink-faint">{t('options.showWhenHelp')}</p>
+                  </div>
+                );
+              })()}
 
             {o.type === 'text' && (
               <label className="mt-3 block max-w-xs text-sm text-ink-soft">

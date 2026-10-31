@@ -33,6 +33,8 @@ export const newOption = () => ({
   textLabelEn: '',
   textLabelAr: '',
   textMax: '',
+  showWhenOption: '', // "show only when" this option ...
+  showWhenValue: '', // ... has this value ('' = always shown)
   values: [newValue('color')],
 });
 
@@ -50,6 +52,8 @@ export function optionsToForm(options, optionCosts = {}) {
     textLabelEn: o.textLabel?.en || '',
     textLabelAr: o.textLabel?.ar || '',
     textMax: o.textMax || '',
+    showWhenOption: o.showWhen?.optionId || '',
+    showWhenValue: o.showWhen?.valueId || '',
     values: (o.values || []).map((v) => ({
       id: v.id,
       labelEn: v.label?.en || '',
@@ -80,7 +84,7 @@ export function optionsAreValid(form) {
 
 // form -> what is saved on the product (public)
 export function formToOptions(form) {
-  return (form || [])
+  const built = (form || [])
     .filter((o) => OPTION_TYPES.includes(o.type))
     .slice(0, MAX_OPTIONS)
     .map((o) => {
@@ -139,6 +143,24 @@ export function formToOptions(form) {
           })),
       };
     });
+  return applyShowWhen(form, built);
+}
+
+// "Show this option only when ...": kept only when it still makes sense. The controlling option must be a
+// colour / choice list ABOVE this one, and the chosen value must still exist. Anything else is dropped
+// (the option is then simply always shown), so a rule can never point at something that is gone.
+function applyShowWhen(form, built) {
+  const source = (form || []).filter((o) => OPTION_TYPES.includes(o.type)).slice(0, MAX_OPTIONS);
+  return built.map((saved, i) => {
+    const f = source[i];
+    if (!f.showWhenOption || !f.showWhenValue) return saved;
+    const ctrl = built.slice(0, i).find((c) => c.id === f.showWhenOption);
+    const ok =
+      ctrl &&
+      (ctrl.type === 'color' || ctrl.type === 'choice') &&
+      (ctrl.values || []).some((v) => v.id === f.showWhenValue);
+    return ok ? { ...saved, showWhen: { optionId: f.showWhenOption, valueId: f.showWhenValue } } : saved;
+  });
 }
 
 // form -> the private cost of each choice

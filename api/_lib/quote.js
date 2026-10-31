@@ -5,7 +5,7 @@
 
 import { OrderError } from './errors.js';
 import { computeTotals } from './pricing.js';
-import { resolveSelections } from './options.js';
+import { resolveSelections, stripHidden } from './options.js';
 import { checkTotalQty, groupKeyOf, groupQuantities, tierFor, tierGroupOption } from './quantityPrices.js';
 
 export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
@@ -31,6 +31,12 @@ export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
   const totalQty = new Map();
   for (const item of items) {
     totalQty.set(item.productId, (totalQty.get(item.productId) || 0) + item.quantity);
+  }
+
+  // Hidden options ("show only when ...") never count: drop their answers before anything is priced.
+  for (const item of items) {
+    const s = productSnaps[productIds.indexOf(item.productId)];
+    if (s && s.exists) item.selections = stripHidden(s.data(), item.selections);
   }
 
   const lines = items.map((item) => {

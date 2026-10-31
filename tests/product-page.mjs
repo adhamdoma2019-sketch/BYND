@@ -112,4 +112,18 @@ assert.match(v.html, /storefront\.maxOrderNote\[25\]/);
 v = view({ ...tiered, priceTiers: [] }); assert.doesNotMatch(v.html, /storefront\.qtyPricesTitle/); assert.doesNotMatch(v.html, /storefront\.minOrderNote/);
 ok('a maximum is shown; a product without steps or limits shows none of this');
 
+// ---- update 26: "show this option only when ..." ----
+const sport = { id: 'sport', type: 'choice', label: { en: 'Sport' }, required: true, values: [{ id: 'run', label: { en: 'Running' } }, { id: 'cyc', label: { en: 'Cycling' } }] };
+const setOpt = { id: 'set', type: 'choice', label: { en: 'Set' }, required: true, values: [{ id: 'std', label: { en: 'Standard' } }, { id: 'cus', label: { en: 'Custom' } }] };
+const runExtra = { id: 'xrun', type: 'choice', label: { en: 'Running extra' }, required: true, showWhen: { optionId: 'sport', valueId: 'run' }, values: [{ id: 'k10', label: { en: 'Ten km' }, priceDelta: 100 }] };
+const cycExtra = { id: 'xcyc', type: 'choice', label: { en: 'Cycling extra' }, required: true, showWhen: { optionId: 'sport', valueId: 'cyc' }, values: [{ id: 'k20', label: { en: 'Twenty km' }, priceDelta: 100 }] };
+const cond = { ...base, options: [sport, setOpt, runExtra, cycExtra], countedOptions: [], optionStock: {}, stock: 50 };
+v = view(cond);
+assert.doesNotMatch(v.html, /Running extra/); assert.doesNotMatch(v.html, /Cycling extra/); assert.match(v.html, />Sport</); assert.match(v.html, />Set</);
+v = view(cond, { sport: 'run' });
+assert.match(v.html, /Running extra/); assert.doesNotMatch(v.html, /Cycling extra/);
+v = view(cond, { sport: 'cyc', xrun: 'k10' });
+assert.match(v.html, /Cycling extra/); assert.doesNotMatch(v.html, /Running extra/);
+ok('product page: an option appears only when the choice it depends on is picked (and the other sport\'s option stays hidden)');
+
 console.log(`\nALL ${n} PRODUCT-PAGE CHECKS PASSED`);

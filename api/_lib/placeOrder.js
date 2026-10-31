@@ -25,7 +25,7 @@ import {
   tierFor,
   tierGroupOption,
 } from './quantityPrices.js';
-import { cleanSelections, selectionSignature, resolveSelections } from './options.js';
+import { cleanSelections, selectionSignature, resolveSelections, stripHidden } from './options.js';
 import {
   isOptionCounted,
   keysForSelections,
@@ -158,7 +158,11 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       productInfo.set(id, { product, costData, totalQty: 0, index });
     });
     items.forEach((item) => {
-      productInfo.get(item.productId).totalQty += item.quantity;
+      const info = productInfo.get(item.productId);
+      // Answers of options that are hidden by their "show only when" rule are thrown away here,
+      // so they can never change the price, the stock numbers or the quantity-price group.
+      item.selections = stripHidden(info.product, item.selections);
+      info.totalQty += item.quantity;
     });
 
     // The shop's minimum / maximum per order, and the quantity price: both look at the TOTAL

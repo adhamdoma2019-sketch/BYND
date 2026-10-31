@@ -7,12 +7,53 @@
 // IMPORTANT: the price rules must match api/_lib/options.js (a test compares them).
 
 export const OPTION_TYPES = ['color', 'choice', 'addon', 'text'];
-export const MAX_OPTIONS = 6;
+export const MAX_OPTIONS = 10;
 export const MAX_VALUES = 20;
 const DEFAULT_TEXT_LENGTH = 60;
 
 // The text typed for a ticked tick box is kept under "<optionId>.text".
 export const textKey = (optionId) => `${optionId}.text`;
+
+// ----- "Show this option only when ..." -----
+// An option can carry  showWhen: { optionId, valueId }  = "show me only when that colour / choice
+// option (ABOVE me in the list) has that value chosen". A hidden option is ignored completely:
+// never required, never priced, never stored. The condition can follow a chain (A shows B shows C).
+// An option that counts its own stock is never hidden (the stock needs its choice).
+// IMPORTANT: this must work the same here and in src/utils/productOptions.js (a test compares them).
+export function visibleOptions(product, selections) {
+  const counted = new Set(Array.isArray(product?.countedOptions) ? product.countedOptions : []);
+  const shown = [];
+  for (const o of (product?.options || [])
+    .filter((x) => x && OPTION_TYPES.includes(x.type))
+    .slice(0, MAX_OPTIONS)) {
+    const rule = o.showWhen;
+    let ok = true;
+    if (rule && rule.optionId && !counted.has(o.id)) {
+      // the controlling option must come earlier in the list AND be visible itself
+      const ctrl = shown.find((c) => c.id === rule.optionId);
+      ok =
+        Boolean(ctrl) &&
+        (ctrl.type === 'color' || ctrl.type === 'choice') &&
+        (ctrl.values || []).some((v) => v.id === rule.valueId) &&
+        selections?.[ctrl.id] === rule.valueId;
+    }
+    if (ok) shown.push(o);
+  }
+  return shown;
+}
+
+// The choices without the answers of hidden options (also their typed text).
+export function stripHidden(product, selections) {
+  const shown = new Set(visibleOptions(product, selections).map((o) => o.id));
+  const out = {};
+  for (const [key, value] of Object.entries(selections || {})) {
+    const optionId = key.endsWith('.text') ? key.slice(0, -5) : key;
+    const isOption = (product?.options || []).some((o) => o && o.id === optionId);
+    if (isOption && !shown.has(optionId)) continue;
+    out[key] = value;
+  }
+  return out;
+}
 
 // Same choices => same text (used to tell cart lines apart).
 export function selectionSignature(selections) {
@@ -45,9 +86,7 @@ export const hasOptions = (product) =>
 //   labels      what to show/save: [{ id, label, type, value, color?, text? }]
 //   imageUrl    picture of the choice made (a color / choice can have its own picture)
 export function resolveChoice(product, selections) {
-  const options = (product?.options || [])
-    .filter((o) => o && OPTION_TYPES.includes(o.type))
-    .slice(0, MAX_OPTIONS);
+  const options = visibleOptions(product, selections);
 
   let priceDelta = 0;
   let imageUrl = '';

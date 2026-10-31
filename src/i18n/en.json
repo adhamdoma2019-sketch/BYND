@@ -601,7 +601,15 @@
     "textLabelEn": "Question for the customer (English)",
     "textLabelAr": "Question for the customer (Arabic)",
     "textMax": "Maximum characters",
-    "textRequired": "The customer must type something when ticked"
+    "textRequired": "The customer must type something when ticked",
+    "showWhenTitle": "When is this option shown?",
+    "showWhenOption": "Show this option",
+    "showAlways": "Always",
+    "showWhenValue": "…when it is set to",
+    "showWhenPick": "Choose a value",
+    "showWhenIncomplete": "Choose a value, otherwise this option stays always shown when you save.",
+    "showWhenHelp": "Only a color or choice list above this option can control it. When hidden, the option is not asked, not charged and not saved on the order.",
+    "showWhenCounted": "This option counts its own stock, so it is always shown."
   },
   "errorPage": {
     "title": "Something went wrong",

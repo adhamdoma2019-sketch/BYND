@@ -11,7 +11,7 @@ import CartDrawer from '../../components/storefront/CartDrawer';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
-import { resolveChoice, cleanSelections, textKey } from '../../utils/productOptions';
+import { resolveChoice, cleanSelections, textKey, visibleOptions, stripHidden } from '../../utils/productOptions';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { MAX_ORDER_QTY, LOW_STOCK_THRESHOLD } from '../../utils/constants';
@@ -225,7 +225,8 @@ export default function ProductPage() {
   const unitPrice = unitBasePrice(product, totalNow) + choice.priceDelta;
   const normalUnitPrice = (Number(product.price) || 0) + choice.priceDelta;
   const missingIds = new Set(choice.missing.map((o) => o.id));
-  const productOptions = (product.options || []).filter((o) => o && o.type);
+  // only the options whose "show only when" rule is met (a hidden option is not asked, not charged, not sent)
+  const productOptions = visibleOptions(product, selections);
 
   const buttonLabel = comingSoon
     ? t('storefront.comingSoon')
@@ -246,7 +247,7 @@ export default function ProductPage() {
     addItem(product, qty, {
       maxQty: isPreorder ? undefined : maxQty,
       madeToOrder: backorder && (madeNow || partlyMade),
-      selections: cleanSelections(selections),
+      selections: cleanSelections(stripHidden(product, selections)),
       labels: choice.labels,
       unitPrice,
       priceDelta: choice.priceDelta,

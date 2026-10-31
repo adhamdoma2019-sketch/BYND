@@ -33,7 +33,12 @@ export function productFields(data) {
   const savedOptions = formToOptions(data.options);
   const countedOptions = countedIdsOf(data, savedOptions);
   // A customer must choose every counted option (we need to know which number to reduce).
-  const options = savedOptions.map((o) => (countedOptions.includes(o.id) ? { ...o, required: true } : o));
+  // (an option that counts stock is always shown: it can never have a "show only when" rule)
+  const options = savedOptions.map((o) => {
+    if (!countedOptions.includes(o.id)) return o;
+    const { showWhen, ...rest } = o; // eslint-disable-line no-unused-vars
+    return { ...rest, required: true };
+  });
   return {
     name: { en: data.nameEn, ar: data.nameAr || data.nameEn },
     description: {
