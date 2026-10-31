@@ -6,7 +6,7 @@
 import { OrderError } from './errors.js';
 import { computeTotals } from './pricing.js';
 import { resolveSelections } from './options.js';
-import { checkTotalQty, tierFor } from './quantityPrices.js';
+import { checkTotalQty, groupKeyOf, groupQuantities, tierFor, tierGroupOption } from './quantityPrices.js';
 
 export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
@@ -66,7 +66,13 @@ export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
     }
     // The price includes the quantity price (if any) and what the customer's choices add (color, extension...).
     const choice = resolveSelections(product, item.selections);
-    const tier = tierFor(product, total);
+    // the step looks at the whole product, or only at this colour / choice (the product's setting)
+    const groupOption = tierGroupOption(product);
+    const groupTotal = groupQuantities(
+      groupOption,
+      items.filter((i) => i.productId === item.productId)
+    ).get(groupKeyOf(groupOption, item.selections));
+    const tier = tierFor(product, groupTotal || 0);
     return {
       unitPrice: (tier ? tier.price : Number(product.price) || 0) + choice.priceDelta,
       tiered: Boolean(tier),

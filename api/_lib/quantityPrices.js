@@ -9,7 +9,9 @@
 // A product stores `priceTiers: [{ minQty, price }]`, for example
 //   price 100 (normal), tiers [{ minQty: 5, price: 90 }, { minQty: 10, price: 85 }]
 //   1-4 pieces = 100 each, 5-9 = 90 each, 10 or more = 85 each.
-// The count is the TOTAL of that product in the order (all colours together).
+// By default the count is the TOTAL of that product in the order (all colours together).
+// A product can instead count the pieces SEPARATELY for each choice of one colour / choice option
+// (`tierGroupOption`: the id of that option), so "3 or more of the SAME colour" gets the step price.
 // Extras of a choice (e.g. +50 for a plate) are added on top, per piece.
 
 export const MAX_TIERS = 6; // price steps on one product (besides the normal price)
@@ -102,4 +104,32 @@ export function savingPercent(basePrice, price) {
   const base = Number(basePrice);
   if (!(base > 0) || !(Number(price) < base)) return 0;
   return Math.floor(((base - Number(price)) / base) * 100);
+}
+
+// ----- Counting the price steps: together (default) or separately for each choice of one option -----
+
+// The option (a colour or choice list of the product) whose choices are counted separately.
+// '' = all pieces of the product count together. Anything that is not a colour / choice option of the product is ignored.
+export function tierGroupOption(product) {
+  const id = product?.tierGroupOption;
+  if (!id || !Array.isArray(product?.options)) return '';
+  const option = product.options.find((o) => o && o.id === id);
+  return option && (option.type === 'color' || option.type === 'choice') ? id : '';
+}
+
+// The group a line belongs to for the price steps: the value chosen in that option ('' = no group / not chosen).
+export function groupKeyOf(optionId, selections) {
+  if (!optionId) return '';
+  const chosen = selections?.[optionId];
+  return typeof chosen === 'string' ? chosen : '';
+}
+
+// Pieces per group. `lines` = [{ selections, quantity }] of ONE product. Returns a Map(groupKey -> pieces).
+export function groupQuantities(optionId, lines) {
+  const out = new Map();
+  for (const line of lines) {
+    const key = groupKeyOf(optionId, line.selections);
+    out.set(key, (out.get(key) || 0) + (Number(line.quantity) || 0));
+  }
+  return out;
 }

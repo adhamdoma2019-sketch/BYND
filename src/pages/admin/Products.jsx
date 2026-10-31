@@ -40,6 +40,7 @@ const emptyForm = {
   descriptionAr: '',
   price: '',
   priceTiers: [], // quantity prices: rows of { minQty, price } (typed as text)
+  tierGroupOption: '', // '' = price steps count all pieces together; else the id of a colour / choice option counted separately
   minQty: '', // optional: fewest pieces per order
   maxQty: '', // optional: most pieces per order
   costPrice: '',
@@ -150,6 +151,7 @@ export default function Products() {
       descriptionAr: p.description?.ar || '',
       price: p.price,
       priceTiers: (p.priceTiers || []).map((x) => ({ minQty: String(x.minQty), price: String(x.price) })),
+      tierGroupOption: p.tierGroupOption || '',
       minQty: p.minQty > 0 ? String(p.minQty) : '',
       maxQty: p.maxQty > 0 ? String(p.maxQty) : '',
       costPrice: costs[p.id] ?? '',
@@ -526,6 +528,28 @@ export default function Products() {
               >
                 {t('products.tierAdd')}
               </button>
+            )}
+
+            {/* How the pieces are counted for the price steps: all together, or separately for each colour / choice */}
+            {form.priceTiers.length > 0 && (
+              <label className="mt-4 block text-xs">
+                {t('products.tierGroup')}
+                <select
+                  value={form.tierGroupOption}
+                  onChange={(e) => setForm({ ...form, tierGroupOption: e.target.value })}
+                  className="mt-1 block w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                >
+                  <option value="">{t('products.tierGroupTogether')}</option>
+                  {(form.options || [])
+                    .filter((o) => (o.type === 'color' || o.type === 'choice') && (o.labelEn || o.labelAr))
+                    .map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {t('products.tierGroupEach', { option: o.labelEn || o.labelAr })}
+                      </option>
+                    ))}
+                </select>
+                <span className="mt-1 block text-ink-faint">{t('products.tierGroupHelp')}</span>
+              </label>
             )}
 
             <div className="mt-4 grid grid-cols-2 gap-3">

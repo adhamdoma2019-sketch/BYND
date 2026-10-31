@@ -47,7 +47,7 @@ const form = {
 };
 
 // 1. the shared conversion
-const rec = m.productFields(form);
+const rec = m.productFields({ ...form, tierGroupOption: 'oc' });
 assert.deepEqual(rec.name, { en: '  Medal display ', ar: '  Medal display ' }); // same as before the move: Arabic falls back to English
 assert.equal(rec.price, 300); assert.equal(rec.maxQty, 10); assert.equal(rec.minQty, 0);
 assert.deepEqual(rec.priceTiers, [{ minQty: 3, price: 250 }]);
@@ -58,6 +58,11 @@ assert.equal(rec.backorder, true); assert.equal(rec.preorderStyle, 'madeToOrder'
 assert.equal(rec.preorderMessage.ar, 'Ships in 10 days');
 assert.equal(rec.options[0].values[1].priceDelta, 20);
 assert.equal(m.productFields({ ...form, isPreorder: true }).countedOptions.length, 0); // made to order counts nothing
+// same-colour offer: the setting is kept only with price steps and a real colour / choice option
+assert.equal(rec.tierGroupOption, 'oc');
+assert.equal(m.productFields({ ...form, tierGroupOption: 'oc', priceTiers: [] }).tierGroupOption, '');
+assert.equal(m.productFields({ ...form, tierGroupOption: 'nope' }).tierGroupOption, '');
+assert.equal(m.productFields({ ...form }).tierGroupOption, '');
 ok('form -> product conversion (the one Save uses): fallbacks, quantity steps, counted option required, made to order counts nothing');
 
 // 2. messages
@@ -80,6 +85,7 @@ const dirty = { ...rec, id: 'x', tenantId: 'other', isActive: false, deleted: tr
   options: [{ ...rec.options[0], values: [{ ...rec.options[0].values[0], imageUrl: 'http://bad/x.jpg' }, rec.options[0].values[1]] }] };
 const clean = m.cleanProductDraft(dirty);
 ['id', 'tenantId', 'isActive', 'deleted', 'stock', 'optionStock', 'sku', 'costPrice'].forEach((k) => assert.equal(clean[k], undefined, k));
+assert.equal(clean.tierGroupOption, 'oc'); // the preview follows the same-colour setting
 assert.equal(clean.imageUrl, ''); assert.deepEqual(clean.images, ['https://ok/1.jpg']);
 assert.equal(clean.options[0].values[0].imageUrl, ''); assert.equal(clean.options[0].values[1].imageUrl, undefined);
 ok('product draft: no id / shop / stock / cost fields; only https pictures (also colour pictures)');

@@ -84,7 +84,7 @@ export function applyDraft(tenant, draft) {
 // Only these parts of a product can come from a draft. Stock numbers, id, shop and "active" always
 // stay as saved, and private costs are never part of a product record at all.
 export const PRODUCT_DRAFT_KEYS = [
-  'name', 'description', 'price', 'priceTiers', 'minQty', 'maxQty', 'shippingExtra', 'imageUrl', 'images',
+  'name', 'description', 'price', 'priceTiers', 'tierGroupOption', 'minQty', 'maxQty', 'shippingExtra', 'imageUrl', 'images',
   'relatedIds', 'isPreorder', 'backorder', 'countedOptions', 'preorderStyle', 'comingSoon', 'options',
   'preorderMessage',
 ];

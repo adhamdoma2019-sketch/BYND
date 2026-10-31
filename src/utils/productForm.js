@@ -3,7 +3,7 @@
 // so what you see in the preview is exactly what will be saved.
 import { formToOptions } from './productOptionsForm';
 import { COUNTABLE_TYPES, MAX_COUNTED } from './optionStock';
-import { cleanTiers, SAFETY_MAX_QTY } from './quantityPrices';
+import { cleanTiers, tierGroupOption, SAFETY_MAX_QTY } from './quantityPrices';
 
 // Which options count their own stock: only a colour list or a choice list that has values,
 // never on a made-to-order product (it uses no stock), at most MAX_COUNTED.
@@ -43,6 +43,12 @@ export function productFields(data) {
     price: Number(data.price),
     // Quantity prices: [{ minQty, price }] "from X pieces each costs Y" (only valid, cheaper-and-bigger steps are kept).
     priceTiers: cleanTiers(data.priceTiers, data.price),
+    // Count the price steps separately for each choice of this colour / choice option ('' = all pieces together).
+    // Only kept when there are price steps and the option really is a colour / choice list of this product.
+    tierGroupOption:
+      cleanTiers(data.priceTiers, data.price).length > 0
+        ? tierGroupOption({ tierGroupOption: data.tierGroupOption, options })
+        : '',
     // Optional limits per order for the whole product (0 = no limit of the shop's own).
     minQty: wholeNumber(data.minQty, 2, SAFETY_MAX_QTY),
     maxQty: wholeNumber(data.maxQty, 1, SAFETY_MAX_QTY),

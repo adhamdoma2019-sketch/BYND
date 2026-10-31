@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { MAX_ORDER_QTY } from '../utils/constants';
 import { itemKey } from '../utils/productOptions';
-import { cleanTiers, orderLimits } from '../utils/quantityPrices';
+import { cleanTiers, orderLimits, tierGroupOption } from '../utils/quantityPrices';
 import { priceCartLines } from '../utils/cartPricing';
 
 // Older carts saved before options existed have no `key`; the product id works for them.
@@ -68,6 +68,7 @@ export function CartProvider({ slug, children }) {
           basePrice: Number(product.price) || 0,
           priceDelta: Number(choice.priceDelta) || 0,
           tiers: cleanTiers(product.priceTiers, product.price),
+          tierGroup: tierGroupOption(product), // '' = all colours together; else the option counted separately
           minQty: orderLimits(product).min,
           quantity: Math.min(quantity, max),
           maxStock: max,

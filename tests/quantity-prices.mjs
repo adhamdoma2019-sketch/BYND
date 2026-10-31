@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { placeOrder, validateInput, OrderError } from '../api/_lib/placeOrder.js';
 import { getQuote } from '../api/_lib/quote.js';
 import * as Q from '../src/utils/quantityPrices.js';
-import { priceCartLines, productCountInCart } from '../src/utils/cartPricing.js';
+import { groupCountInCart, priceCartLines, productCountInCart } from '../src/utils/cartPricing.js';
 
 let n = 0; const ok = (l) => console.log('  ok', ++n, l);
 
@@ -184,5 +184,77 @@ ok('promo codes: apply to everything by default; with the shop setting off only 
 db = world({ mug }); r = await placeOrder(db, mk([{ productId: 'mug', quantity: 3 }]));
 o = orderOf(db, r); assert.equal(o.items[0].unitPrice, 50); assert.equal('tierMinQty' in o.items[0], false); assert.equal(o.totalAmount, 150);
 ok('an old product without steps or limits is unchanged');
+
+// ---------- same-colour offer (update 25): price steps counted separately for each colour / choice ----------
+const prod3 = (extra = {}) => hex({ priceTiers: [{ minQty: 3, price: 80 }], ...extra });
+
+// the helpers
+assert.equal(Q.tierGroupOption({ tierGroupOption: 'col', options: [colour] }), 'col');
+assert.equal(Q.tierGroupOption({ tierGroupOption: 'col', options: [{ ...colour, type: 'choice' }] }), 'col');
+assert.equal(Q.tierGroupOption({ tierGroupOption: 'plate', options: [colour, plate] }), '');   // a tick box cannot be the group
+assert.equal(Q.tierGroupOption({ tierGroupOption: 'gone', options: [colour] }), '');           // an option that no longer exists
+assert.equal(Q.tierGroupOption({ tierGroupOption: 'col' }), ''); assert.equal(Q.tierGroupOption({ options: [colour] }), ''); assert.equal(Q.tierGroupOption(null), '');
+assert.equal(Q.groupKeyOf('col', { col: 'gold', x: 'y' }), 'gold'); assert.equal(Q.groupKeyOf('', { col: 'gold' }), ''); assert.equal(Q.groupKeyOf('col', {}), ''); assert.equal(Q.groupKeyOf('col', { col: true }), '');
+assert.deepEqual([...Q.groupQuantities('col', [{ selections: { col: 'gold' }, quantity: 2 }, { selections: { col: 'black' }, quantity: 1 }, { selections: { col: 'gold', plate: true }, quantity: 1 }])], [['gold', 3], ['black', 1]]);
+assert.deepEqual([...Q.groupQuantities('', [{ selections: { col: 'gold' }, quantity: 2 }, { selections: { col: 'black' }, quantity: 1 }])], [['', 3]]);
+ok('same-colour helpers: only a colour / choice option of the product can be the group; pieces are summed per choice');
+
+// the cart (browser)
+const t3 = [{ minQty: 3, price: 80 }];
+const gline = (key, q, col, extra = {}) => ({ key, productId: 'hex', quantity: q, unitPrice: 100, basePrice: 100, priceDelta: 0, tiers: t3, tierGroup: 'col', selections: { col }, ...extra });
+cart = priceCartLines([gline('a', 3, 'gold'), gline('b', 3, 'black')]);
+assert.deepEqual(cart.map((l) => l.unitPrice), [80, 80]); assert.deepEqual(cart.map((l) => l.tierMinQty), [3, 3]);
+cart = priceCartLines([gline('a', 2, 'gold'), gline('b', 1, 'black')]);
+assert.deepEqual(cart.map((l) => l.unitPrice), [100, 100]); assert.deepEqual(cart.map((l) => l.tierMinQty), [0, 0]);
+cart = priceCartLines([gline('a', 2, 'gold'), gline('b', 1, 'gold', { selections: { col: 'gold', plate: true }, priceDelta: 30 }), gline('c', 1, 'black')]);
+assert.deepEqual(cart.map((l) => l.unitPrice), [80, 110, 100]);   // 2 + 1 gold lines (different extras) = 3 gold -> step; black alone: no step
+cart = priceCartLines([{ ...gline('a', 2, 'gold'), tierGroup: '' }, { ...gline('b', 1, 'black'), tierGroup: '' }]);
+assert.deepEqual(cart.map((l) => l.unitPrice), [80, 80]);          // a product that counts together behaves as before
+assert.equal(groupCountInCart([gline('a', 2, 'gold'), gline('b', 4, 'black'), { ...gline('c', 5, 'gold'), productId: 'z' }], 'hex', 'col', { col: 'gold' }), 2);
+assert.equal(groupCountInCart([gline('a', 2, 'gold'), gline('b', 4, 'black')], 'hex', '', { col: 'gold' }), 6); // no group = all pieces of the product
+ok('cart: 3 gold + 3 black both get the step, 2 gold + 1 black do not, same colour in two lines counts together');
+
+// the server: real orders
+db = world({ hex: prod3({ tierGroupOption: 'col' }) });
+r = await placeOrder(db, mk([{ productId: 'hex', quantity: 3, selections: { col: 'gold' } }, { productId: 'hex', quantity: 3, selections: { col: 'black' } }]));
+o = orderOf(db, r);
+assert.deepEqual(o.items.map((l) => l.unitPrice), [80, 80]); assert.deepEqual(o.items.map((l) => l.tierMinQty), [3, 3]); assert.equal(o.subtotal, 480);
+ok('server: 3 gold + 3 black = both lines at the step price (80)');
+
+db = world({ hex: prod3({ tierGroupOption: 'col' }) });
+r = await placeOrder(db, mk([{ productId: 'hex', quantity: 2, selections: { col: 'gold' } }, { productId: 'hex', quantity: 1, selections: { col: 'black' } }]));
+o = orderOf(db, r);
+assert.deepEqual(o.items.map((l) => l.unitPrice), [100, 100]); assert.ok(o.items.every((l) => l.tierMinQty === undefined)); assert.equal(o.subtotal, 300);
+ok('server: 2 gold + 1 black = no discount (3 pieces, but not of the same colour)');
+
+db = world({ hex: prod3({ tierGroupOption: 'col' }) });
+r = await placeOrder(db, mk([{ productId: 'hex', quantity: 2, selections: { col: 'gold' } }, { productId: 'hex', quantity: 1, selections: { col: 'gold', plate: true } }, { productId: 'hex', quantity: 2, selections: { col: 'black' } }]));
+o = orderOf(db, r);
+assert.deepEqual(o.items.map((l) => l.unitPrice), [80, 110, 100]);  // gold (2 + 1 with a plate) = 3 -> step, the plate adds 30; black 2 -> normal
+ok('server: the same colour in two lines (with and without the plate) counts together');
+
+db = world({ hex: prod3({ tierGroupOption: 'col', minQty: 4 }) });
+await rejects(placeOrder(db, mk([{ productId: 'hex', quantity: 2, selections: { col: 'gold' } }, { productId: 'hex', quantity: 1, selections: { col: 'black' } }])), 'BELOW_MIN');
+r = await placeOrder(db, mk([{ productId: 'hex', quantity: 3, selections: { col: 'gold' } }, { productId: 'hex', quantity: 1, selections: { col: 'black' } }]));
+assert.deepEqual(orderOf(db, r).items.map((l) => l.unitPrice), [80, 100]);
+db = world({ hex: prod3({ tierGroupOption: 'col', maxQty: 5 }) });
+await rejects(placeOrder(db, mk([{ productId: 'hex', quantity: 3, selections: { col: 'gold' } }, { productId: 'hex', quantity: 3, selections: { col: 'black' } }])), 'TOO_MANY');
+ok('server: minimum / maximum per order still look at ALL pieces of the product');
+
+// the price preview (quote) gives the same totals as the order
+const cartG = [{ productId: 'hex', quantity: 3, selections: { col: 'gold' } }, { productId: 'hex', quantity: 2, selections: { col: 'black', plate: true } }];
+db = world({ hex: prod3({ tierGroupOption: 'col' }) });
+const qg = await getQuote(db, mk(cartG)); r = await placeOrder(db, mk(cartG));
+assert.equal(qg.subtotal, orderOf(db, r).subtotal); assert.equal(orderOf(db, r).subtotal, 3 * 80 + 2 * 130);
+ok('quote = order: 3 gold at 80, 2 black with a plate at 100 + 30');
+
+// a product that does not use the setting, or whose setting points at nothing, counts together as before
+db = world({ hex: prod3() });
+r = await placeOrder(db, mk([{ productId: 'hex', quantity: 2, selections: { col: 'gold' } }, { productId: 'hex', quantity: 1, selections: { col: 'black' } }]));
+assert.deepEqual(orderOf(db, r).items.map((l) => l.unitPrice), [80, 80]);
+db = world({ hex: prod3({ tierGroupOption: 'plate' }) });
+r = await placeOrder(db, mk([{ productId: 'hex', quantity: 2, selections: { col: 'gold' } }, { productId: 'hex', quantity: 1, selections: { col: 'black' } }]));
+assert.deepEqual(orderOf(db, r).items.map((l) => l.unitPrice), [80, 80]);
+ok('no setting (or a setting that points to a tick box) = all pieces count together, as before');
 
 console.log(`\nALL ${n} QUANTITY-PRICE CHECK GROUPS PASSED`);

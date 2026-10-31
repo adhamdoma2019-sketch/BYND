@@ -17,7 +17,14 @@ import {
   applyCustomFields,
 } from './fields.js';
 import { computeTotals } from './pricing.js';
-import { SAFETY_MAX_QTY, checkTotalQty, tierFor } from './quantityPrices.js';
+import {
+  SAFETY_MAX_QTY,
+  checkTotalQty,
+  groupKeyOf,
+  groupQuantities,
+  tierFor,
+  tierGroupOption,
+} from './quantityPrices.js';
 import { cleanSelections, selectionSignature, resolveSelections } from './options.js';
 import {
   isOptionCounted,
@@ -156,7 +163,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
 
     // The shop's minimum / maximum per order, and the quantity price: both look at the TOTAL
     // of the product in this order (all colours and choices together).
-    for (const info of productInfo.values()) {
+    for (const [productId, info] of productInfo.entries()) {
       const problem = checkTotalQty(info.product, info.totalQty);
       const name = info.product.name?.en || 'this item';
       if (problem?.code === 'BELOW_MIN') {
@@ -171,7 +178,13 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
           max: problem.max,
         });
       }
-      info.tier = tierFor(info.product, info.totalQty); // { minQty, price } or null
+      // The quantity price: by default it looks at the TOTAL; a product can count each colour /
+      // choice of one option separately ("3 or more of the SAME colour").
+      info.groupOption = tierGroupOption(info.product);
+      info.groupQty = groupQuantities(
+        info.groupOption,
+        items.filter((i) => i.productId === productId)
+      );
     }
 
     // How each product sells:
@@ -255,7 +268,9 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       }
       // Price of one piece: the normal price, or the quantity price when the order is big enough,
       // plus what the customer's choices add (extension plate, gold finish...).
-      const basePrice = info.tier ? info.tier.price : Number(product.price) || 0;
+      // (the step is looked up for this line's group: the whole product, or this colour / choice)
+      const tier = tierFor(product, info.groupQty.get(groupKeyOf(info.groupOption, item.selections)) || 0);
+      const basePrice = tier ? tier.price : Number(product.price) || 0;
       const unitPrice = basePrice + choice.priceDelta;
 
       // Cost snapshot: copied into the order so later cost changes never
@@ -277,7 +292,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         unitCost,
         subtotal: unitPrice * item.quantity,
         // Which quantity price was used (the "from X pieces" step), only when one applied.
-        ...(info.tier ? { tierMinQty: info.tier.minQty } : {}),
+        ...(tier ? { tierMinQty: tier.minQty } : {}),
         isPreorder: madeToOrder,
         // (backorder: true = this line is made to order because the stock ran out)
         ...(madeToOrder && !info.isPreorder ? { backorder: true } : {}),

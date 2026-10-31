@@ -22,10 +22,11 @@ import {
   cleanTiers,
   orderLimits,
   tierFor,
+  tierGroupOption,
   unitBasePrice,
   savingPercent,
 } from '../../utils/quantityPrices';
-import { productCountInCart } from '../../utils/cartPricing';
+import { groupCountInCart, productCountInCart } from '../../utils/cartPricing';
 import { applyProductDraft } from '../../utils/preview';
 import ProductCard from '../../components/storefront/ProductCard';
 
@@ -211,7 +212,15 @@ export default function ProductPage() {
   const shownImage = mainImage || pictures[0] || '';
   // Quantity price: the price of one piece depends on the total of this product (in the cart + now).
   const tiers = cleanTiers(product.priceTiers, product.price);
-  const totalNow = inCart + qty;
+  // (a product can count each colour / choice of one option separately: then only pieces of the
+  // SAME colour count together for the price step)
+  const groupOption = tierGroupOption(product);
+  const groupLabel =
+    (product.options || []).find((o) => o.id === groupOption)?.label?.[language] ||
+    (product.options || []).find((o) => o.id === groupOption)?.label?.en ||
+    '';
+  const groupInCart = groupOption ? groupCountInCart(cartItems, product.id, groupOption, selections) : inCart;
+  const totalNow = groupInCart + qty;
   const activeTier = tierFor(product, totalNow);
   const unitPrice = unitBasePrice(product, totalNow) + choice.priceDelta;
   const normalUnitPrice = (Number(product.price) || 0) + choice.priceDelta;
@@ -315,7 +324,7 @@ export default function ProductPage() {
                   {[{ minQty: 1, price: Number(product.price) || 0 }, ...tiers].map((step) => {
                     const active = (activeTier?.minQty || 1) === step.minQty;
                     const saving = savingPercent(product.price, step.price);
-                    const pick = Math.max(step.minQty - inCart, minAdd, 1);
+                    const pick = Math.max(step.minQty - groupInCart, minAdd, 1);
                     return (
                       <button
                         key={step.minQty}
@@ -331,7 +340,11 @@ export default function ProductPage() {
                         }
                         aria-pressed={active}
                       >
-                        <span>{t('storefront.fromQty', { n: step.minQty })}</span>
+                        <span>
+                          {groupOption
+                            ? t('storefront.fromQtySame', { n: step.minQty, option: groupLabel.toLowerCase() })
+                            : t('storefront.fromQty', { n: step.minQty })}
+                        </span>
                         <span>
                           {formatPrice(step.price, language)} {t('storefront.each')}
                           {saving > 0 && (
@@ -344,9 +357,17 @@ export default function ProductPage() {
                     );
                   })}
                 </div>
-                <p className="mt-2 text-xs text-ink-faint">{t('storefront.qtyPricesHint')}</p>
-                {inCart > 0 && (
-                  <p className="mt-1 text-xs text-ink-soft">{t('storefront.qtyInCart', { n: inCart })}</p>
+                <p className="mt-2 text-xs text-ink-faint">
+                  {groupOption
+                    ? t('storefront.qtyPricesHintSame', { option: groupLabel.toLowerCase() })
+                    : t('storefront.qtyPricesHint')}
+                </p>
+                {groupInCart > 0 && (
+                  <p className="mt-1 text-xs text-ink-soft">
+                    {groupOption
+                      ? t('storefront.qtyInCartSame', { n: groupInCart, option: groupLabel.toLowerCase() })
+                      : t('storefront.qtyInCart', { n: groupInCart })}
+                  </p>
                 )}
               </div>
             )}
