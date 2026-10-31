@@ -1,3 +1,4 @@
+import { wallParts } from '../utils/wallOrder';
 import {
   doc,
   collection,
@@ -49,12 +50,15 @@ const cartLines = (items) =>
 
 // Place the order. Returns { orderId, orderNumber, orderNumberLabel, totalAmount, orderType }.
 export function createOrder({ tenantId, customer, custom, items, zoneId, promoCode, website }) {
+  // lines of a planned wall carry their wallId; the walls themselves (pieces + colours) travel next to the lines
+  const { lines, walls } = wallParts(items);
   return callApi('/api/create-order', {
     website: website || '', // hidden trap field: real customers never fill it in
     tenantId,
     customer,
     custom: custom || {},
-    items: cartLines(items),
+    items: lines,
+    walls,
     zoneId: zoneId || '',
     promoCode: promoCode || '',
   });

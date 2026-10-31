@@ -91,10 +91,10 @@ const db = { store, collection: (cc) => ({ doc: (id) => ref(cc, id ?? `auto${++a
     const out = await fn(tx); for (const [k, r, d, op] of w) store.set(r.path, k === 'u' ? { ...store.get(r.path), ...d } : (op?.merge ? { ...(store.get(r.path) || {}), ...d } : d)); return out; } };
 const cust = { name: 'Ali', phone: '01000000000', city: 'Cairo', street: '1 Nile St' };
 const lines = C.wallLines({ product: wallProduct, selections: {}, cells: wallOf(3, 4), cartItems: [], colorOpt: colour }).lines;
-const placed = await placeOrder(db, validateInput({ tenantId: 'bynd', customer: cust, items: lines.map((l) => ({ productId: 'wall', quantity: l.quantity, selections: l.selections, wallId: 'x', wallCells: [] })) }));
+const placed = await placeOrder(db, validateInput({ tenantId: 'bynd', customer: cust, items: lines.map((l) => ({ productId: 'wall', quantity: l.quantity, selections: l.selections })) }));
 const order = db.store.get(`orders/${placed.orderId}`);
 assert.deepEqual(order.items.map((l) => [l.quantity, l.unitPrice]), lines.map((l) => [l.quantity, l.unitPrice]));
 assert.equal(order.subtotal, lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0));
-ok('a 3 black + 4 blue wall becomes a real order with exactly the prices the page showed (extra cart fields are ignored by the server)');
+ok('a 3 black + 4 blue wall becomes a real order with exactly the prices the page showed (as plain lines; the wall itself is checked in wall-orders.mjs)');
 
 console.log(`\nALL ${n} WALL-COLOUR CHECK GROUPS PASSED`);

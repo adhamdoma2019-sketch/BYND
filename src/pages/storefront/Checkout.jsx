@@ -1,3 +1,4 @@
+import { wallPictures } from '../../utils/wallOrder';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -150,6 +151,7 @@ export default function Checkout() {
 
     setSubmitting(true);
     try {
+      const pictures = wallPictures(items); // (the cart is emptied right after the order)
       const result = await createOrder({
         tenantId: tenant.id,
         customer: form,
@@ -166,6 +168,7 @@ export default function Checkout() {
           orderNumberLabel: result.orderNumberLabel,
           orderType: result.orderType,
           totalAmount: result.totalAmount,
+          walls: pictures, // small pictures of the planned walls for the thank-you page
         },
       });
     } catch (err) {

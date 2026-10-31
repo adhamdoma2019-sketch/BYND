@@ -26,6 +26,7 @@ import {
   tierGroupOption,
 } from './quantityPrices.js';
 import { cleanSelections, selectionSignature, resolveSelections, stripHidden } from './options.js';
+import { cleanWallId, cleanWallsInput, buildWalls } from './wall.js';
 import {
   isOptionCounted,
   keysForSelections,
@@ -79,10 +80,12 @@ export function validateInput(body) {
       throw new OrderError(400, 'BAD_ITEM', 'Invalid item in cart.');
     }
     const selections = cleanSelections(item?.selections);
-    const key = `${productId}|${selectionSignature(selections)}`;
+    // A line that belongs to a planned wall (wallId) is never merged with lines of another wall.
+    const wallId = cleanWallId(item?.wallId);
+    const key = `${productId}|${selectionSignature(selections)}|${wallId}`;
     const existing = merged.get(key);
     if (existing) existing.quantity += quantity;
-    else merged.set(key, { productId, quantity, selections });
+    else merged.set(key, { productId, quantity, selections, ...(wallId ? { wallId } : {}) });
   }
   if (merged.size > MAX_LINES) {
     throw new OrderError(400, 'BAD_ITEM', 'Too many different items.');
@@ -99,12 +102,13 @@ export function validateInput(body) {
     customer: cleanCustomerInput(body.customer),
     custom: cleanCustomInput(body.custom),
     items,
+    walls: cleanWallsInput(body.walls), // the walls the customer planned (checked later against the real product)
     zoneId: cleanText(body.zoneId, 60),
     promoCode: cleanPromoCode(body.promoCode),
   };
 }
 
-export async function placeOrder(db, { tenantId, customer, custom, items, zoneId, promoCode }) {
+export async function placeOrder(db, { tenantId, customer, custom, items, walls = [], zoneId, promoCode }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
   const counterRef = db.collection('counters').doc(tenantId);
   const orderRef = db.collection('orders').doc();
@@ -164,6 +168,9 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       item.selections = stripHidden(info.product, item.selections);
       info.totalQty += item.quantity;
     });
+
+    // The walls the customer planned: checked against the real products; what is saved comes from the product.
+    const savedWalls = buildWalls(walls, items, productInfo);
 
     // The shop's minimum / maximum per order, and the quantity price: both look at the TOTAL
     // of the product in this order (all colours and choices together).
@@ -302,6 +309,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
         ...(madeToOrder && !info.isPreorder ? { backorder: true } : {}),
         // which counted numbers this line took a unit from (needed to give them back on cancel/return)
         stockKeys,
+        ...(item.wallId ? { wallId: item.wallId } : {}), // this line is a colour of a planned wall
         options: choice.snapshot, // [{ id, label, type, value }] what the customer chose
         // Picture of what was chosen (for packing): the choice's own picture, else the product's.
         imageUrl: choice.imageUrl || product.imageUrl || '',
@@ -384,6 +392,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, zoneId
       customer: cleanCustomer,
       customFields, // [{ id, label, type, value }] answers to the shop's extra questions
       items: orderItems.map(({ shippingExtra, ...line }) => line),
+      ...(savedWalls.length ? { walls: savedWalls } : {}), // the planned walls: pieces + colours (picture for the team)
       subtotal: totals.subtotal,
       discount: totals.discount,
       promo: totals.promo, // { code, type, value, discount } or null

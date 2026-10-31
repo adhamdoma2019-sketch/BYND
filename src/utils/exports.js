@@ -3,6 +3,7 @@
 
 import { toCsv } from './csv.js';
 import { expectedCash } from './couriers.js';
+import { wallsToText } from './wallExport.js';
 
 const pick = (obj, language) => (obj && (obj[language] || obj.en)) || '';
 
@@ -53,6 +54,7 @@ export function ordersToCsv(orders, { language, t, includeCourierFee = false }) 
       { header: t('exports.city'), value: (o) => o.customer?.city || '' },
       { header: t('exports.address'), value: (o) => o.customer?.address },
       { header: t('exports.items'), value: itemsText },
+      { header: t('exports.wall'), value: (o) => wallsToText(o, language, t) },
       { header: t('exports.subtotal'), value: (o) => o.subtotal ?? '' },
       { header: t('exports.discount'), value: (o) => o.discount || 0 },
       { header: t('exports.promo'), value: (o) => o.promo?.code || '' },

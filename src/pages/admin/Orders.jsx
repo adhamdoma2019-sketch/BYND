@@ -16,6 +16,7 @@ import { formatPrice } from '../../utils/format';
 import { whatsappLink } from '../../utils/phone';
 import { optimizedImage } from '../../utils/images';
 import OptionSummary from '../../components/storefront/OptionSummary';
+import OrderWalls from '../../components/admin/OrderWalls';
 import { useAudit } from '../../hooks/useAudit';
 import { diffFields } from '../../utils/audit';
 import { canSeeCosts, canCancelOrders, canManageCouriers } from '../../utils/roles';
@@ -604,6 +605,7 @@ export default function Orders() {
                             <span>{formatPrice(item.subtotal, language)}</span>
                           </div>
                         ))}
+                        <OrderWalls order={order} language={language} />
                         {(order.discount > 0 || order.shipping) && (
                           <div className="mt-2 space-y-0.5 border-t border-ink/10 pt-2 text-sm">
                             <div className="flex justify-between text-ink-soft">

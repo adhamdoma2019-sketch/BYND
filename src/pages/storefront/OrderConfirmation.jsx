@@ -2,6 +2,7 @@ import { useLocation, useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { formatPrice } from '../../utils/format';
+import WallPicture from '../../components/storefront/WallPicture';
 
 export default function OrderConfirmation() {
   const { slug } = useParams();
@@ -31,6 +32,13 @@ export default function OrderConfirmation() {
         <p className="mt-1 text-ink-soft">
           {t('checkout.total')}: {formatPrice(state.totalAmount, language)}
         </p>
+      )}
+      {(state?.walls || []).length > 0 && (
+        <div className="mt-4 flex flex-wrap justify-center gap-4" data-thankyou-walls>
+          {state.walls.map((w) => (
+            <WallPicture key={w.id} cells={w.cells} className="h-28 w-28" label={t('wall.title')} />
+          ))}
+        </div>
       )}
       <Link
         to={`/store/${slug}/track`}

@@ -13,6 +13,8 @@ const LABELS = {
     phone: 'Phone',
     address: 'Address',
     items: 'Items',
+    wall: 'Wall',
+    pieces: 'pieces',
     notes: 'Notes',
     open: 'Open orders',
     test: 'Test message: order alerts from {shop} are working.',
@@ -25,6 +27,8 @@ const LABELS = {
     phone: 'الهاتف',
     address: 'العنوان',
     items: 'المنتجات',
+    wall: 'جدار',
+    pieces: 'قطعة',
     notes: 'ملاحظات',
     open: 'فتح الطلبات',
     test: 'رسالة تجريبية: تنبيهات الطلبات من {shop} تعمل بنجاح.',
@@ -77,6 +81,11 @@ export function buildOrderMessage({ order, orderNumberLabel, adminUrl }, lang = 
             : o.value;
       lines.push(`    ${escapeHtml(pick(o.label, lang))}: ${escapeHtml(value)}`);
     }
+  }
+  // walls the customer planned: how many pieces and the mix of colours (the picture is in the admin)
+  for (const w of order.walls || []) {
+    const mix = (w.colors || []).map((c) => `${c.count} × ${pick(c.label, lang)}`).join(', ');
+    lines.push(`🧱 ${escapeHtml(L.wall)}: ${escapeHtml(w.count)} ${escapeHtml(L.pieces)}${mix ? ` — ${escapeHtml(mix)}` : ''}`);
   }
   for (const f of order.customFields || []) {
     const value =
