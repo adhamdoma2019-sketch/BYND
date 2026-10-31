@@ -81,6 +81,8 @@ export function productFields(data) {
     preorderStyle: usesMessage && data.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder',
     // Shown in the shop but can't be ordered yet (the server refuses orders for it too).
     comingSoon: data.comingSoon === true,
+    // "Wall designer" on the product page (update 27): the customer plans the layout, the pieces = the quantity.
+    wallDesigner: data.wallDesigner === true,
     options, // colors, activity, extension... (public)
     preorderMessage: {
       en: usesMessage ? data.preorderMessageEn || '' : '',

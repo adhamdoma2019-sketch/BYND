@@ -279,7 +279,9 @@
     "tierErr_price": "Each price must be lower than the step before it (the first one lower than the normal price).",
     "tierErr_order": "Two price steps start at the same quantity. Use a different quantity for each.",
     "tierErr_many": "Too many quantity prices (6 at most).",
-    "qtyPricesList": "Quantity prices: {{steps}}"
+    "qtyPricesList": "Quantity prices: {{steps}}",
+    "wallDesignerCheck": "Wall designer: the customer plans a layout of pieces",
+    "wallDesignerHelp": "On the product page the customer taps to build a wall of pieces instead of typing a quantity. The number of pieces is the quantity, so your quantity prices apply. Up to 60 pieces."
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -1013,5 +1015,22 @@
     "dayPaidOut": "Paid to the courier that day",
     "loadError": "The couriers could not be loaded. This usually means the latest security rules have not been published in Firebase yet (Firestore Database > Rules). Publish them, then try again.",
     "retry": "Try again"
+  },
+  "wall": {
+    "title": "Plan your wall",
+    "hint": "Tap a + to add a piece next to the others. Tap a piece to take it away. The number of pieces is your quantity.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit",
+    "addHere": "Add a piece here",
+    "removeThis": "Remove this piece",
+    "cannotRemoveMin": "This is the smallest wall you can order.",
+    "cannotRemoveSplit": "Taking this piece away would split the wall in two. Remove a piece at the edge instead.",
+    "count": "Number of pieces",
+    "fewer": "One piece fewer",
+    "more": "One piece more",
+    "random": "Random",
+    "clear": "Delete all",
+    "maxNote": "Up to {{n}} pieces in one wall."
   }
 }

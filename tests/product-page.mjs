@@ -126,4 +126,17 @@ v = view(cond, { sport: 'cyc', xrun: 'k10' });
 assert.match(v.html, /Cycling extra/); assert.doesNotMatch(v.html, /Running extra/);
 ok('product page: an option appears only when the choice it depends on is picked (and the other sport\'s option stays hidden)');
 
+// ---- update 27: wall designer ----
+const wallBase = { ...base, options: [], countedOptions: [], optionStock: {}, stock: 100 };
+v = view(wallBase);
+assert.doesNotMatch(v.html, /data-wall-designer/); assert.match(v.html, /aria-label="storefront\.quantity"/);   // switch off = the normal quantity box
+v = view({ ...wallBase, wallDesigner: true });
+assert.match(v.html, /data-wall-designer/); assert.match(v.html, /wall\.title/);
+assert.doesNotMatch(v.html, /aria-label="storefront\.quantity"/);                                      // the designer replaces the quantity box
+assert.equal((v.html.match(/data-cell/g) || []).length, 1); assert.ok((v.html.match(/data-spot/g) || []).length >= 6);
+v = view({ ...wallBase, wallDesigner: true, minQty: 5 });
+assert.equal((v.html.match(/data-cell/g) || []).length, 5);                                              // the wall starts at the shop's minimum
+assert.match(v.html, /wall\.maxNote\[60\]/);
+ok('product page: the wall designer replaces the quantity box only when switched on; the wall starts at the shop minimum; at most 60 pieces');
+
 console.log(`\nALL ${n} PRODUCT-PAGE CHECKS PASSED`);

@@ -40,6 +40,7 @@ const emptyForm = {
   descriptionAr: '',
   price: '',
   priceTiers: [], // quantity prices: rows of { minQty, price } (typed as text)
+  wallDesigner: false, // the customer plans a wall of pieces on the product page (number of pieces = quantity)
   tierGroupOption: '', // '' = price steps count all pieces together; else the id of a colour / choice option counted separately
   minQty: '', // optional: fewest pieces per order
   maxQty: '', // optional: most pieces per order
@@ -151,6 +152,7 @@ export default function Products() {
       descriptionAr: p.description?.ar || '',
       price: p.price,
       priceTiers: (p.priceTiers || []).map((x) => ({ minQty: String(x.minQty), price: String(x.price) })),
+      wallDesigner: p.wallDesigner === true,
       tierGroupOption: p.tierGroupOption || '',
       minQty: p.minQty > 0 ? String(p.minQty) : '',
       maxQty: p.maxQty > 0 ? String(p.maxQty) : '',
@@ -257,6 +259,7 @@ export default function Products() {
             backorder: original?.backorder === true,
             countedBy: (original?.countedOptions || []).join(','),
             comingSoon: original?.comingSoon === true,
+            wallDesigner: original?.wallDesigner === true,
             sku: original?.sku || '',
             shippingExtra: original?.shippingExtra || 0,
             options: (original?.options || []).length,
@@ -276,6 +279,7 @@ export default function Products() {
               .map((o) => o.id)
               .join(','),
             comingSoon: form.comingSoon,
+            wallDesigner: form.wallDesigner === true,
             sku: form.sku || '',
             shippingExtra: Number(form.shippingExtra) || 0,
             options: form.options.length,
@@ -824,6 +828,18 @@ export default function Products() {
               />
               {t('products.comingSoonCheck')}
             </label>
+          </div>
+
+          <div className="col-span-full rounded border border-ink/10 bg-white p-3">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={form.wallDesigner}
+                onChange={(e) => setForm({ ...form, wallDesigner: e.target.checked })}
+              />
+              {t('products.wallDesignerCheck')}
+            </label>
+            <p className="mt-1 text-xs text-ink-faint">{t('products.wallDesignerHelp')}</p>
           </div>
 
           {editingId !== 'new' && (

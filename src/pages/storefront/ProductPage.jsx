@@ -11,6 +11,8 @@ import CartDrawer from '../../components/storefront/CartDrawer';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
+import WallDesigner from '../../components/storefront/WallDesigner';
+import { WALL_MAX } from '../../utils/wallLayout';
 import { resolveChoice, cleanSelections, textKey, visibleOptions, stripHidden } from '../../utils/productOptions';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { usePageMeta } from '../../utils/usePageMeta';
@@ -191,7 +193,8 @@ export default function ProductPage() {
   const inCart = productCountInCart(cartItems, product.id);
   const minAdd = Math.max(1, limits.min - inCart); // fewest pieces to add now
   const baseMax = isPreorder || backorder ? MAX_ORDER_QTY : Math.min(left ?? stock, MAX_ORDER_QTY);
-  const maxQty = Math.min(baseMax, Math.max(limits.max - inCart, 1));
+  const wallOn = product.wallDesigner === true; // the customer plans a wall: the number of pieces = the quantity
+  const maxQty = Math.min(baseMax, Math.max(limits.max - inCart, 1), wallOn ? WALL_MAX : Infinity);
   const qty = Math.max(minAdd, Math.min(quantity, Math.max(maxQty, 1)));
   // Counted stock is too low for the shop's minimum order: can't be bought right now.
   const belowMinStock = !isPreorder && !backorder && baseMax > 0 && maxQty < minAdd;
@@ -462,6 +465,18 @@ export default function ProductPage() {
 
             {canBuy && (
               <div className="mt-8">
+                {wallOn ? (
+                  <WallDesigner
+                    quantity={qty}
+                    min={minAdd}
+                    max={maxQty}
+                    onQuantity={(n) => {
+                      setQtyDraft(null);
+                      setQuantity(n);
+                    }}
+                  />
+                ) : (
+                  <>
                 <p className="text-sm text-ink-soft">
                   {t('storefront.quantity')}
                 </p>
@@ -504,6 +519,8 @@ export default function ProductPage() {
                     +
                   </button>
                 </div>
+                  </>
+                )}
                 {limits.min > 1 && (
                   <p className="mt-2 text-xs text-ink-soft">{t('storefront.minOrderNote', { n: limits.min })}</p>
                 )}

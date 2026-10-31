@@ -85,7 +85,7 @@ export function applyDraft(tenant, draft) {
 // stay as saved, and private costs are never part of a product record at all.
 export const PRODUCT_DRAFT_KEYS = [
   'name', 'description', 'price', 'priceTiers', 'tierGroupOption', 'minQty', 'maxQty', 'shippingExtra', 'imageUrl', 'images',
-  'relatedIds', 'isPreorder', 'backorder', 'countedOptions', 'preorderStyle', 'comingSoon', 'options',
+  'relatedIds', 'isPreorder', 'backorder', 'countedOptions', 'preorderStyle', 'comingSoon', 'wallDesigner', 'options',
   'preorderMessage',
 ];
 
