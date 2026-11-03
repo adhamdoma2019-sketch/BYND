@@ -16,15 +16,8 @@ import {
   cleanCustomInput,
   applyCustomFields,
 } from './fields.js';
-import { computeTotals } from './pricing.js';
-import {
-  SAFETY_MAX_QTY,
-  checkTotalQty,
-  groupKeyOf,
-  groupQuantities,
-  tierFor,
-  tierGroupOption,
-} from './quantityPrices.js';
+import { computeTotals, round2 } from './pricing.js';
+import { SAFETY_MAX_QTY, checkTotalQty, groupKeyOf, groupQuantities, tierFor, tierGroupOption, cleanPackage, packageAddition } from './quantityPrices.js';
 import { cleanSelections, selectionSignature, resolveSelections, stripHidden } from './options.js';
 import { cleanWallId, cleanWallsInput, buildWalls } from './wall.js';
 import {
@@ -192,10 +185,15 @@ export async function placeOrder(db, { tenantId, customer, custom, items, walls 
       // The quantity price: by default it looks at the TOTAL; a product can count each colour /
       // choice of one option separately ("3 or more of the SAME colour").
       info.groupOption = tierGroupOption(info.product);
-      info.groupQty = groupQuantities(
-        info.groupOption,
-        items.filter((i) => i.productId === productId)
-      );
+      const productItems = items.filter((i) => i.productId === productId);
+      info.groupQty = groupQuantities(info.groupOption, productItems);
+      // Package price ("every 3 pieces cost 500"): the exact share of each line (a product uses
+      // a package price OR price steps; with a package the steps are ignored).
+      info.pkg = cleanPackage(info.product);
+      if (info.pkg) {
+        const shares = packageAddition(info.pkg, Number(info.product.price) || 0, info.groupOption, [], productItems);
+        info.pkgShare = new Map(productItems.map((it, k) => [it, shares[k]]));
+      }
     }
 
     // How each product sells:
@@ -280,9 +278,13 @@ export async function placeOrder(db, { tenantId, customer, custom, items, walls 
       // Price of one piece: the normal price, or the quantity price when the order is big enough,
       // plus what the customer's choices add (extension plate, gold finish...).
       // (the step is looked up for this line's group: the whole product, or this colour / choice)
-      const tier = tierFor(product, info.groupQty.get(groupKeyOf(info.groupOption, item.selections)) || 0);
+      const share = info.pkgShare ? info.pkgShare.get(item) : null;
+      const tier = share ? null : tierFor(product, info.groupQty.get(groupKeyOf(info.groupOption, item.selections)) || 0);
       const basePrice = tier ? tier.price : Number(product.price) || 0;
-      const unitPrice = basePrice + choice.priceDelta;
+      // Package price: the line has an EXACT total (its share of the packages + the extras per piece);
+      // the price per piece is only that total divided by the pieces (for display).
+      const lineTotal = share ? round2(share.baseTotal + choice.priceDelta * item.quantity) : null;
+      const unitPrice = share ? round2(lineTotal / item.quantity) : basePrice + choice.priceDelta;
 
       // Cost snapshot: copied into the order so later cost changes never
       // rewrite past profit. null means "no cost was set for this product".
@@ -301,7 +303,10 @@ export async function placeOrder(db, { tenantId, customer, custom, items, walls 
         quantity: item.quantity,
         unitPrice,
         unitCost,
-        subtotal: unitPrice * item.quantity,
+        subtotal: share ? lineTotal : unitPrice * item.quantity,
+        // Package price: the exact total of the line, and the package size when a full package applied.
+        ...(share ? { lineTotal } : {}),
+        ...(share && share.packages > 0 ? { packageSize: info.pkg.qty } : {}),
         // Which quantity price was used (the "from X pieces" step), only when one applied.
         ...(tier ? { tierMinQty: tier.minQty } : {}),
         isPreorder: madeToOrder,
@@ -320,7 +325,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, walls 
     // Subtotal, promo discount, shipping and total (same maths as the preview).
     const totals = computeTotals({
       tenant,
-      lines: orderItems.map((l) => ({ ...l, tiered: l.tierMinQty > 0 })),
+      lines: orderItems.map((l) => ({ ...l, tiered: l.tierMinQty > 0 || l.packageSize > 0 })),
       zoneId,
       promo: promoSnap && promoSnap.exists ? promoSnap.data() : null,
       promoCode,

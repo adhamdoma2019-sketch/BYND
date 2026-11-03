@@ -1,3 +1,4 @@
+import { lineAmount } from '../../utils/quantityPrices';
 import { wallPictures } from '../../utils/wallOrder';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -230,8 +231,11 @@ export default function Checkout() {
               {item.tierMinQty > 0 && (
                 <span className="mt-0.5 block text-xs text-sage-dark">{t('storefront.qtyPriceApplied')}</span>
               )}
+              {item.packageSize > 0 && (
+                <span className="mt-0.5 block text-xs text-sage-dark">{t('storefront.pkgApplied')}</span>
+              )}
             </span>
-            <span>{money(item.unitPrice * item.quantity)}</span>
+            <span>{money(lineAmount(item))}</span>
           </div>
           );
         })}

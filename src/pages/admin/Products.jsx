@@ -20,7 +20,7 @@ import { formatPrice } from '../../utils/format';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { tracksStock } from '../../utils/storefront';
 import { COUNTABLE_TYPES, MAX_COUNTED, countedRows, isOptionCounted } from '../../utils/optionStock';
-import { MAX_TIERS, SAFETY_MAX_QTY, cleanTiers, tiersProblem, savingPercent } from '../../utils/quantityPrices';
+import { MAX_TIERS, SAFETY_MAX_QTY, cleanPackage, cleanTiers, packageProblem, tiersProblem, savingPercent } from '../../utils/quantityPrices';
 import {
   listProducts,
   listProductCostDetails,
@@ -40,6 +40,8 @@ const emptyForm = {
   descriptionAr: '',
   price: '',
   priceTiers: [], // quantity prices: rows of { minQty, price } (typed as text)
+  packageQty: '', // package price: pieces in a package (typed as text), '' = none
+  packagePrice: '', // package price: what a full package costs (typed as text)
   wallDesigner: false, // the customer plans a wall of pieces on the product page (number of pieces = quantity)
   tierGroupOption: '', // '' = price steps count all pieces together; else the id of a colour / choice option counted separately
   minQty: '', // optional: fewest pieces per order
@@ -152,6 +154,8 @@ export default function Products() {
       descriptionAr: p.description?.ar || '',
       price: p.price,
       priceTiers: (p.priceTiers || []).map((x) => ({ minQty: String(x.minQty), price: String(x.price) })),
+      packageQty: p.packageQty > 0 ? String(p.packageQty) : '',
+      packagePrice: p.packageQty > 0 && p.packagePrice > 0 ? String(p.packagePrice) : '',
       wallDesigner: p.wallDesigner === true,
       tierGroupOption: p.tierGroupOption || '',
       minQty: p.minQty > 0 ? String(p.minQty) : '',
@@ -200,6 +204,16 @@ export default function Products() {
     const tierProblem = tiersProblem(form.priceTiers, form.price);
     if (tierProblem) {
       setError(t(`products.tierErr_${tierProblem}`));
+      return;
+    }
+    // Package price ("every 3 pieces cost 500"): complete, whole pieces, cheaper than buying one by one, and not together with price steps.
+    const pkgProblem = packageProblem(form.packageQty, form.packagePrice, form.price);
+    if (pkgProblem) {
+      setError(t(`products.packageErr_${pkgProblem}`));
+      return;
+    }
+    if (form.packageQty !== '' && form.priceTiers.some((r) => String(r.minQty).trim() !== '' || String(r.price).trim() !== '')) {
+      setError(t('products.packageErr_both'));
       return;
     }
     const minNum = form.minQty === '' ? 0 : Number(form.minQty);
@@ -251,6 +265,7 @@ export default function Products() {
             name: original?.name?.en,
             price: original?.price,
             qtyPrices: (original?.priceTiers || []).map((x) => `${x.minQty}:${x.price}`).join(','),
+            package: original?.packageQty > 0 ? `${original.packageQty}:${original.packagePrice}` : '',
             minQty: original?.minQty || 0,
             maxQty: original?.maxQty || 0,
             cost: costs[editingId] ?? '',
@@ -268,6 +283,9 @@ export default function Products() {
             name: form.nameEn,
             price: Number(form.price),
             qtyPrices: cleanTiers(form.priceTiers, form.price).map((x) => `${x.minQty}:${x.price}`).join(','),
+            package: cleanPackage({ packageQty: form.packageQty, packagePrice: form.packagePrice, price: form.price })
+              ? `${Number(form.packageQty)}:${Number(form.packagePrice)}`
+              : '',
             minQty: minNum,
             maxQty: maxNum,
             cost: form.costPrice === '' ? '' : Number(form.costPrice),
@@ -534,8 +552,53 @@ export default function Products() {
               </button>
             )}
 
-            {/* How the pieces are counted for the price steps: all together, or separately for each colour / choice */}
-            {form.priceTiers.length > 0 && (
+            {/* Package price: a fixed price for a full package ("3 pieces for 500"); used instead of price steps */}
+            <div className="mt-5 border-t border-ink/10 pt-4" data-package-form>
+              <p className="font-medium text-ink">{t('products.packageTitle')}</p>
+              <p className="mt-1 text-xs text-ink-faint">{t('products.packageHelp')}</p>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <label className="text-xs">
+                  {t('products.packageQty')}
+                  <input
+                    type="number"
+                    min="2"
+                    inputMode="numeric"
+                    value={form.packageQty}
+                    onChange={(e) => setForm({ ...form, packageQty: e.target.value })}
+                    className="mt-1 block w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                  />
+                </label>
+                <label className="text-xs">
+                  {t('products.packagePrice')}
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="decimal"
+                    value={form.packagePrice}
+                    onChange={(e) => setForm({ ...form, packagePrice: e.target.value })}
+                    className="mt-1 block w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                  />
+                </label>
+              </div>
+              {(() => {
+                const pkg = cleanPackage({ packageQty: form.packageQty, packagePrice: form.packagePrice, price: form.price });
+                if (!pkg) return null;
+                const each = pkg.price / pkg.qty;
+                const cost = form.costPrice === '' ? null : Number(form.costPrice);
+                return (
+                  <p className="mt-2 text-xs text-ink-faint" data-package-summary>
+                    {t('products.packageSummary', {
+                      saving: Math.round((pkg.qty * Number(form.price) - pkg.price) * 100) / 100,
+                      each: Math.round(each * 100) / 100,
+                    })}
+                    {cost !== null && Number.isFinite(cost) && ` ${t('products.packageProfit', { profit: Math.round((each - cost) * 100) / 100 })}`}
+                  </p>
+                );
+              })()}
+            </div>
+
+            {/* How the pieces are counted for the price steps / the package: all together, or separately for each colour / choice */}
+            {(form.priceTiers.length > 0 || form.packageQty !== '') && (
               <label className="mt-4 block text-xs">
                 {t('products.tierGroup')}
                 <select
@@ -927,6 +990,11 @@ export default function Products() {
                     })}
                   </p>
                   {isOptionCounted(p) && <CountedNumbers product={p} language={language} />}
+                  {p.packageQty > 0 && p.packagePrice > 0 && (
+                    <p className="text-xs text-sage-dark">
+                      {t('products.packageList', { n: p.packageQty, price: formatPrice(p.packagePrice, language) })}
+                    </p>
+                  )}
                   {(p.priceTiers || []).length > 0 && (
                     <p className="text-xs text-sage-dark">
                       {t('products.qtyPricesList', {

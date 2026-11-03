@@ -4,6 +4,7 @@ import { keyOf } from '../../context/CartContext';
 import OptionSummary from './OptionSummary';
 import WallPicture from './WallPicture';
 import { formatPrice } from '../../utils/format';
+import { lineAmount } from '../../utils/quantityPrices';
 import { wallPieces, wallMoney } from '../../utils/wallGroups';
 
 // One planned wall in the cart or at checkout: picture, the colour lines, the total.
@@ -32,7 +33,9 @@ export default function WallCartCard({ lines, onRemove }) {
                   {col?.color && (
                     <span className="inline-block h-3 w-3 rounded-full border border-ink/30" style={{ backgroundColor: col.color }} />
                   )}
-                  {t('wall.cartLine', { n: l.quantity, name: colName, price: formatPrice(l.unitPrice, language) })}
+                  {l.packageSize > 0
+                    ? t('wall.cartLinePackage', { n: l.quantity, name: colName, price: formatPrice(lineAmount(l), language) })
+                    : t('wall.cartLine', { n: l.quantity, name: colName, price: formatPrice(l.unitPrice, language) })}
                 </li>
               );
             })}

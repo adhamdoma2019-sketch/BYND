@@ -157,4 +157,23 @@ v = view({ ...stockedC, optionStock: { 'col.blk': 0, 'col.blu': 0 }, stock: 0 },
 assert.doesNotMatch(v.html, /data-wall-designer/);
 ok('product page: a coloured wall paints with the picked colour, shows the mix, the limit is the stock of all colours together');
 
+// ---- update 31: package price ("every 3 pieces cost 500") ----
+const pk = { ...base, price: 200, options: [col], countedOptions: [], optionStock: {}, stock: 100, packageQty: 3, packagePrice: 500 };
+v = view(pk);
+assert.match(v.html, /data-package/); assert.match(v.html, /storefront\.pkgLine\[3\]/); assert.match(v.html, /storefront\.pkgSave/);
+assert.match(v.html, /storefront\.pkgNow\[1\]/); assert.match(v.html, /data-package-hint/); assert.match(v.html, /storefront\.pkgMore\[2\]/); // 1 piece: 2 more complete a package
+assert.doesNotMatch(v.html, /storefront\.qtyPricesTitle/);                       // a package replaces the price table
+v = view({ ...pk, minQty: 3 });
+assert.match(v.html, /storefront\.pkgNow\[3\]/); assert.doesNotMatch(v.html, /data-package-hint/); // a full package: nothing missing
+v = view({ ...pk, tierGroupOption: 'col' }, { col: 'black' });
+assert.match(v.html, /storefront\.pkgLineSame\[3\]/); assert.match(v.html, /storefront\.pkgHintSame/);
+v = view({ ...pk, packageQty: 0, packagePrice: 0 }); assert.doesNotMatch(v.html, /data-package/);
+v = view({ ...pk, packagePrice: 650 }); assert.doesNotMatch(v.html, /data-package/);   // dearer than one by one: ignored
+ok('product page: the package box (3 pieces for 500, what you save, what is missing) shows only for a valid package and replaces the price table');
+// a coloured wall with a package price: each colour is counted by itself, the page says what the picked colour still needs
+const wallPk = { ...wallC, price: 200, packageQty: 3, packagePrice: 500, tierGroupOption: 'col' };
+v = view(wallPk, { col: 'blk' });
+assert.match(v.html, /data-wall-designer/); assert.match(v.html, /data-package/); assert.match(v.html, /storefront\.pkgMoreColour\[2\]/);
+ok('product page: a coloured wall with a package price renders and says how many more of the colour complete a package');
+
 console.log(`\nALL ${n} PRODUCT-PAGE CHECKS PASSED`);

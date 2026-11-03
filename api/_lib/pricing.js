@@ -11,6 +11,12 @@ import { OrderError } from './errors.js';
 
 export const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
+// What one line costs: its exact total when it has one (package prices), else price x quantity.
+const lineMoney = (l) =>
+  l.lineTotal !== undefined && l.lineTotal !== null && Number.isFinite(Number(l.lineTotal))
+    ? round2(l.lineTotal)
+    : round2(Number(l.unitPrice) * Number(l.quantity));
+
 const todayUtc = (now) => now.toISOString().slice(0, 10);
 
 // Checks a promo code document and returns the discount, or throws a
@@ -60,12 +66,12 @@ export function evaluatePromo(promo, { tenantId, subtotal, eligibleSubtotal, now
   return { code: promo.code, type: promo.type, value, discount: round2(discount) };
 }
 
-// lines: [{ unitPrice, quantity, shippingExtra, tiered }]   (tiered = a quantity price applies to this line)
+// lines: [{ unitPrice, lineTotal?, quantity, shippingExtra, tiered }]   (tiered = a quantity price or a package price applies to this line)
 // strict = true for real orders (problems throw); false for the checkout
 // preview (problems are reported but totals are still returned).
 export function computeTotals({ tenant, lines, zoneId, promo, promoCode, strict }) {
   const subtotal = round2(
-    lines.reduce((sum, l) => sum + Number(l.unitPrice) * Number(l.quantity), 0)
+    lines.reduce((sum, l) => sum + lineMoney(l), 0)
   );
 
   // ----- promo code -----
@@ -75,7 +81,7 @@ export function computeTotals({ tenant, lines, zoneId, promo, promoCode, strict 
     ? subtotal
     : round2(
         lines.reduce(
-          (sum, l) => (l.tiered ? sum : sum + Number(l.unitPrice) * Number(l.quantity)),
+          (sum, l) => (l.tiered ? sum : sum + lineMoney(l)),
           0
         )
       );

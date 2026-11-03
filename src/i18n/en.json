@@ -64,7 +64,20 @@
     "qtyPriceApplied": "Quantity price",
     "minOrderNote": "Minimum order: {{n}} pieces of this product.",
     "maxOrderNote": "Maximum per order: {{n}} pieces.",
-    "minNotInStock": "This product is sold from {{n}} pieces, and there is not enough in stock right now."
+    "minNotInStock": "This product is sold from {{n}} pieces, and there is not enough in stock right now.",
+    "pkgTitle": "Package price",
+    "pkgLine": "Any {{n}} pieces for {{price}}",
+    "pkgLineSame": "Any {{n}} pieces of the same {{option}} for {{price}}",
+    "pkgSave": "Save {{price}}",
+    "pkgNow": "{{n}} pieces: {{price}}",
+    "pkgMore": "Add {{n}} more to complete another package of {{pkg}} for {{price}}.",
+    "pkgMoreSame": "Add {{n}} more of the same {{option}} to complete another package of {{pkg}} for {{price}}.",
+    "pkgMoreColour": "Add {{n}} more {{name}} to complete another package of {{pkg}} for {{price}}.",
+    "pkgHint": "Every full package costs the package price. Pieces that do not complete a package cost the normal price each.",
+    "pkgHintSame": "The package needs pieces of the same {{option}}. Pieces with a different {{option}} are counted separately, and pieces that do not complete a package cost the normal price each.",
+    "pkgApplied": "Package price",
+    "pkgHintCart": "Add {{n}} more to complete a package of {{pkg}} for {{price}}.",
+    "pkgHintCartSame": "Add {{n}} more of the same {{option}} to complete a package of {{pkg}} for {{price}}."
   },
   "checkout": {
     "title": "Checkout",
@@ -281,7 +294,19 @@
     "tierErr_many": "Too many quantity prices (6 at most).",
     "qtyPricesList": "Quantity prices: {{steps}}",
     "wallDesignerCheck": "Wall designer: the customer plans a layout of pieces",
-    "wallDesignerHelp": "On the product page the customer taps to build a wall of pieces instead of typing a quantity. The number of pieces is the quantity, so your quantity prices apply. Up to 60 pieces."
+    "wallDesignerHelp": "On the product page the customer taps to build a wall of pieces instead of typing a quantity. The number of pieces is the quantity, so your quantity prices apply. Up to 60 pieces.",
+    "packageTitle": "Package price (optional)",
+    "packageHelp": "A fixed price for a full package. Example: normal price 200, every 3 pieces cost 500 gives 1 = 200, 2 = 400, 3 = 500, 4 = 700, 6 = 1000. Pieces that do not complete a package cost the normal price. Use this OR quantity prices, not both. Below, you choose whether the pieces must be of the same colour.",
+    "packageQty": "Pieces in a package",
+    "packagePrice": "Price of a full package (EGP)",
+    "packageSummary": "Customers save {{saving}} on a full package (about {{each}} per piece).",
+    "packageProfit": "Profit per piece in a package: {{profit}}.",
+    "packageList": "Package price: every {{n}} pieces cost {{price}}",
+    "packageErr_incomplete": "Fill in both boxes of the package price (pieces and price), or leave both empty.",
+    "packageErr_qty": "The pieces in a package must be a whole number of 2 or more.",
+    "packageErr_price": "The package price must be a number, not below 0.",
+    "packageErr_notCheaper": "The package price must be lower than buying the same number of pieces one by one at the normal price.",
+    "packageErr_both": "Use a package price OR quantity prices, not both. Remove the price steps or empty the package boxes."
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -1042,6 +1067,7 @@
     "legendItem": "{{n}} × {{name}}",
     "total": "Total for this wall: {{price}}",
     "cartTitle": "Wall of {{n}} pieces",
-    "cartLine": "{{n}} × {{name}} — {{price}} each"
+    "cartLine": "{{n}} × {{name}} — {{price}} each",
+    "cartLinePackage": "{{n}} × {{name}} — {{price}}"
   }
 }

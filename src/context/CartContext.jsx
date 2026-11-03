@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { MAX_ORDER_QTY } from '../utils/constants';
 import { itemKey } from '../utils/productOptions';
-import { cleanTiers, orderLimits, tierGroupOption } from '../utils/quantityPrices';
-import { priceCartLines } from '../utils/cartPricing';
+import { cleanPackage, cleanTiers, orderLimits, tierGroupOption } from '../utils/quantityPrices';
+import { lineAmount, priceCartLines } from '../utils/cartPricing';
 
 // Older carts saved before options existed have no `key`; the product id works for them.
 export const keyOf = (item) => item.key || item.productId;
@@ -69,7 +69,8 @@ export function CartProvider({ slug, children }) {
           // For quantity prices: the normal price, what the choices add, the price steps.
           basePrice: Number(product.price) || 0,
           priceDelta: Number(choice.priceDelta) || 0,
-          tiers: cleanTiers(product.priceTiers, product.price),
+          tiers: cleanPackage(product) ? [] : cleanTiers(product.priceTiers, product.price),
+          pkg: cleanPackage(product), // package price ("every 3 pieces cost 500") or null
           tierGroup: tierGroupOption(product), // '' = all colours together; else the option counted separately
           minQty: orderLimits(product).min,
           quantity: Math.min(quantity, max),
@@ -119,7 +120,7 @@ export function CartProvider({ slug, children }) {
     setItems([]);
   }
 
-  const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+  const subtotal = items.reduce((sum, i) => sum + lineAmount(i), 0);
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (

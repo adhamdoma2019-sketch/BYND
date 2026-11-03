@@ -4,9 +4,17 @@
 // code changes, so the customer always sees what they will really pay.
 
 import { OrderError } from './errors.js';
-import { computeTotals } from './pricing.js';
+import { computeTotals, round2 } from './pricing.js';
 import { resolveSelections, stripHidden } from './options.js';
-import { checkTotalQty, groupKeyOf, groupQuantities, tierFor, tierGroupOption } from './quantityPrices.js';
+import {
+  checkTotalQty,
+  cleanPackage,
+  groupKeyOf,
+  groupQuantities,
+  packageAddition,
+  tierFor,
+  tierGroupOption,
+} from './quantityPrices.js';
 
 export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
@@ -78,6 +86,21 @@ export async function getQuote(db, { tenantId, items, zoneId, promoCode }) {
       groupOption,
       items.filter((i) => i.productId === item.productId)
     ).get(groupKeyOf(groupOption, item.selections));
+    // Package price ("every 3 pieces cost 500"): the exact share of this line (same maths as a real order).
+    const pkg = cleanPackage(product);
+    if (pkg) {
+      const productItems = items.filter((i) => i.productId === item.productId);
+      const shares = packageAddition(pkg, Number(product.price) || 0, groupOption, [], productItems);
+      const share = shares[productItems.indexOf(item)];
+      const lineTotal = round2(share.baseTotal + choice.priceDelta * item.quantity);
+      return {
+        unitPrice: round2(lineTotal / item.quantity),
+        lineTotal,
+        tiered: share.packages > 0,
+        quantity: item.quantity,
+        shippingExtra: Number(product.shippingExtra) || 0,
+      };
+    }
     const tier = tierFor(product, groupTotal || 0);
     return {
       unitPrice: (tier ? tier.price : Number(product.price) || 0) + choice.priceDelta,

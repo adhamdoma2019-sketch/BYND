@@ -133,3 +133,85 @@ export function groupQuantities(optionId, lines) {
   }
   return out;
 }
+
+// ----- Package price: "every N pieces cost P" (a fixed price for a full package) -----
+//
+// A product stores `packageQty` (N, a whole number of 2 or more) and `packagePrice` (P).
+// Example: normal price 200, package 3 for 500 -> 1 = 200, 2 = 400, 3 = 500, 4 = 700, 5 = 900, 6 = 1000.
+// Pieces that do not fill a package cost the normal price. The pieces are counted together or
+// separately for each choice of one option, exactly like the quantity prices (`tierGroupOption`).
+// A product uses EITHER price steps OR a package price: when a valid package is set the steps are ignored.
+// The package price is exact: the lines of a group always add up to the package total (see packageAddition).
+
+const cents = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+
+// The valid package of a product ({ qty, price }) or null. It must be cheaper than buying the same pieces one by one.
+export function cleanPackage(product) {
+  const qty = toNumber(product?.packageQty);
+  const price = toNumber(product?.packagePrice);
+  const base = Number(product?.price);
+  if (!Number.isInteger(qty) || qty < 2 || qty > SAFETY_MAX_QTY) return null;
+  if (!Number.isFinite(price) || price < 0 || !Number.isFinite(base) || !(price < qty * base)) return null;
+  return { qty, price: cents(price) };
+}
+
+// For the product form: what is wrong with the package the owner typed? '' = fine (or nothing typed).
+// Codes: 'incomplete' | 'qty' | 'price' | 'notCheaper'.
+export function packageProblem(qtyText, priceText, basePrice) {
+  const q = String(qtyText ?? '').trim();
+  const p = String(priceText ?? '').trim();
+  if (q === '' && p === '') return '';
+  if (q === '' || p === '') return 'incomplete';
+  const qty = Number(q);
+  const price = Number(p);
+  if (!Number.isInteger(qty) || qty < 2 || qty > SAFETY_MAX_QTY) return 'qty';
+  if (!Number.isFinite(price) || price < 0) return 'price';
+  if (!(price < qty * Number(basePrice))) return 'notCheaper';
+  return '';
+}
+
+// What `pieces` pieces cost (before the extras of the choices) when they are in ONE group.
+export function packageGroupTotal(pkg, basePrice, pieces) {
+  const n = Math.max(0, Math.floor(Number(pieces) || 0));
+  const packs = Math.floor(n / pkg.qty);
+  return cents(packs * pkg.price + (n - packs * pkg.qty) * (Number(basePrice) || 0));
+}
+
+// Packages and the pieces left over for `pieces` pieces of one group.
+export function packageProgress(pkg, pieces) {
+  const n = Math.max(0, Math.floor(Number(pieces) || 0));
+  const packages = Math.floor(n / pkg.qty);
+  const rest = n - packages * pkg.qty;
+  return { packages, rest, missing: rest === 0 ? 0 : pkg.qty - rest };
+}
+
+// What it costs to ADD `newLines` ([{ selections, quantity }]) to `existingLines` (the same product,
+// already in the cart; pass [] for a whole order). Returns, for each new line, { baseTotal, packages }:
+//   baseTotal = its share of the extra cost (before the choices' extras), `packages` = full packages
+//   in its group after adding. The shares of one group add up to EXACTLY the group's extra cost
+//   (cumulative rounding), so a package of 3 for 500 is always 500.00 and never 500.01.
+export function packageAddition(pkg, basePrice, groupOptionId, existingLines, newLines) {
+  const before = groupQuantities(groupOptionId, existingLines || []);
+  const adding = groupQuantities(groupOptionId, newLines);
+  const given = new Map(); // group -> pieces of the new lines already handed their share
+  return newLines.map((line) => {
+    const key = groupKeyOf(groupOptionId, line.selections);
+    const had = before.get(key) || 0;
+    const add = adding.get(key) || 0;
+    const extra = cents(packageGroupTotal(pkg, basePrice, had + add) - packageGroupTotal(pkg, basePrice, had));
+    const done = given.get(key) || 0;
+    const now = done + (Number(line.quantity) || 0);
+    given.set(key, now);
+    const share = add > 0 ? cents(cents((extra * now) / add) - cents((extra * done) / add)) : 0;
+    return { baseTotal: share, packages: Math.floor((had + add) / pkg.qty) };
+  });
+}
+
+// What a line costs: its exact total when it has one (package prices), else price x quantity.
+export function lineAmount(line) {
+  if (line && line.lineTotal !== undefined && line.lineTotal !== null && Number.isFinite(Number(line.lineTotal))) {
+    return cents(line.lineTotal);
+  }
+  return cents((Number(line?.unitPrice) || 0) * (Number(line?.quantity) || 0));
+}
+

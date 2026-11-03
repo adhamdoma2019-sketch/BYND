@@ -5,7 +5,7 @@
 // A wall with 3 black + 3 blue pieces is added to the cart as TWO lines (black x3, blue x3). The server, the stock
 // per colour and the quantity prices (also "the same colour offer") already work with lines like that.
 import { resolveChoice } from './productOptions.js';
-import { tierGroupOption, unitBasePrice } from './quantityPrices.js';
+import { cleanPackage, lineAmount, packageAddition, tierGroupOption, unitBasePrice } from './quantityPrices.js';
 import { groupCountInCart, productCountInCart } from './cartPricing.js';
 import { isOptionCounted, leftForSelections } from './optionStock.js';
 
@@ -79,23 +79,48 @@ export function wallLines({ product, selections, cells, cartItems = [], colorOpt
   const total = cells.length;
   const groupOption = tierGroupOption(product);
   const inCart = productCountInCart(cartItems, product.id);
-  const lines = colorOpt.values
-    .filter((v) => counts.has(v.id))
-    .map((v) => {
-      const quantity = counts.get(v.id);
-      const sel = { ...(selections || {}), [colorOpt.id]: v.id };
-      const choice = resolveChoice(product, sel);
-      // pieces that count together for the price step
-      const together = !groupOption
-        ? inCart + total
-        : groupCountInCart(cartItems, product.id, groupOption, sel) + (groupOption === colorOpt.id ? quantity : total);
-      const unitPrice = unitBasePrice(product, together) + choice.priceDelta;
-      return { colorId: v.id, quantity, selections: sel, choice, unitPrice };
-    });
+  const pkg = cleanPackage(product);
+  const colours = colorOpt.values.filter((v) => counts.has(v.id));
+  // Package price: the pieces of the wall are added to what the cart already holds of this product.
+  const shares = pkg
+    ? packageAddition(
+        pkg,
+        Number(product.price) || 0,
+        groupOption,
+        cartItems
+          .filter((i) => i.productId === product.id)
+          .map((i) => ({ selections: i.selections, quantity: i.quantity })),
+        colours.map((v) => ({ selections: { ...(selections || {}), [colorOpt.id]: v.id }, quantity: counts.get(v.id) }))
+      )
+    : null;
+  const lines = colours.map((v, idx) => {
+    const quantity = counts.get(v.id);
+    const sel = { ...(selections || {}), [colorOpt.id]: v.id };
+    const choice = resolveChoice(product, sel);
+    if (shares) {
+      // exact line total (its share of the packages + the colour's extra per piece)
+      const lineTotal = Math.round((shares[idx].baseTotal + choice.priceDelta * quantity) * 100) / 100;
+      return {
+        colorId: v.id,
+        quantity,
+        selections: sel,
+        choice,
+        lineTotal,
+        unitPrice: Math.round((lineTotal / quantity) * 100) / 100,
+        packageSize: shares[idx].packages > 0 ? pkg.qty : 0,
+      };
+    }
+    // pieces that count together for the price step
+    const together = !groupOption
+      ? inCart + total
+      : groupCountInCart(cartItems, product.id, groupOption, sel) + (groupOption === colorOpt.id ? quantity : total);
+    const unitPrice = unitBasePrice(product, together) + choice.priceDelta;
+    return { colorId: v.id, quantity, selections: sel, choice, unitPrice };
+  });
   return {
     lines,
     total,
-    subtotal: lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0),
+    subtotal: lines.reduce((s, l) => s + lineAmount(l), 0),
     missing: lines[0]?.choice.missing || [],
   };
 }

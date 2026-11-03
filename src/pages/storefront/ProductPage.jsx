@@ -22,8 +22,11 @@ import { productStatus, isBuyable } from '../../utils/storefront';
 import { isOptionCounted, countedOptions, leftForSelections, stockKey } from '../../utils/optionStock';
 import {
   SAFETY_MAX_QTY,
+  cleanPackage,
   cleanTiers,
   orderLimits,
+  packageAddition,
+  packageProgress,
   tierFor,
   tierGroupOption,
   unitBasePrice,
@@ -239,7 +242,9 @@ export default function ProductPage() {
   const pictures = [...new Set([product.imageUrl, ...(product.images || [])].filter(Boolean))];
   const shownImage = mainImage || pictures[0] || '';
   // Quantity price: the price of one piece depends on the total of this product (in the cart + now).
-  const tiers = cleanTiers(product.priceTiers, product.price);
+  // Package price ("every 3 pieces cost 500"): a product uses it OR price steps.
+  const pkg = cleanPackage(product);
+  const tiers = pkg ? [] : cleanTiers(product.priceTiers, product.price);
   // (a product can count each colour / choice of one option separately: then only pieces of the
   // SAME colour count together for the price step)
   const groupOption = tierGroupOption(product);
@@ -249,8 +254,20 @@ export default function ProductPage() {
     '';
   const groupInCart = groupOption ? groupCountInCart(cartItems, product.id, groupOption, selections) : inCart;
   const totalNow = groupInCart + qty;
-  const activeTier = tierFor(product, totalNow);
-  const unitPrice = unitBasePrice(product, totalNow) + choice.priceDelta;
+  const activeTier = pkg ? null : tierFor(product, totalNow);
+  const unitPrice = (pkg ? Number(product.price) || 0 : unitBasePrice(product, totalNow)) + choice.priceDelta;
+  // What adding these pieces costs with the package price (exact), and where the customer stands.
+  const pkgShare = pkg
+    ? packageAddition(
+        pkg,
+        Number(product.price) || 0,
+        groupOption,
+        cartItems.filter((i) => i.productId === product.id).map((i) => ({ selections: i.selections, quantity: i.quantity })),
+        [{ selections, quantity: qty }]
+      )[0]
+    : null;
+  const pkgTotal = pkg ? Math.round((pkgShare.baseTotal + choice.priceDelta * qty) * 100) / 100 : null;
+  const pkgProg = pkg ? packageProgress(pkg, totalNow) : null;
   const normalUnitPrice = (Number(product.price) || 0) + choice.priceDelta;
   const missingIds = new Set(choice.missing.map((o) => o.id));
   // only the options whose "show only when" rule is met (a hidden option is not asked, not charged, not sent)
@@ -266,7 +283,22 @@ export default function ProductPage() {
   const wall = wallColorOpt
     ? wallLines({ product, selections, cells: wallNow, cartItems, colorOpt: wallColorOpt })
     : null;
-  const wallTotal = wall ? wall.subtotal : unitPrice * qty;
+  const wallTotal = wall ? wall.subtotal : pkg ? pkgTotal : unitPrice * qty;
+  // Package price on a coloured wall: each colour is counted by itself, so say what each colour still needs.
+  const pkgColourHints =
+    pkg && wall && groupOption && groupOption === wallColorOpt?.id
+      ? wall.lines
+          .map((ln) => {
+            const col = (ln.choice.labels || []).find((o) => o.type === 'color');
+            const name = col ? (typeof col.value === 'object' ? col.value[language] || col.value.en : col.value) : '';
+            const missing = packageProgress(
+              pkg,
+              groupCountInCart(cartItems, product.id, groupOption, ln.selections) + ln.quantity
+            ).missing;
+            return { name, missing };
+          })
+          .filter((h) => h.missing > 0)
+      : null;
 
   const buttonLabel = comingSoon
     ? t('storefront.comingSoon')
@@ -385,6 +417,61 @@ export default function ProductPage() {
                 </span>
               )}
             </p>
+
+            {pkg && (
+              <div className="mt-4 rounded-md border border-ink/10 p-3" data-package>
+                <p className="text-sm font-medium">{t('storefront.pkgTitle')}</p>
+                <button
+                  type="button"
+                  disabled={!canBuy || pkg.qty - (groupInCart % pkg.qty) > maxQty}
+                  onClick={() => {
+                    setQtyDraft(null);
+                    setQuantity(Math.max(pkg.qty - (groupInCart % pkg.qty), minAdd, 1));
+                  }}
+                  className={
+                    'mt-2 flex w-full items-center justify-between gap-3 px-2 py-2 text-start text-sm disabled:cursor-default ' +
+                    (pkgProg.packages > 0 ? 'bg-brass/10 font-medium' : 'hover:bg-paper-soft')
+                  }
+                >
+                  <span>
+                    {groupOption
+                      ? t('storefront.pkgLineSame', { n: pkg.qty, option: groupLabel.toLowerCase(), price: formatPrice(pkg.price, language) })
+                      : t('storefront.pkgLine', { n: pkg.qty, price: formatPrice(pkg.price, language) })}
+                  </span>
+                  {pkg.qty * (Number(product.price) || 0) > pkg.price && (
+                    <span className="rounded bg-sage/20 px-1.5 py-0.5 text-xs text-sage-dark">
+                      {t('storefront.pkgSave', { price: formatPrice(pkg.qty * (Number(product.price) || 0) - pkg.price, language) })}
+                    </span>
+                  )}
+                </button>
+                <p className="mt-2 text-sm">{t('storefront.pkgNow', { n: qty, price: formatPrice(wall ? wallTotal : pkgTotal, language) })}</p>
+                {pkgColourHints &&
+                  pkgColourHints.map((h) => (
+                    <p key={h.name} className="mt-1 text-xs text-brass-dark" data-package-hint>
+                      {t('storefront.pkgMoreColour', { n: h.missing, name: h.name, pkg: pkg.qty, price: formatPrice(pkg.price, language) })}
+                    </p>
+                  ))}
+                {!pkgColourHints && pkgProg.missing > 0 && (
+                  <p className="mt-1 text-xs text-brass-dark" data-package-hint>
+                    {groupOption
+                      ? t('storefront.pkgMoreSame', { n: pkgProg.missing, option: groupLabel.toLowerCase(), pkg: pkg.qty, price: formatPrice(pkg.price, language) })
+                      : t('storefront.pkgMore', { n: pkgProg.missing, pkg: pkg.qty, price: formatPrice(pkg.price, language) })}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-ink-faint">
+                  {groupOption
+                    ? t('storefront.pkgHintSame', { option: groupLabel.toLowerCase() })
+                    : t('storefront.pkgHint')}
+                </p>
+                {groupInCart > 0 && (
+                  <p className="mt-1 text-xs text-ink-soft">
+                    {groupOption
+                      ? t('storefront.qtyInCartSame', { n: groupInCart, option: groupLabel.toLowerCase() })
+                      : t('storefront.qtyInCart', { n: groupInCart })}
+                  </p>
+                )}
+              </div>
+            )}
 
             {tiers.length > 0 && (
               <div className="mt-4 rounded-md border border-ink/10 p-3">
@@ -661,7 +748,7 @@ export default function ProductPage() {
           <div className="mx-auto flex max-w-5xl items-center gap-3">
             <div className="min-w-0">
               <p className="truncate text-xs text-ink-soft">{name}</p>
-              <p className="text-lg font-semibold">{formatPrice(unitPrice, language)}</p>
+              <p className="text-lg font-semibold">{formatPrice(pkg ? wallTotal : unitPrice, language)}</p>
             </div>
             <button
               type="button"

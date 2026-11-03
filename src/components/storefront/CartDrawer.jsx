@@ -7,6 +7,8 @@ import WallCartCard from './WallCartCard';
 import { groupCartRows } from '../../utils/wallGroups';
 import { optimizedImage } from '../../utils/images';
 import { formatPrice } from '../../utils/format';
+import { lineAmount } from '../../utils/quantityPrices';
+import { packageHintFor } from '../../utils/cartPricing';
 
 export default function CartDrawer({ onClose }) {
   const { t } = useTranslation();
@@ -74,7 +76,12 @@ export default function CartDrawer({ onClose }) {
                     </p>
                     <OptionSummary labels={item.optionLabels} />
                     <p className="text-sm text-ink-soft">
-                      {formatPrice(item.unitPrice, language)}
+                      {item.packageSize > 0 ? formatPrice(lineAmount(item), language) : formatPrice(item.unitPrice, language)}
+                      {item.packageSize > 0 && (
+                        <span className="ms-2 rounded bg-sage/20 px-1.5 py-0.5 text-xs text-sage-dark">
+                          {t('storefront.pkgApplied')}
+                        </span>
+                      )}
                       {item.tierMinQty > 0 && (
                         <span className="ms-2 rounded bg-sage/20 px-1.5 py-0.5 text-xs text-sage-dark">
                           {t('storefront.qtyPriceApplied')}
@@ -86,6 +93,20 @@ export default function CartDrawer({ onClose }) {
                         </span>
                       )}
                     </p>
+                    {(() => {
+                      // Package price: how many more pieces complete the next package.
+                      const hint = packageHintFor(items, item);
+                      if (!hint) return null;
+                      const groupName = (item.optionLabels || []).find((o) => o.id === item.tierGroup)?.label;
+                      const option = (groupName?.[language] || groupName?.en || '').toLowerCase();
+                      return (
+                        <p className="mt-1 text-xs text-brass-dark" data-package-hint>
+                          {item.tierGroup
+                            ? t('storefront.pkgHintCartSame', { n: hint.missing, option, pkg: hint.qty, price: formatPrice(hint.price, language) })
+                            : t('storefront.pkgHintCart', { n: hint.missing, pkg: hint.qty, price: formatPrice(hint.price, language) })}
+                        </p>
+                      );
+                    })()}
                     <div className="mt-1 flex items-center gap-2">
                       <button
                         onClick={() =>
