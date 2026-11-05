@@ -210,6 +210,7 @@ export default function Checkout() {
           orderNumberLabel: result.orderNumberLabel,
           orderType: result.orderType,
           totalAmount: result.totalAmount,
+          receipt: result.receipt || null, // what was really saved (from the server): the receipt on the thank-you page
           walls: pictures, // small pictures of the planned walls for the thank-you page
         },
       });

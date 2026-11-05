@@ -3,15 +3,21 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { formatPrice } from '../../utils/format';
 import WallPicture from '../../components/storefront/WallPicture';
+import ReceiptCard from '../../components/storefront/ReceiptCard';
+import { useStorefront } from '../../context/StorefrontContext';
 
 export default function OrderConfirmation() {
   const { slug } = useParams();
   const { state } = useLocation();
   const { t } = useTranslation();
   const { language } = useLanguage();
+  const { tenant } = useStorefront();
+  const accent = /^#[0-9a-fA-F]{6}$/.test(tenant?.theme?.accent || '') ? tenant.theme.accent : '';
+  const shopName = tenant?.name?.[language] || tenant?.name?.en || '';
+  const trackUrl = typeof window !== 'undefined' ? `${window.location.origin}/store/${slug}/track` : '';
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10 text-center">
       <h1 className="font-display text-2xl font-semibold">
         {t('checkout.orderPlaced')}
       </h1>
@@ -39,6 +45,9 @@ export default function OrderConfirmation() {
             <WallPicture key={w.id} cells={w.cells} className="h-28 w-28" label={t('wall.title')} />
           ))}
         </div>
+      )}
+      {state?.receipt && (
+        <ReceiptCard receipt={state.receipt} shopName={shopName} accent={accent} trackUrl={trackUrl} />
       )}
       <Link
         to={`/store/${slug}/track`}

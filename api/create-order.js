@@ -9,6 +9,7 @@ import { getDb } from './_lib/db.js';
 import { waitUntil } from '@vercel/functions';
 import { validateInput, placeOrder, OrderError } from './_lib/placeOrder.js';
 import { notifyNewOrder } from './_lib/notify.js';
+import { buildReceipt } from './_lib/receipt.js';
 import { clientIp, hashKey, hasRoom, countUse, phoneDigits, LIMITS } from './_lib/rateLimit.js';
 
 export default async function handler(req, res) {
@@ -63,7 +64,8 @@ export default async function handler(req, res) {
       })
     );
 
-    return res.status(200).json(result);
+    // The customer's receipt (built from the saved order; only this customer gets it).
+    return res.status(200).json({ ...result, receipt: buildReceipt(_order) });
   } catch (err) {
     if (err instanceof OrderError) {
       return res
