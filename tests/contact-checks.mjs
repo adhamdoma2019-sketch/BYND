@@ -59,7 +59,7 @@ ok('browser copy is identical to the server copy (text and behaviour)');
 
 // ---- the order rules use them
 const tenant = { checkout: { fields: { email: { show: true, required: false } } } };
-const base = { name: 'Ali Hassan', phone: '+20 10 1234 5678', email: 'Ali@Gmail.com', street: 'x', building: '', area: '', city: 'Cairo', country: '', notes: '' };
+const base = { name: 'Ali Hassan', phone: '+20 10 1234 5678', email: 'Ali@Gmail.com', street: '12 Tahrir Street', building: '', area: '', city: 'Cairo', country: '', notes: '' };
 const out = applyCustomerRules(base, tenant);
 assert.equal(out.phone, '01012345678'); assert.equal(out.email, 'ali@gmail.com');
 assert.throws(() => applyCustomerRules({ ...base, phone: '12345' }, tenant), (e) => e.code === 'BAD_PHONE');

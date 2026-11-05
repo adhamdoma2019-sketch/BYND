@@ -107,7 +107,10 @@
     "choose": "Choose...",
     "chooseArea": "Choose your delivery area",
     "emailDidYouMean": "Did you mean {{email}}?",
-    "emailUseThis": "Use this"
+    "emailUseThis": "Use this",
+    "promoShapeBad": "A promo code uses only letters, numbers, - and _.",
+    "promoChecking": "Checking the code…",
+    "promoCheckFailed": "We couldn't check the code. Please try again."
   },
   "admin": {
     "login": "Partner login",
@@ -549,7 +552,8 @@
     "TRACK_NOT_FOUND": "We could not find an order with these details. Please check the order number and the phone number you used when ordering.",
     "BELOW_MIN": "\"{{name}}\" needs at least {{min}} pieces.",
     "PROMO_NOT_ON_QTY": "This code can't be used on items that already have a quantity price.",
-    "BAD_WALL": "This wall design is not valid. Please plan the wall again."
+    "BAD_WALL": "This wall design is not valid. Please plan the wall again.",
+    "BAD_FIELD_FORMAT": "Please check \"{{field}}\": use real letters and numbers, no symbols."
   },
   "checkoutFields": {
     "name": "Full name",

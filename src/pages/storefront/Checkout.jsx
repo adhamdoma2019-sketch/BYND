@@ -11,7 +11,7 @@ import { groupCartRows } from '../../utils/wallGroups';
 import { useLanguage } from '../../context/LanguageContext';
 import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
-import { checkPhone, checkEmail } from '../../utils/contactChecks';
+import { checkPhone, checkEmail, checkField } from '../../utils/contactChecks';
 import {
   CHECKOUT_FIELDS,
   resolveFieldSettings,
@@ -65,6 +65,8 @@ export default function Checkout() {
   const [promoInput, setPromoInput] = useState('');
   const [appliedCode, setAppliedCode] = useState('');
   const [quote, setQuote] = useState(null);
+  const [quoteBusy, setQuoteBusy] = useState(false); // waiting for the server's answer
+  const [quoteFailed, setQuoteFailed] = useState(false); // the server could not be asked
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [website, setWebsite] = useState(''); // trap for bots (kept out of sight)
@@ -75,31 +77,54 @@ export default function Checkout() {
   const phoneBad = form.phone.trim() !== '' && !checkPhone(form.phone, countryCode).ok;
   const emailCheck = checkEmail(form.email);
   const emailBad = form.email.trim() !== '' && !emailCheck.ok;
+  // Name / city / street ... must look real (letters, no symbols, no "aaaa").
+  const fieldBad = (key) => !checkField(key, form[key]).ok;
 
   // Ask the server for the real total whenever the cart, area or code changes.
   const requestId = useRef(0);
   useEffect(() => {
     if (items.length === 0) return undefined;
     const id = ++requestId.current;
+    setQuoteBusy(true);
     const timer = setTimeout(async () => {
       try {
         const q = await getQuote({ tenantId: tenant.id, items, zoneId, promoCode: appliedCode });
-        if (id === requestId.current) setQuote(q);
+        if (id === requestId.current) {
+          setQuote(q);
+          setQuoteFailed(false);
+        }
       } catch {
-        if (id === requestId.current) setQuote(null);
+        if (id === requestId.current) {
+          setQuote(null);
+          setQuoteFailed(true);
+        }
+      } finally {
+        if (id === requestId.current) setQuoteBusy(false);
       }
     }, 250);
     return () => clearTimeout(timer);
   }, [tenant.id, items, zoneId, appliedCode]);
 
+  // A code is letters, numbers, - and _ only (the same rule as the server).
+  const promoShapeBad = promoInput.trim() !== '' && !/^[A-Za-z0-9_-]+$/.test(promoInput.trim());
+
   function applyPromo() {
     setError('');
+    if (promoShapeBad) return;
     setAppliedCode(promoInput.trim().toUpperCase());
+  }
+
+  // Typing in the box after a code was tried: forget the old try, so a wrong code can never block the order.
+  function changePromo(value) {
+    setPromoInput(value);
+    setError('');
+    if (appliedCode && value.trim().toUpperCase() !== appliedCode) setAppliedCode('');
   }
 
   function removePromo() {
     setAppliedCode('');
     setPromoInput('');
+    setError('');
   }
 
   async function handleSubmit(e) {
@@ -114,6 +139,12 @@ export default function Checkout() {
     for (const f of visibleFields) {
       if (fieldSettings[f.key].required && !form[f.key].trim()) {
         setError(t('errors.BAD_FIELD', { field: t(`checkoutFields.${f.key}`) }));
+        return;
+      }
+    }
+    for (const f of visibleFields) {
+      if (fieldBad(f.key)) {
+        setError(t('errors.BAD_FIELD_FORMAT', { field: t(`checkoutFields.${f.key}`) }));
         return;
       }
     }
@@ -147,8 +178,16 @@ export default function Checkout() {
       setError(t('errors.ZONE_REQUIRED'));
       return;
     }
+    if (promoShapeBad) {
+      setError(t('checkout.promoShapeBad'));
+      return;
+    }
     if (appliedCode && quote?.promoError) {
       setError(promoErrorText(quote.promoError));
+      return;
+    }
+    if (appliedCode && (quoteBusy || quoteFailed || !quote?.promo)) {
+      setError(t(quoteFailed ? 'checkout.promoCheckFailed' : 'checkout.promoChecking'));
       return;
     }
 
@@ -284,6 +323,11 @@ export default function Checkout() {
                 />
               )}
             </label>
+            {!['phone', 'email'].includes(f.key) && touched[f.key] && fieldBad(f.key) && (
+              <p className="mt-1 text-xs text-rust">
+                {t('errors.BAD_FIELD_FORMAT', { field: t(`checkoutFields.${f.key}`) })}
+              </p>
+            )}
             {f.key === 'phone' && touched.phone && phoneBad && (
               <p className="mt-1 text-xs text-rust">{t('errors.BAD_PHONE')}</p>
             )}
@@ -417,7 +461,7 @@ export default function Checkout() {
                 type="text"
                 dir="ltr"
                 value={promoInput}
-                onChange={(e) => setPromoInput(e.target.value)}
+                onChange={(e) => changePromo(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -436,8 +480,20 @@ export default function Checkout() {
               </button>
             </div>
           )}
-          {appliedCode && quote?.promoError && (
-            <p className="mt-1 text-sm text-rust">{promoErrorText(quote.promoError)}</p>
+          {promoShapeBad && <p className="mt-1 text-sm text-rust">{t('checkout.promoShapeBad')}</p>}
+          {appliedCode && !quote?.promo && quoteBusy && (
+            <p className="mt-1 text-sm text-ink-soft">{t('checkout.promoChecking')}</p>
+          )}
+          {appliedCode && !quoteBusy && quoteFailed && (
+            <p className="mt-1 text-sm text-rust">{t('checkout.promoCheckFailed')}</p>
+          )}
+          {appliedCode && !quoteBusy && !quoteFailed && !quote?.promo && quote?.promoError && (
+            <p className="mt-1 text-sm text-rust">
+              {promoErrorText(quote.promoError)}{' '}
+              <button type="button" onClick={removePromo} className="underline">
+                {t('checkout.promoRemove')}
+              </button>
+            </p>
           )}
         </div>
 

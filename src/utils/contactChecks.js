@@ -75,3 +75,42 @@ export function checkEmail(raw) {
   const fixed = suggestDomain(match[2]);
   return { ok: true, value, suggestion: fixed ? `${match[1]}@${fixed}` : '' };
 }
+
+// ----- Address and name boxes: is what the customer typed believable? -----
+// Returns { ok, value }. Empty text is "ok" here (the shop's own "required" rule handles empty boxes).
+// name / country / city: letters only (any language) with spaces and . ' -  (no digits, no symbols)
+// area / landmark: letters and numbers, at least 2 letters
+// street: letters and numbers, at least 2 letters and 3 characters
+// building / floor / apartment: letters or numbers (like 12, 4B, 3/2), no symbols-only text
+// notes: free text (only the length limit applies)
+// Everywhere: no run of 4+ identical characters ("aaaa", "xxxx") and no code-like symbols (< > { } [ ] \ | ^ ~ ` $ % * = + @ #).
+const LETTER = /\p{L}/gu;
+const SYMBOLS = /[<>{}[\]\\|^~`$%*=+@#_]/u;
+const PATTERNS = {
+  name: /^[\p{L}\p{M}\s.'’-]+$/u,
+  country: /^[\p{L}\p{M}\s.'’-]+$/u,
+  city: /^[\p{L}\p{M}\s.'’-]+$/u,
+  area: /^[\p{L}\p{M}\p{N}\s.'’,/()&-]+$/u,
+  landmark: /^[\p{L}\p{M}\p{N}\s.'’,/()&-]+$/u,
+  street: /^[\p{L}\p{M}\p{N}\s.'’,/()&#-]+$/u,
+  building: /^[\p{L}\p{M}\p{N}\s.\/-]+$/u,
+  floor: /^[\p{L}\p{M}\p{N}\s.\/-]+$/u,
+  apartment: /^[\p{L}\p{M}\p{N}\s.\/-]+$/u,
+};
+const MIN_LETTERS = { name: 2, country: 2, city: 2, area: 2, landmark: 2, street: 2 };
+
+export function checkField(key, raw) {
+  const value = String(raw ?? '').replace(/\s+/g, ' ').trim();
+  if (!value) return { ok: true, value };
+  const pattern = PATTERNS[key];
+  if (!pattern) return { ok: true, value }; // notes and unknown boxes: no format rule
+  if (SYMBOLS.test(value) || !pattern.test(value)) return { ok: false, value };
+  if (/(.)\1{3,}/u.test(value)) return { ok: false, value };
+  const letters = (value.match(LETTER) || []).length;
+  if (letters < (MIN_LETTERS[key] || 0)) return { ok: false, value };
+  if (key === 'street' && value.length < 3) return { ok: false, value };
+  if (['building', 'floor', 'apartment'].includes(key) && !/[\p{L}\p{N}]/u.test(value)) {
+    return { ok: false, value };
+  }
+  return { ok: true, value };
+}

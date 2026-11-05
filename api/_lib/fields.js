@@ -5,7 +5,7 @@
 // (a test checks that they are identical).
 
 import { OrderError } from './errors.js';
-import { checkPhone, checkEmail } from './contactChecks.js';
+import { checkPhone, checkEmail, checkField } from './contactChecks.js';
 
 export const FIELD_LIMITS = {
   name: 100,
@@ -71,7 +71,7 @@ export function cleanCustomerInput(raw) {
 export function applyCustomerRules(customer, tenant) {
   const settings = resolveFieldSettings(tenant?.checkout?.fields);
 
-  if (customer.name.length < 2) {
+  if (customer.name.length < 2 || !checkField('name', customer.name).ok) {
     throw new OrderError(400, 'BAD_NAME', 'Please enter your name.');
   }
   // Egyptian shops need a real Egyptian mobile number (any way of writing it);
@@ -88,7 +88,14 @@ export function applyCustomerRules(customer, tenant) {
     if (settings[key].required && !value) {
       throw new OrderError(400, 'BAD_FIELD', `Please fill in: ${key}`, { field: key });
     }
-    if (value) out[key] = value;
+    if (value) {
+      // Does the text look like a real name / city / street ...? (letters, no symbols, no "aaaa")
+      const format = checkField(key, value);
+      if (!format.ok) {
+        throw new OrderError(400, 'BAD_FIELD_FORMAT', `Please check: ${key}`, { field: key });
+      }
+      out[key] = format.value;
+    }
   }
 
   out.phone = phone.value;
