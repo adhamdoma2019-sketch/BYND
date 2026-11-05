@@ -36,32 +36,30 @@ export function colourLimit(product, selections, colorOpt, valueId) {
   return left === null ? Infinity : Math.max(Number(left) || 0, 0);
 }
 
-// The colour a new wall starts with: the first colour that is not sold out.
-export function defaultPaint(product, colorOpt) {
-  const free = colorOpt.values.find((v) => colourLimit(product, {}, colorOpt, v.id) > 0);
-  return (free || colorOpt.values[0]).id;
-}
-
 export function colourCounts(cells) {
   const m = new Map();
   for (const c of cells) if (c.c) m.set(c.c, (m.get(c.c) || 0) + 1);
   return m;
 }
 
-// Give every piece without a (valid) colour one: the chosen colour while it has room, else the next colour with room.
+// Give every piece without a (valid) colour one: the picked colour while it has room, else the next colour with room.
+// Update 33: when NO colour is picked (`paint` is not in the palette) the pieces stay unpainted (c = ''): a wall never
+// starts in a colour the customer did not choose.
 export function assignColours(cells, paletteIds, limitOf, paint) {
   const valid = new Set(paletteIds);
   const counts = new Map();
   for (const c of cells) if (valid.has(c.c)) counts.set(c.c, (counts.get(c.c) || 0) + 1);
   return cells.map((c) => {
     if (valid.has(c.c)) return c;
-    const pick =
-      [paint, ...paletteIds].find((id) => valid.has(id) && (counts.get(id) || 0) < limitOf(id)) ||
-      (valid.has(paint) ? paint : paletteIds[0]);
+    if (!valid.has(paint)) return c.c ? { ...c, c: '' } : c; // nothing picked yet: unpainted
+    const pick = [paint, ...paletteIds].find((id) => valid.has(id) && (counts.get(id) || 0) < limitOf(id)) || paint;
     counts.set(pick, (counts.get(pick) || 0) + 1);
     return { ...c, c: pick };
   });
 }
+
+// True while at least one piece has no colour yet (the wall cannot be added to the cart then).
+export const hasUnpainted = (cells) => (cells || []).some((c) => !c.c);
 
 // Same number of pieces of each colour, mixed up (used by "Random").
 export function shuffleColours(colours, rand = Math.random) {

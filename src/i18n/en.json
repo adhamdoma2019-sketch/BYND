@@ -1072,6 +1072,9 @@
     "total": "Total for this wall: {{price}}",
     "cartTitle": "Wall of {{n}} pieces",
     "cartLine": "{{n}} × {{name}} — {{price}} each",
-    "cartLinePackage": "{{n}} × {{name}} — {{price}}"
+    "cartLinePackage": "{{n}} × {{name}} — {{price}}",
+    "paintingWith": "Painting with: {{name}}",
+    "noColourYet": "No colour picked yet. Pick one above, then tap the wall.",
+    "pickColourToAdd": "Please pick a colour for your wall before adding it to the cart."
   }
 }

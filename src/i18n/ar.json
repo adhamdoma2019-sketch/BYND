@@ -1072,6 +1072,9 @@
     "total": "إجمالي هذا الجدار: {{price}}",
     "cartTitle": "جدار من {{n}} قطعة",
     "cartLine": "{{n}} × {{name}} — {{price}} للقطعة",
-    "cartLinePackage": "{{n}} × {{name}} — {{price}}"
+    "cartLinePackage": "{{n}} × {{name}} — {{price}}",
+    "paintingWith": "الطلاء بلون: {{name}}",
+    "noColourYet": "لم تختر لونًا بعد. اختر لونًا من الأعلى ثم اضغط على الجدار.",
+    "pickColourToAdd": "من فضلك اختر لونًا لجدارك قبل إضافته إلى السلة."
   }
 }

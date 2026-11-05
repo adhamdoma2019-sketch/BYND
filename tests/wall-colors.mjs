@@ -32,10 +32,7 @@ assert.equal(C.colourLimit(counted, {}, colour, 'blk'), 4);
 assert.equal(C.colourLimit(counted, {}, colour, 'blu'), 0);                                 // sold out
 assert.equal(C.colourLimit({ ...counted, backorder: true }, {}, colour, 'blu'), Infinity);  // stock first, then made to order
 assert.equal(C.colourLimit({ ...counted, countedOptions: [] }, {}, colour, 'blu'), Infinity); // stock not counted per colour
-assert.equal(C.defaultPaint(counted, colour), 'blk');
-assert.equal(C.defaultPaint({ ...counted, optionStock: { 'col.blk': 0, 'col.blu': 3 } }, colour), 'blu');   // first colour that is not sold out
-assert.equal(C.defaultPaint({ ...counted, optionStock: { 'col.blk': 0, 'col.blu': 0 } }, colour), 'blk');   // all sold out: still gives one
-ok('colour limits: made to order = no limit, counted = what is left, sold out = 0; the starting colour skips a sold-out colour');
+ok('colour limits: made to order = no limit, counted = what is left, sold out = 0');
 
 // 3. colouring pieces
 const ids = ['blk', 'blu'];
@@ -54,6 +51,16 @@ assert.deepEqual(C.shuffleColours(['a', 'b', 'c'], () => 0.5), C.shuffleColours(
 // the layout rules keep the colour of pieces that stay
 const grown = W.resizeLayout([{ q: 0, r: 0, c: 'blk' }], 3);
 assert.equal(grown[0].c, 'blk');
+// update 33: no colour is pre-selected -> pieces stay unpainted until one is picked
+const none = C.assignColours(bare, ids, () => Infinity, '');
+assert.ok(none.every((c) => !c.c)); assert.equal(C.hasUnpainted(none), true);
+assert.equal(C.assignColours([{ q: 0, r: 0, c: 'gone' }], ids, () => Infinity, '')[0].c, '');   // an unknown colour becomes unpainted, not a guess
+const afterPick = C.assignColours([{ q: 0, r: 0, c: 'blk' }, { q: 1, r: 0 }, { q: 2, r: 0, c: '' }], ids, () => Infinity, 'blu');
+assert.deepEqual(afterPick.map((c) => c.c), ['blk', 'blu', 'blu']);                              // the first pick paints only the unpainted ones
+assert.equal(C.hasUnpainted(afterPick), false); assert.equal(C.hasUnpainted([]), false);
+assert.equal(typeof C.defaultPaint, 'undefined');                                                // the old "starting colour" is gone
+ok('no colour pre-selected: unpainted pieces stay unpainted, the first pick paints only those, hasUnpainted tells the page');
+
 ok('colouring: picked colour while it has room, then the next; unknown colours are replaced; shuffle keeps the same mix; resizing keeps colours');
 
 // 4. a coloured wall -> cart lines

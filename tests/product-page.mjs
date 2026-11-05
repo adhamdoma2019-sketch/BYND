@@ -145,8 +145,16 @@ const wallC = { ...wallBase, wallDesigner: true, options: [wcol] };
 v = view(wallC, { col: 'blk' });
 assert.match(v.html, /data-wall-paint-hint/); assert.match(v.html, /fill:#111111/); assert.match(v.html, /data-wall-legend/);
 assert.match(v.html, /wall\.legendItem\[1\]/); assert.match(v.html, /wall\.total/);
-v = view(wallC);                                               // nothing picked yet: the wall still draws (with the first colour)
-assert.match(v.html, /data-wall-designer/);
+v = view(wallC);                                               // update 33: nothing picked yet = nothing painted
+assert.match(v.html, /data-wall-designer/); assert.match(v.html, /wall\.noColourYet/); assert.doesNotMatch(v.html, /fill:#111111|fill:#2244ff/);
+assert.doesNotMatch(v.html, /data-wall-legend/); assert.doesNotMatch(v.html, /aria-checked="true"/);          // no colour is ticked
+// the colour choices sit INSIDE the wall block (before the canvas), not in the options list above it
+const wallPart = v.html.slice(v.html.indexOf('data-wall-designer'));
+assert.match(wallPart, /role="radiogroup"/); assert.ok(wallPart.indexOf('role="radiogroup"') < wallPart.indexOf('data-cell'));
+assert.doesNotMatch(v.html.slice(0, v.html.indexOf('data-wall-designer')), /role="radiogroup"/);
+v = view(wallC, { col: 'blk' });
+assert.match(v.html, /wall\.paintingWith/); assert.doesNotMatch(v.html, /wall\.noColourYet/);
+assert.equal((v.html.match(/aria-checked="true"/g) || []).length, 1);                                       // exactly the picked colour
 v = view({ ...wallC, minQty: 4 }, { col: 'blu' });
 assert.match(v.html, /fill:#2244ff/); assert.match(v.html, /wall\.legendItem\[4\]/);
 // stock per colour: the wall can have as many pieces as the colours hold together; all sold out = no designer

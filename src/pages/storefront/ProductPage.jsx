@@ -13,7 +13,7 @@ import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
 import WallDesigner from '../../components/storefront/WallDesigner';
 import { WALL_MAX } from '../../utils/wallLayout';
-import { wallColorOption, wallPalette, colourLimit, defaultPaint, wallLines } from '../../utils/wallColors';
+import { wallColorOption, wallPalette, colourLimit, hasUnpainted, wallLines } from '../../utils/wallColors';
 import { resolveChoice, cleanSelections, textKey, visibleOptions, stripHidden } from '../../utils/productOptions';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { usePageMeta } from '../../utils/usePageMeta';
@@ -129,16 +129,6 @@ export default function ProductPage() {
       cancelled = true;
     };
   }, [relatedKey, tenant.id, preview, previewProduct?.view, productId]);
-
-  // A wall with colours starts painting with the first colour that is not sold out.
-  useEffect(() => {
-    if (!product || product.wallDesigner !== true) return;
-    const co = wallColorOption(product);
-    if (!co) return;
-    setSelections((prev) =>
-      co.values.some((v) => v.id === prev[co.id]) ? prev : { ...prev, [co.id]: defaultPaint(product, co) }
-    );
-  }, [product]);
 
   usePageMeta(
     name ? `${name} — ${shopName}` : undefined,
@@ -269,19 +259,25 @@ export default function ProductPage() {
   const pkgTotal = pkg ? Math.round((pkgShare.baseTotal + choice.priceDelta * qty) * 100) / 100 : null;
   const pkgProg = pkg ? packageProgress(pkg, totalNow) : null;
   const normalUnitPrice = (Number(product.price) || 0) + choice.priceDelta;
-  const missingIds = new Set(choice.missing.map((o) => o.id));
+  // (the wall's colour is asked at the wall itself, so it is not listed with the other options)
+  const otherMissing = choice.missing.filter((o) => !(wallColorOpt && o.id === wallColorOpt.id));
+  const missingIds = new Set(otherMissing.map((o) => o.id));
   // only the options whose "show only when" rule is met (a hidden option is not asked, not charged, not sent)
-  const productOptions = visibleOptions(product, selections);
+  const productOptions = visibleOptions(product, selections).filter((o) => !(wallColorOpt && o.id === wallColorOpt.id));
 
   // Wall with colours: the colour of every piece -> one cart line per colour, each with its own price.
   const palette = wallColorOpt ? wallPalette(product, language) : null;
   const paintId = wallColorOpt ? selections[wallColorOpt.id] || '' : '';
+  // (update 33: no colour is pre-selected; pieces without a colour stay unpainted until one is picked)
   const wallNow =
-    wallCells.length === qty
-      ? wallCells
-      : Array.from({ length: qty }, (_, i) => ({ q: i, r: 0, c: paintId || wallColorOpt?.values[0]?.id }));
+    wallCells.length === qty ? wallCells : Array.from({ length: qty }, (_, i) => ({ q: i, r: 0, c: paintId }));
+  const wallUnpainted = !!wallColorOpt && hasUnpainted(wallNow);
+  // For the price shown: unpainted pieces are priced like the first colour. Adding to the cart is blocked until all are painted.
+  const wallPriced = wallUnpainted
+    ? wallNow.map((c) => (c.c ? c : { ...c, c: paintId || wallColorOpt.values[0].id }))
+    : wallNow;
   const wall = wallColorOpt
-    ? wallLines({ product, selections, cells: wallNow, cartItems, colorOpt: wallColorOpt })
+    ? wallLines({ product, selections, cells: wallPriced, cartItems, colorOpt: wallColorOpt })
     : null;
   const wallTotal = wall ? wall.subtotal : pkg ? pkgTotal : unitPrice * qty;
   // Package price on a coloured wall: each colour is counted by itself, so say what each colour still needs.
@@ -308,8 +304,27 @@ export default function ProductPage() {
         ? t(madeStyle === 'madeToOrder' ? 'storefront.madeToOrderNow' : 'storefront.preorderNow')
         : t('storefront.addToCart');
 
+  // One place for every option change (the options list and the wall's colour box use it).
+  function pickOption(option, v) {
+    setSelections((prev) => {
+      const next = { ...prev, [option.id]: v };
+      if (option.type === 'addon' && v !== true) delete next[textKey(option.id)];
+      return next;
+    });
+    // The big picture changes to the picture of the choice (if it has one).
+    const picked = (option.values || []).find((x) => x.id === v);
+    if (picked?.imageUrl) setMainImage(picked.imageUrl);
+    setShowMissing(false);
+  }
+
   function handleAdd() {
     if (!canBuy) return;
+    // A wall needs a colour for every piece: ask for it right at the wall.
+    if (wallUnpainted) {
+      setShowMissing(true);
+      document.getElementById('wall-paint')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     const missingNow = wall ? wall.missing : choice.missing;
     if (missingNow.length > 0) {
       setShowMissing(true);
@@ -583,17 +598,7 @@ export default function ProductPage() {
                   <OptionPicker
                     option={option}
                     value={selections[option.id]}
-                    onChange={(v) => {
-                      setSelections((prev) => {
-                        const next = { ...prev, [option.id]: v };
-                        if (option.type === 'addon' && v !== true) delete next[textKey(option.id)];
-                        return next;
-                      });
-                      // The big picture changes to the picture of the choice (if it has one).
-                      const picked = (option.values || []).find((x) => x.id === v);
-                      if (picked?.imageUrl) setMainImage(picked.imageUrl);
-                      setShowMissing(false);
-                    }}
+                    onChange={(v) => pickOption(option, v)}
                     leftOf={leftOfValue(option)}
                     backorder={backorder}
                     textValue={selections[textKey(option.id)] || ''}
@@ -602,17 +607,12 @@ export default function ProductPage() {
                     }
                     highlight={showMissing && missingIds.has(option.id)}
                   />
-                  {wallColorOpt && option.id === wallColorOpt.id && (
-                    <p className="mt-2 text-xs text-ink-soft" data-wall-paint-hint>
-                      {t('wall.paintHint')}
-                    </p>
-                  )}
                   </div>
                 ))}
-                {showMissing && choice.missing.length > 0 && (
+                {showMissing && otherMissing.length > 0 && (
                   <p className="text-sm text-rust">
                     {t('storefront.chooseOptions', {
-                      names: choice.missing
+                      names: otherMissing
                         .map((o) => o.label?.[language] || o.label?.en)
                         .join(', '),
                     })}
@@ -637,6 +637,19 @@ export default function ProductPage() {
                     paint={paintId}
                     limitOf={(id) => (wallColorOpt ? colourLimit(product, selections, wallColorOpt, id) : Infinity)}
                     totalText={formatPrice(wallTotal, language)}
+                    needColour={showMissing && wallUnpainted}
+                    paintBox={
+                      wallColorOpt ? (
+                        <OptionPicker
+                          option={{ ...wallColorOpt, required: true }}
+                          value={selections[wallColorOpt.id]}
+                          onChange={(v) => pickOption(wallColorOpt, v)}
+                          leftOf={leftOfValue(wallColorOpt)}
+                          backorder={backorder}
+                          highlight={showMissing && wallUnpainted}
+                        />
+                      ) : null
+                    }
                   />
                 ) : (
                   <>

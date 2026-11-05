@@ -26,6 +26,8 @@ const ZOOM_MAX = 4;
 // (useLayoutEffect only exists in the browser; the server render just uses useEffect)
 const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
+// Update 33: the colour list sits right above the wall (`paintBox`), no colour is pre-selected (pieces stay neutral until
+// one is picked), a chip says which colour is being painted with, and the first pick paints the pieces that have none.
 // Colours (update 28): with a `palette` ([{ id, label, color }]) every piece has a colour `c`. `paint` is the colour
 // the customer has picked in the page's colour list; `limitOf(id)` = how many pieces of that colour can be ordered.
 export default function WallDesigner({
@@ -38,6 +40,8 @@ export default function WallDesigner({
   paint = '',
   limitOf = () => Infinity,
   totalText = '',
+  paintBox = null, // the colour list, drawn right above the wall (update 33)
+  needColour = false, // the customer tried to add the wall without a colour
 }) {
   const { t } = useTranslation();
   const cap = Math.max(min, Math.min(max, WALL_MAX));
@@ -117,6 +121,12 @@ export default function WallDesigner({
     if (cells.length !== quantity) setCells((cur) => withColours(resizeLayout(cur, quantity, { min, max: cap })));
   }, [quantity, min, cap]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The first colour the customer picks paints the pieces that have no colour yet (later picks only affect new taps).
+  useEffect(() => {
+    if (!paintOk) return;
+    setCells((cur) => (cur.some((c) => !c.c) ? withColours(cur) : cur));
+  }, [paint]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // The page needs to know the pieces (and their colours) to add the right lines to the cart.
   useEffect(() => {
     if (onCells) onCells(cells);
@@ -163,7 +173,8 @@ export default function WallDesigner({
 
   // tap a piece: another colour = paint it; same colour (or no colours) = take it away
   const tapPiece = (c) => {
-    if (colored && paintOk && c.c !== paint) {
+    if (colored && !paintOk) return say('wall.pickColour'); // pick a colour first (no accidental removals)
+    if (colored && c.c !== paint) {
       if (countOf(cells, paint) >= limitOf(paint)) return say('wall.colourLimit', { n: limitOf(paint) });
       setCells(cells.map((x) => (keyOf(x) === keyOf(c) ? { ...x, c: paint } : x)));
       return;
@@ -185,6 +196,21 @@ export default function WallDesigner({
     <div className="mt-8" data-wall-designer>
       <p className="text-sm font-medium">{t('wall.title')}</p>
       <p className="mt-1 text-xs text-ink-soft">{t('wall.hint')}</p>
+
+      {/* the colour choices, right next to the wall */}
+      {colored && (
+        <div id="wall-paint" className="mt-4 scroll-mt-24" data-wall-paint>
+          {paintBox}
+          <p className="mt-2 text-xs text-ink-soft" data-wall-paint-hint>
+            {t('wall.paintHint')}
+          </p>
+          {needColour && !paintOk && (
+            <p className="mt-2 text-sm text-rust" role="alert" data-wall-need-colour>
+              {t('wall.pickColourToAdd')}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 rounded border border-ink/15 bg-paper-soft">
         <div className="flex items-center gap-2 border-b border-ink/10 p-2">
@@ -214,6 +240,22 @@ export default function WallDesigner({
             {t('wall.fit')}
           </button>
         </div>
+
+        {colored && (
+          <div className="flex items-center gap-2 border-b border-ink/10 px-3 py-2 text-sm" data-wall-chip>
+            {paintOk ? (
+              <>
+                <span
+                  className="inline-block h-4 w-4 shrink-0 rounded-full border border-ink/30"
+                  style={{ backgroundColor: hexOf(paint) }}
+                />
+                <span>{t('wall.paintingWith', { name: palette.find((p) => p.id === paint)?.label || '' })}</span>
+              </>
+            ) : (
+              <span className="text-rust">{t('wall.noColourYet')}</span>
+            )}
+          </div>
+        )}
 
         <div
           ref={boxRef}
