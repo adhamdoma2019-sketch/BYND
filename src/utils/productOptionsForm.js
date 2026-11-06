@@ -8,6 +8,7 @@
 // productCosts/{productId}.optionCosts as { "<optionId>.<valueId>": cost }.
 
 import { OPTION_TYPES, MAX_OPTIONS, MAX_VALUES } from './productOptions.js';
+import { cleanOverlay, canShowOnPicture, OVERLAY_DEFAULTS } from './pictureText.js';
 
 const rid = () => Math.random().toString(36).slice(2, 8);
 
@@ -35,6 +36,11 @@ export const newOption = () => ({
   textMax: '',
   showWhenOption: '', // "show only when" this option ...
   showWhenValue: '', // ... has this value ('' = always shown)
+  overlayOn: false, // update 35: show the typed words on the product picture
+  overlayY: String(OVERLAY_DEFAULTS.y),
+  overlaySize: String(OVERLAY_DEFAULTS.size),
+  overlayColor: OVERLAY_DEFAULTS.color,
+  overlayBold: OVERLAY_DEFAULTS.bold,
   values: [newValue('color')],
 });
 
@@ -54,6 +60,11 @@ export function optionsToForm(options, optionCosts = {}) {
     textMax: o.textMax || '',
     showWhenOption: o.showWhen?.optionId || '',
     showWhenValue: o.showWhen?.valueId || '',
+    overlayOn: o.overlay?.enabled === true,
+    overlayY: String(o.overlay?.y ?? OVERLAY_DEFAULTS.y),
+    overlaySize: String(o.overlay?.size ?? OVERLAY_DEFAULTS.size),
+    overlayColor: o.overlay?.color || OVERLAY_DEFAULTS.color,
+    overlayBold: o.overlay?.bold !== false,
     values: (o.values || []).map((v) => ({
       id: v.id,
       labelEn: v.label?.en || '',
@@ -143,7 +154,7 @@ export function formToOptions(form) {
           })),
       };
     });
-  return applyShowWhen(form, built);
+  return applyOverlay(form, applyShowWhen(form, built));
 }
 
 // "Show this option only when ...": kept only when it still makes sense. The controlling option must be a
@@ -160,6 +171,23 @@ function applyShowWhen(form, built) {
       (ctrl.type === 'color' || ctrl.type === 'choice') &&
       (ctrl.values || []).some((v) => v.id === f.showWhenValue);
     return ok ? { ...saved, showWhen: { optionId: f.showWhenOption, valueId: f.showWhenValue } } : saved;
+  });
+}
+
+// "Show the typed words on the product picture": kept only for a text box (or a tick box that asks for a word).
+function applyOverlay(form, built) {
+  const source = (form || []).filter((o) => OPTION_TYPES.includes(o.type)).slice(0, MAX_OPTIONS);
+  return built.map((saved, i) => {
+    const f = source[i];
+    if (!f || f.overlayOn !== true || !canShowOnPicture(saved)) return saved;
+    const overlay = cleanOverlay({
+      enabled: true,
+      y: f.overlayY,
+      size: f.overlaySize,
+      color: f.overlayColor,
+      bold: f.overlayBold,
+    });
+    return overlay ? { ...saved, overlay } : saved;
   });
 }
 

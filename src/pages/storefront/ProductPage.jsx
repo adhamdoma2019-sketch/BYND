@@ -12,6 +12,8 @@ import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
 import WallDesigner from '../../components/storefront/WallDesigner';
+import PictureText from '../../components/storefront/PictureText';
+import { pictureTexts } from '../../utils/pictureText';
 import { WALL_MAX } from '../../utils/wallLayout';
 import { wallColorOption, wallPalette, colourLimit, hasUnpainted, wallLines } from '../../utils/wallColors';
 import { resolveChoice, cleanSelections, textKey, visibleOptions, stripHidden } from '../../utils/productOptions';
@@ -386,10 +388,10 @@ export default function ProductPage() {
         <div className="mt-6 grid gap-8 md:grid-cols-2">
           <div>
             {shownImage ? (
-              <img
+              <PictureText
                 src={optimizedImage(shownImage, 1000)}
                 alt={name}
-                decoding="async"
+                texts={pictureTexts(product, selections)}
                 className="w-full rounded-md object-cover"
               />
             ) : (

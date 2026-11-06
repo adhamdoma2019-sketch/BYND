@@ -184,4 +184,12 @@ v = view(wallPk, { col: 'blk' });
 assert.match(v.html, /data-wall-designer/); assert.match(v.html, /data-package/); assert.match(v.html, /storefront\.pkgMoreColour\[2\]/);
 ok('product page: a coloured wall with a package price renders and says how many more of the colour complete a package');
 
+// ---- update 35: typed words shown on the product picture ----
+const typed = { ...base, imageUrl: 'https://x/plate.jpg', options: [{ id: 'dist', type: 'text', label: { en: 'Distance' }, maxLength: 12, values: [], overlay: { enabled: true, y: 45, size: 9, color: '#ff0000', bold: true } }], countedOptions: [], optionStock: {}, stock: 50 };
+v = view(typed, { dist: '12 KM' });
+assert.match(v.html, /data-picture-text-line/); assert.match(v.html, />12 KM</); assert.match(v.html, /top:45%/);
+v = view(typed, {}); assert.doesNotMatch(v.html, /data-picture-text-line/);
+v = view({ ...typed, options: [{ ...typed.options[0], overlay: undefined }] }, { dist: '12 KM' }); assert.doesNotMatch(v.html, /data-picture-text-line/);
+ok('product page: the typed words appear on the picture only when the shop switched it on and the customer typed something');
+
 console.log(`\nALL ${n} PRODUCT-PAGE CHECKS PASSED`);

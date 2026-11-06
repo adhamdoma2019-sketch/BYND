@@ -643,7 +643,13 @@
     "showWhenPick": "Choose a value",
     "showWhenIncomplete": "Choose a value, otherwise this option stays always shown when you save.",
     "showWhenHelp": "Only a color or choice list above this option can control it. When hidden, the option is not asked, not charged and not saved on the order.",
-    "showWhenCounted": "This option counts its own stock, so it is always shown."
+    "showWhenCounted": "This option counts its own stock, so it is always shown.",
+    "overlayOn": "Show the typed words on the product picture",
+    "overlayY": "Height (% from the top)",
+    "overlaySize": "Text size (% of the picture width)",
+    "overlayColor": "Text colour",
+    "overlayBold": "Bold text",
+    "overlayHelp": "The words are always centred. Use a photo that has an empty spot for them, then change the height and size until it looks right in the preview. Very long words shrink by themselves to fit."
   },
   "errorPage": {
     "title": "Something went wrong",

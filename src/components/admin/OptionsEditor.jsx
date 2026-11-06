@@ -2,9 +2,74 @@ import { useTranslation } from 'react-i18next';
 import { OPTION_TYPES, MAX_OPTIONS, MAX_VALUES } from '../../utils/productOptions';
 import ImageField from './ImageField';
 import { newOption, newValue } from '../../utils/productOptionsForm';
+import { OVERLAY_LIMITS } from '../../utils/pictureText';
 
 const input =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
+
+
+// "Show the typed words on the product picture": where, how big, which colour (always centred sideways).
+function OverlayFields({ o, onChange, t }) {
+  return (
+    <div className="mt-3 rounded border border-ink/10 bg-white p-3" data-overlay-fields>
+      <label className="flex items-center gap-2 text-sm text-ink-soft">
+        <input
+          type="checkbox"
+          checked={o.overlayOn === true}
+          onChange={(e) => onChange({ overlayOn: e.target.checked })}
+        />
+        {t('options.overlayOn')}
+      </label>
+      {o.overlayOn && (
+        <>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <label className="text-sm text-ink-soft">
+              {t('options.overlayY')}
+              <input
+                type="number"
+                min={OVERLAY_LIMITS.yMin}
+                max={OVERLAY_LIMITS.yMax}
+                value={o.overlayY}
+                onChange={(e) => onChange({ overlayY: e.target.value })}
+                className={input}
+              />
+            </label>
+            <label className="text-sm text-ink-soft">
+              {t('options.overlaySize')}
+              <input
+                type="number"
+                min={OVERLAY_LIMITS.sizeMin}
+                max={OVERLAY_LIMITS.sizeMax}
+                step="0.5"
+                value={o.overlaySize}
+                onChange={(e) => onChange({ overlaySize: e.target.value })}
+                className={input}
+              />
+            </label>
+            <label className="text-sm text-ink-soft">
+              {t('options.overlayColor')}
+              <input
+                type="color"
+                value={/^#[0-9a-f]{6}$/i.test(o.overlayColor || '') ? o.overlayColor : '#d4af37'}
+                onChange={(e) => onChange({ overlayColor: e.target.value })}
+                className="mt-1 h-10 w-full rounded border border-ink/15 bg-white"
+              />
+            </label>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              checked={o.overlayBold !== false}
+              onChange={(e) => onChange({ overlayBold: e.target.checked })}
+            />
+            {t('options.overlayBold')}
+          </label>
+          <p className="mt-2 text-xs text-ink-faint">{t('options.overlayHelp')}</p>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Where the shop defines the choices customers get on a product:
 // colors, an activity / sport list, an extension, a custom text.
@@ -174,6 +239,9 @@ export default function OptionsEditor({ options, onChange, countedIds = [] }) {
                 />
               </label>
             )}
+            {o.type === 'text' && (
+              <OverlayFields o={o} onChange={(patch) => updateOption(i, patch)} t={t} />
+            )}
 
             {o.type === 'addon' && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -252,6 +320,9 @@ export default function OptionsEditor({ options, onChange, countedIds = [] }) {
                         />
                         {t('options.textRequired')}
                       </label>
+                      <div className="col-span-full">
+                        <OverlayFields o={o} onChange={(patch) => updateOption(i, patch)} t={t} />
+                      </div>
                     </div>
                   )}
                 </div>

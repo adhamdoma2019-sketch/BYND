@@ -193,4 +193,16 @@ const tenOpts = optionsToForm(ten.slice(0, 10)); assert.ok(!edit(tenOpts).includ
 assert.ok(edit(tenOpts.slice(0, 9)).includes('options.add'));
 ok('admin editor renders: the rule box shows only where a list sits above, counted options get a note, the add button stops at 10');
 
+// 14. update 35: "show the typed words on the picture" boxes in the admin editor
+const textForm = (o) => ({ id: 'tt', type: 'text', labelEn: 'Distance', labelAr: '', required: false, maxLength: '', values: [], showWhenOption: '', showWhenValue: '', overlayOn: false, overlayY: '50', overlaySize: '8', overlayColor: '#d4af37', overlayBold: true, ...o });
+html = edit([textForm({})]);
+assert.match(html, /options\.overlayOn/); assert.doesNotMatch(html, /options\.overlayY/);                // switched off: only the tick box
+html = edit([textForm({ overlayOn: true })]);
+for (const k of ['overlayY', 'overlaySize', 'overlayColor', 'overlayBold', 'overlayHelp']) assert.match(html, new RegExp('options\\.' + k));
+assert.match(html, /type="color"[^>]*value="#d4af37"/);
+html = edit(formOpts.slice(0, 2)); assert.doesNotMatch(html, /options\.overlayOn/);                         // colour / choice lists cannot show typed words
+html = edit([{ ...textForm({ type: 'addon', askText: true, overlayOn: true }), values: [{ id: 'v', labelEn: 'Name', labelAr: '', color: '', imageUrl: '', priceDelta: '', costDelta: '' }] }]);
+assert.match(html, /options\.overlayY/);                                                                   // a tick box that asks for a word can too
+ok('admin editor: the picture-text box appears for text boxes and ask-a-word tick boxes only, with height / size / colour when on');
+
 console.log(`\nALL ${n} OPTION-CONDITION CHECK GROUPS PASSED`);
