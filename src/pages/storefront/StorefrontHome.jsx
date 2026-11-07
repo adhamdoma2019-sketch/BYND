@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -30,6 +31,7 @@ export default function StorefrontHome() {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
+  const { hash } = useLocation();
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +46,13 @@ export default function StorefrontHome() {
       cancelled = true;
     };
   }, [tenant.id]);
+
+  // Coming from another page through the menu's "Products": scroll to the collection once it is there.
+  useEffect(() => {
+    if (hash === '#products' && !productsLoading) {
+      document.getElementById('products')?.scrollIntoView();
+    }
+  }, [hash, productsLoading]);
 
   const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
   usePageMeta(shopName, `${shopName} — ${t('storefront.heroDefaultHeadline')}`);

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useCart } from '../../context/CartContext';
 import LanguageSwitch from '../shared/LanguageSwitch';
+import StorefrontMenu from './StorefrontMenu';
 import { useStorefront } from '../../context/StorefrontContext';
 import { optimizedImage } from '../../utils/images';
 import { pickLogo } from '../../utils/storefront';
@@ -21,16 +22,19 @@ export default function StorefrontHeader({ tenant, onCartClick }) {
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/10 bg-paper px-4 py-3 sm:px-8">
-      <Link to={`/store/${tenant.slug}`} aria-label={shopName}>
-        {logoUrl ? (
-          <img src={optimizedImage(logoUrl, 400)} alt={shopName} className="h-8 w-auto" />
-        ) : (
-          <span className="font-display text-xl font-bold uppercase tracking-[0.2em]">
-            {shopName}
-          </span>
-        )}
-      </Link>
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <StorefrontMenu tenant={tenant} />
+        <Link to={`/store/${tenant.slug}`} aria-label={shopName} className="min-w-0">
+          {logoUrl ? (
+            <img src={optimizedImage(logoUrl, 400)} alt={shopName} className="h-8 w-auto" />
+          ) : (
+            <span className="font-display block truncate text-xl font-bold uppercase tracking-[0.2em]">
+              {shopName}
+            </span>
+          )}
+        </Link>
+      </div>
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <LanguageSwitch />
         {/* light / dark switch: remembered on the visitor's phone */}
         <button

@@ -3,7 +3,8 @@
 
 export const MAX_ANNOUNCEMENTS = 4; // top-bar messages (the first one + up to 3 more)
 export const MAX_HIGHLIGHTS = 4; // "why buy from us" points
-export const POLICY_PAGES = ['privacy', 'returns', 'shipping', 'terms'];
+// 'about' (update 36) is written by the shop like the others and shown only when it has text.
+export const POLICY_PAGES = ['about', 'privacy', 'returns', 'shipping', 'terms'];
 export const MAX_PAGE_CHARS = 8000;
 
 const pick = (obj, language) => String(obj?.[language] || obj?.en || obj?.ar || '').trim();

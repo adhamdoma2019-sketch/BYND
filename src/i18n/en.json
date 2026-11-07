@@ -110,7 +110,8 @@
     "emailUseThis": "Use this",
     "promoShapeBad": "A promo code uses only letters, numbers, - and _.",
     "promoChecking": "Checking the code…",
-    "promoCheckFailed": "We couldn't check the code. Please try again."
+    "promoCheckFailed": "We couldn't check the code. Please try again.",
+    "lettersOnly": "Letters only, please: numbers and symbols are not accepted here."
   },
   "admin": {
     "login": "Partner login",
@@ -519,7 +520,7 @@
     "highlightTextAr": "Short text (Arabic, optional)",
     "addHighlight": "Add a highlight",
     "pagesTitle": "Text pages",
-    "pagesHelp": "Write each page in your own words (plain text; a blank line starts a new paragraph). A page appears in the shop footer only when it has text. Please make sure the text follows the rules of your country.",
+    "pagesHelp": "Write each page in your own words (plain text; a blank line starts a new paragraph). A page appears in the shop menu and footer only when it has text. Please make sure the text follows the rules of your country.",
     "pageBodyEn": "Text (English)",
     "pageBodyAr": "Text (Arabic)",
     "promoQtyTitle": "Promo codes and quantity prices",
@@ -958,6 +959,7 @@
     "whatsappLabel": "Chat on WhatsApp"
   },
   "policies": {
+    "about": "About us",
     "privacy": "Privacy policy",
     "returns": "Returns & exchanges",
     "shipping": "Shipping policy",
@@ -1096,5 +1098,14 @@
     "preparing": "Preparing…",
     "saveFailed": "We couldn't create the file on this device. Please take a screenshot of the receipt instead.",
     "emailHint": "The email button opens your own email app with the receipt already typed in. We do not send emails."
+  },
+  "menu": {
+    "title": "Menu",
+    "open": "Open menu",
+    "close": "Close menu",
+    "home": "Home",
+    "products": "Products",
+    "info": "Information",
+    "chat": "Chat on WhatsApp"
   }
 }

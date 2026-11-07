@@ -97,6 +97,17 @@ html[dir='rtl'] .font-display {
   .hero-slide-enter { animation: none; }
 }
 
+/* Shop menu panel sliding in from the start side (left in English, right in Arabic). */
+@keyframes menuSlide {
+  from { transform: translateX(calc(-100% * var(--menu-dir, 1))); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+.menu-slide { animation: menuSlide 0.22s ease-out; }
+html[dir='rtl'] .menu-slide { --menu-dir: -1; }
+@media (prefers-reduced-motion: reduce) {
+  .menu-slide { animation: none; }
+}
+
 /* Storefront headings: a modern geometric font (Arabic keeps IBM Plex). */
 html.theme-store .font-display {
   font-family: var(--font-display, 'Space Grotesk', 'Work Sans', sans-serif);

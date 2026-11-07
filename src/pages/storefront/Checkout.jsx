@@ -12,6 +12,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
 import { checkPhone, checkEmail, checkField } from '../../utils/contactChecks';
+import { filterTyped } from '../../utils/typingFilter';
 import {
   CHECKOUT_FIELDS,
   resolveFieldSettings,
@@ -69,6 +70,7 @@ export default function Checkout() {
   const [quoteFailed, setQuoteFailed] = useState(false); // the server could not be asked
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [removedFrom, setRemovedFrom] = useState(''); // box where digits / symbols were just refused (name, country, city)
   const [website, setWebsite] = useState(''); // trap for bots (kept out of sight)
   const [touched, setTouched] = useState({}); // which boxes the customer already left
 
@@ -318,12 +320,22 @@ export default function Checkout() {
                   autoComplete={f.autoComplete}
                   dir={f.type === 'email' || f.type === 'tel' ? 'ltr' : undefined}
                   value={form[f.key]}
-                  onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, [f.key]: true })}
+                  onChange={(e) => {
+                    const typed = filterTyped(f.key, e.target.value);
+                    setRemovedFrom(typed.changed ? f.key : '');
+                    setForm({ ...form, [f.key]: typed.value });
+                  }}
+                  onBlur={() => {
+                    setRemovedFrom('');
+                    setTouched({ ...touched, [f.key]: true });
+                  }}
                   className={inputClass}
                 />
               )}
             </label>
+            {removedFrom === f.key && (
+              <p className="mt-1 text-xs text-ink-soft" role="status">{t('checkout.lettersOnly')}</p>
+            )}
             {!['phone', 'email'].includes(f.key) && touched[f.key] && fieldBad(f.key) && (
               <p className="mt-1 text-xs text-rust">
                 {t('errors.BAD_FIELD_FORMAT', { field: t(`checkoutFields.${f.key}`) })}
