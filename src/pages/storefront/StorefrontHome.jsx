@@ -111,7 +111,7 @@ export default function StorefrontHome() {
 
       <Highlights items={highlights} />
 
-      <main className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+      <main className="mx-auto max-w-6xl px-5 pb-0 pt-14 sm:px-8 sm:pt-20">
         <h2
           id="products"
           className="font-display mb-8 scroll-mt-20 text-3xl font-bold tracking-tight sm:text-4xl"

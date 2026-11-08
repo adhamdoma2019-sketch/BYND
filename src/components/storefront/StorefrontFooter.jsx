@@ -28,7 +28,7 @@ export default function StorefrontFooter({ tenant }) {
   const policies = availablePolicyPages(tenant, language);
 
   return (
-    <footer className="mt-20 border-t border-ink/10 px-5 py-10 sm:px-8">
+    <footer className="mt-14 border-t sm:mt-16 border-ink/10 px-5 py-10 sm:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col items-start justify-between gap-6 sm:flex-row">
           <div>

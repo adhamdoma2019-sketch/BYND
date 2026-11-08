@@ -89,7 +89,7 @@ export default function CartDrawer({ onClose }) {
                         </span>
                       )}
                       {item.isPreorder && (
-                        <span className="ms-2 rounded bg-ink px-1.5 py-0.5 text-xs text-paper">
+                        <span className="ms-2 rounded border border-ink/25 px-1.5 py-0.5 text-[11px] text-ink-soft">
                           {t(item.madeStyle === 'madeToOrder' ? 'storefront.madeToOrder' : 'storefront.preorder')}
                         </span>
                       )}

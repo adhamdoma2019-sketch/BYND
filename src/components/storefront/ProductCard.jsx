@@ -34,7 +34,7 @@ export default function ProductCard({ product, onAddToCart }) {
           </div>
         )}
         {['preorder', 'madeToOrder', 'comingSoon'].includes(status) && (
-          <span className="absolute start-2 top-2 rounded bg-ink px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-paper">
+          <span className="absolute start-2 top-2 rounded border border-ink/15 bg-paper px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-ink-soft">
             {t(`storefront.${status}`)}
           </span>
         )}

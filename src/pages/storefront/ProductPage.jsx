@@ -562,7 +562,7 @@ export default function ProductPage() {
             <div className="mt-4">
               {comingSoon ? (
                 <>
-                  <span className="rounded bg-ink px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-paper">
+                  <span className="rounded border border-ink/25 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-ink-soft">
                     {t('storefront.comingSoon')}
                   </span>
                   <p className="mt-3 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
@@ -571,7 +571,7 @@ export default function ProductPage() {
                 </>
               ) : madeNow ? (
                 <>
-                  <span className="rounded bg-ink px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-paper">
+                  <span className="rounded border border-ink/25 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-ink-soft">
                     {t(`storefront.${madeStyle}`)}
                   </span>
                   {preorderMessage && (
