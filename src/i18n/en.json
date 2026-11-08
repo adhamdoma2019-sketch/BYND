@@ -79,7 +79,8 @@
     "pkgHintCart": "Add {{n}} more to complete a package of {{pkg}} for {{price}}.",
     "pkgHintCartSame": "Add {{n}} more of the same {{option}} to complete a package of {{pkg}} for {{price}}.",
     "cardPackage": "{{n}} for {{price}}",
-    "cardTier": "{{price}} each from {{n}}+ pieces"
+    "cardTier": "{{price}} each from {{n}}+ pieces",
+    "madeToOrderCartNotice": "Your cart has a made-to-order item. It will ship once it's made, and we'll contact you with the date."
   },
   "checkout": {
     "title": "Checkout",
@@ -113,7 +114,8 @@
     "promoShapeBad": "A promo code uses only letters, numbers, - and _.",
     "promoChecking": "Checking the code…",
     "promoCheckFailed": "We couldn't check the code. Please try again.",
-    "lettersOnly": "Letters only, please: numbers and symbols are not accepted here."
+    "lettersOnly": "Letters only, please: numbers and symbols are not accepted here.",
+    "madeToOrderPlacedBody": "This order is made to order. We'll contact you to confirm the delivery date."
   },
   "admin": {
     "login": "Partner login",
@@ -1090,7 +1092,8 @@
     "cartLinePackage": "{{n}} × {{name}} — {{price}}",
     "paintingWith": "Painting with: {{name}}",
     "noColourYet": "No colour picked yet. Pick one above, then tap the wall.",
-    "pickColourToAdd": "Please pick a colour for your wall before adding it to the cart."
+    "pickColourToAdd": "Please pick a colour for your wall before adding it to the cart.",
+    "cartTitleOne": "Wall of 1 piece"
   },
   "receipt": {
     "title": "Order receipt",
@@ -1104,7 +1107,8 @@
     "emailMe": "Email it to myself",
     "preparing": "Preparing…",
     "saveFailed": "We couldn't create the file on this device. Please take a screenshot of the receipt instead.",
-    "emailHint": "The email button opens your own email app with the receipt already typed in. We do not send emails."
+    "emailHint": "The email button opens your own email app with the receipt already typed in. We do not send emails.",
+    "preorder": "Preorder"
   },
   "menu": {
     "title": "Menu",

@@ -42,7 +42,7 @@ export function receiptModel(receipt, { language = 'en', shopName = '', t, track
       name: `${pick(i.name, language)} × ${i.quantity}`,
       amount: money(i.amount),
       details: (i.options || []).map((o) => optionLine(o, language, t)),
-      tag: i.madeToOrder ? t('receipt.madeToOrder') : '',
+      tag: i.madeToOrder ? t(i.madeStyle === 'preorder' ? 'receipt.preorder' : 'receipt.madeToOrder') : '',
     });
   }
   rows.push({ kind: 'rule' });

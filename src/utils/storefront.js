@@ -72,6 +72,14 @@ export function productStatus(product) {
   return gone ? 'soldOut' : 'inStock';
 }
 
+// Which words to use for lines that are not taken from stock: 'madeToOrder' only when EVERY such line
+// belongs to a product the shop calls "made to order"; otherwise 'preorder' (also for old carts that
+// do not carry the style). One place decides, so cart, checkout, thank-you page and receipt agree.
+export function madeWording(lines) {
+  const list = (Array.isArray(lines) ? lines : []).filter(Boolean);
+  return list.length > 0 && list.every((l) => l.madeStyle === 'madeToOrder') ? 'madeToOrder' : 'preorder';
+}
+
 export const isBuyable = (status) => status !== 'comingSoon' && status !== 'soldOut';
 
 // Products that count in the stock reports and low-stock warnings: not preorders,

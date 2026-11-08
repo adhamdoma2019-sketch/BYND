@@ -323,6 +323,7 @@ export async function placeOrder(db, { tenantId, customer, custom, items, walls 
         // Which quantity price was used (the "from X pieces" step), only when one applied.
         ...(tier ? { tierMinQty: tier.minQty } : {}),
         isPreorder: madeToOrder,
+        ...(madeToOrder ? { madeStyle: product.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder' } : {}),
         // (backorder: true = this line is made to order because the stock ran out)
         ...(madeToOrder && !info.isPreorder ? { backorder: true } : {}),
         // which counted numbers this line took a unit from (needed to give them back on cancel/return)

@@ -179,3 +179,14 @@ assert.equal(
 ok('card price note: package, cheapest step, nothing, invalid ignored');
 
 console.log(`ALL ${n} STOREFRONT CHECKS PASSED`);
+
+// ---- update 41: Preorder / Made to order wording is decided in ONE place (madeWording) ----
+{
+  const { madeWording } = await import('../src/utils/storefront.js');
+  assert.equal(madeWording([]), 'preorder');
+  assert.equal(madeWording([{ madeStyle: 'madeToOrder' }]), 'madeToOrder');
+  assert.equal(madeWording([{ madeStyle: 'madeToOrder' }, { madeStyle: 'preorder' }]), 'preorder');
+  assert.equal(madeWording([{}]), 'preorder');            // an old cart line without the style
+  assert.equal(madeWording(undefined), 'preorder');
+  console.log('  ok  madeWording: made to order only when every such line says so');
+}

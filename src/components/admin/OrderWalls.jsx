@@ -28,7 +28,7 @@ export default function OrderWalls({ order, language }) {
           <p className="text-sm font-medium">
             {t('orders.wallTitle')} — {w.productName?.[language] || w.productName?.en}
           </p>
-          <p className="text-xs text-ink-soft">{t('wall.cartTitle', { n: w.count })}</p>
+          <p className="text-xs text-ink-soft">{t(w.count === 1 ? 'wall.cartTitleOne' : 'wall.cartTitle', { n: w.count })}</p>
           <div className="mt-2 flex flex-wrap items-start gap-4">
             <WallPicture cells={w.cells} className="h-40 w-40 shrink-0" label={t('orders.wallTitle')} />
             <div>

@@ -76,6 +76,8 @@ export function CartProvider({ slug, children }) {
           quantity: Math.min(quantity, max),
           maxStock: max,
           isPreorder: product.isPreorder === true || choice.madeToOrder === true,
+          // wording only: "Preorder" or "Made to order", as the shop set it on the product
+          madeStyle: product.preorderStyle === 'madeToOrder' ? 'madeToOrder' : 'preorder',
           selections,
           optionLabels: choice.labels || [],
           imageUrl: choice.imageUrl || '',

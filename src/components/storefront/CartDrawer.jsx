@@ -9,6 +9,7 @@ import { optimizedImage } from '../../utils/images';
 import { formatPrice } from '../../utils/format';
 import { lineAmount } from '../../utils/quantityPrices';
 import { packageHintFor } from '../../utils/cartPricing';
+import { madeWording } from '../../utils/storefront';
 
 export default function CartDrawer({ onClose }) {
   const { t } = useTranslation();
@@ -89,7 +90,7 @@ export default function CartDrawer({ onClose }) {
                       )}
                       {item.isPreorder && (
                         <span className="ms-2 rounded bg-ink px-1.5 py-0.5 text-xs text-paper">
-                          {t('storefront.preorder')}
+                          {t(item.madeStyle === 'madeToOrder' ? 'storefront.madeToOrder' : 'storefront.preorder')}
                         </span>
                       )}
                     </p>
@@ -143,7 +144,7 @@ export default function CartDrawer({ onClose }) {
             <div className="mt-6 border-t border-ink/10 pt-4">
               {items.some((i) => i.isPreorder) && (
                 <p className="mb-3 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-xs text-brass-dark">
-                  {t('storefront.preorderCartNotice')}
+                  {t(madeWording(items.filter((i) => i.isPreorder)) === 'madeToOrder' ? 'storefront.madeToOrderCartNotice' : 'storefront.preorderCartNotice')}
                 </p>
               )}
               <div className="flex justify-between font-medium">

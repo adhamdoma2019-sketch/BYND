@@ -38,6 +38,7 @@ export function buildReceipt(order) {
       amount: i?.lineTotal !== undefined && i?.lineTotal !== null ? num(i.lineTotal) : num(i?.subtotal),
       options: cleanOptions(i?.options),
       madeToOrder: i?.isPreorder === true,
+      madeStyle: i?.madeStyle === 'preorder' ? 'preorder' : 'madeToOrder',
     })),
     subtotal: num(order?.subtotal),
     discount: num(order?.discount),

@@ -75,7 +75,19 @@ const tt = (k, o) => `${k}${o && o.url !== undefined ? '<' + o.url + '>' : ''}`;
 const rows = R.receiptModel({ ...rc, discount: 50, promoCode: 'WELCOME', shippingFee: 40, zoneName: 'Cairo' }, { language: 'en', shopName: 'BYND', t: tt, trackUrl: 'https://s/store/bynd/track' });
 const kinds = rows.map((r) => r.kind); assert.equal(kinds[0], 'title'); assert.ok(kinds.includes('total') && kinds.includes('note'));
 assert.deepEqual(rows.find((r) => r.kind === 'item').details, ['Colour: Black']); assert.equal(rows.find((r) => r.kind === 'item').name, 'Hexagon × 4');
-assert.equal(rows.find((r) => r.kind === 'item').tag, 'receipt.madeToOrder');
+// wording follows the product's own style: no style set = 'Preorder' (same as the cart and checkout)
+assert.equal(rc.items[0].madeStyle, 'preorder');
+assert.equal(rows.find((r) => r.kind === 'item').tag, 'receipt.preorder');
+{ // a product the shop calls 'made to order' says so on the saved order line and on the receipt
+  const dbM = world(); dbM.store.set('products/p1', { ...product, preorderStyle: 'madeToOrder' });
+  const placedM = await placeOrder(dbM, validateInput({ tenantId: 'bynd', customer: cust, items: [{ productId: 'p1', quantity: 1, selections: { col: 'blk' } }] }));
+  assert.equal(placedM._order.items[0].madeStyle, 'madeToOrder');
+  const rcM = buildReceipt(placedM._order);
+  assert.equal(rcM.items[0].madeStyle, 'madeToOrder');
+  assert.equal(R.receiptModel(rcM, { language: 'en', shopName: 'BYND', t: tt, trackUrl: '' }).find((r) => r.kind === 'item').tag, 'receipt.madeToOrder');
+  // a normal in-stock line carries no wording style at all
+  assert.equal(placed._order.items[0].isPreorder, true);
+}
 assert.equal(rows.find((r) => r.kind === 'total').value, '700 EGP');
 assert.ok(rows.some((r) => r.kind === 'pair' && r.label === 'checkout.discount (WELCOME)' && r.value === '− 50 EGP'));
 assert.ok(rows.some((r) => r.kind === 'pair' && /checkout\.shipping \(Cairo\)/.test(r.label) && r.value === '40 EGP'));
@@ -142,6 +154,15 @@ globalThis.__state = { orderNumberLabel: 'BYND-1001', totalAmount: 700 };       
 html = renderToString(React.createElement(Thanks)); assert.doesNotMatch(html, /data-receipt/); assert.match(html, /checkout\.orderPlaced/);
 globalThis.__state = undefined; assert.doesNotThrow(() => renderToString(React.createElement(Thanks)));
 assert.match(fs.readFileSync(path.join(root, 'src/pages/storefront/Checkout.jsx'), 'utf8'), /receipt: result\.receipt \|\| null/);   // checkout hands it to the thank-you page
+// update 41: slim header on the page, no repeated order number / total above the receipt, wording follows the products
+globalThis.__state = { orderNumberLabel: 'BYND-1001', totalAmount: 700, orderType: 'preorder', receipt: rc };
+html = renderToString(React.createElement(Thanks));
+assert.match(html, /data-checkout-header/); assert.doesNotMatch(html, /mt-4 text-lg font-medium/);          // receipt shown: the number is not repeated above it
+assert.match(html, /checkout\.preorderPlacedBody/); assert.doesNotMatch(html, /checkout\.madeToOrderPlacedBody/);   // this product has no 'made to order' style
+globalThis.__state = { orderNumberLabel: 'BYND-1001', totalAmount: 700, orderType: 'preorder', receipt: { ...rc, items: rc.items.map((i) => ({ ...i, madeStyle: 'madeToOrder' })) } };
+html = renderToString(React.createElement(Thanks)); assert.match(html, /checkout\.madeToOrderPlacedBody/);
+globalThis.__state = { orderNumberLabel: 'BYND-1001', totalAmount: 700 };
+html = renderToString(React.createElement(Thanks)); assert.match(html, /mt-4 text-lg font-medium/);          // no receipt: number + total stay
 ok('thank-you page: receipt card with the three buttons (picture, PDF, email link) when the order has a receipt; unchanged without one; checkout passes it on');
 
 console.log('\nALL ' + n + ' RECEIPT CHECK GROUPS PASSED');

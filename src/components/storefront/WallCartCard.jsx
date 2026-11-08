@@ -23,7 +23,7 @@ export default function WallCartCard({ lines, onRemove }) {
         />
         <div className="min-w-0">
           <p className="font-medium">{first.name?.[language] || first.name?.en}</p>
-          <p className="text-sm text-ink-soft">{t('wall.cartTitle', { n: wallPieces(lines) })}</p>
+          <p className="text-sm text-ink-soft">{t(wallPieces(lines) === 1 ? 'wall.cartTitleOne' : 'wall.cartTitle', { n: wallPieces(lines) })}</p>
           <ul className="mt-1 space-y-0.5 text-sm text-ink-soft">
             {lines.map((l) => {
               const col = (l.optionLabels || []).find((o) => o.type === 'color');

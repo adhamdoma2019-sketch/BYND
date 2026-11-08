@@ -15,7 +15,7 @@ export function wallsToText(order, language, t) {
       const names = new Map((w.colors || []).map((c) => [c.id, pick(c.label, language)]));
       const mix = wallColorsText(w, language);
       const pieces = (w.cells || []).map((c) => `${c.q},${c.r}${c.c ? `=${names.get(c.c) || c.c}` : ''}`).join('; ');
-      return `${t('wall.cartTitle', { n: w.count })}${mix ? ` (${mix})` : ''}: ${pieces}`;
+      return `${t(w.count === 1 ? 'wall.cartTitleOne' : 'wall.cartTitle', { n: w.count })}${mix ? ` (${mix})` : ''}: ${pieces}`;
     })
     .join(' | ');
 }

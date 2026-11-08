@@ -14,6 +14,8 @@ import { formatPrice } from '../../utils/format';
 import { checkPhone, checkEmail, checkField } from '../../utils/contactChecks';
 import { filterTyped } from '../../utils/typingFilter';
 import { makeTokenKeeper } from '../../utils/orderToken';
+import { madeWording } from '../../utils/storefront';
+import CheckoutHeader from '../../components/storefront/CheckoutHeader';
 import {
   CHECKOUT_FIELDS,
   resolveFieldSettings,
@@ -235,11 +237,14 @@ export default function Checkout() {
 
   if (items.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-        <p className="text-ink-soft">{t('storefront.emptyCart')}</p>
-        <Link to={`/store/${slug}`} className="mt-4 text-brass-dark hover:underline">
-          {t('storefront.backToShop')}
-        </Link>
+      <div className="min-h-screen">
+        <CheckoutHeader slug={slug} />
+        <div className="flex flex-col items-center px-4 pt-24 text-center">
+          <p className="text-ink-soft">{t('storefront.emptyCart')}</p>
+          <Link to={`/store/${slug}`} className="mt-4 text-brass-dark hover:underline">
+            {t('storefront.backToShop')}
+          </Link>
+        </div>
       </div>
     );
   }
@@ -249,11 +254,10 @@ export default function Checkout() {
   const shown = quote || { subtotal, discount: 0, shippingFee: 0, total: subtotal };
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg px-4 pb-28 pt-12 md:pb-12">
-      <Link to={`/store/${slug}`} className="text-sm text-brass-dark hover:underline">
-        {t('storefront.backToShop')}
-      </Link>
-      <h1 className="font-display mt-4 text-2xl font-semibold">{t('checkout.title')}</h1>
+    <div className="min-h-screen pb-28 md:pb-12">
+    <CheckoutHeader slug={slug} />
+    <div className="mx-auto max-w-lg px-4 pt-6">
+      <h1 className="font-display text-2xl font-semibold">{t('checkout.title')}</h1>
 
       {/* ----- items ----- */}
       <div className="mt-6 rounded-md border border-ink/10 bg-paper-soft p-4">
@@ -272,7 +276,7 @@ export default function Checkout() {
               {item.name?.[language] || item.name?.en} × {item.quantity}
               {item.isPreorder && (
                 <span className="ms-2 rounded bg-ink px-1.5 py-0.5 text-xs text-paper">
-                  {t('storefront.preorder')}
+                  {t(item.madeStyle === 'madeToOrder' ? 'storefront.madeToOrder' : 'storefront.preorder')}
                 </span>
               )}
               <OptionSummary labels={item.optionLabels} />
@@ -287,11 +291,15 @@ export default function Checkout() {
           </div>
           );
         })}
+        <div className="mt-2 flex justify-between border-t border-ink/10 pt-2 text-sm font-semibold" data-checkout-top-total>
+          <span>{t('checkout.total')}</span>
+          <span>{money(shown.total)}</span>
+        </div>
       </div>
 
       {items.some((i) => i.isPreorder) && (
         <p className="mt-4 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
-          {t('storefront.preorderCartNotice')}
+          {t(madeWording(items.filter((i) => i.isPreorder)) === 'madeToOrder' ? 'storefront.madeToOrderCartNotice' : 'storefront.preorderCartNotice')}
         </p>
       )}
 
@@ -335,7 +343,7 @@ export default function Checkout() {
                     setRemovedFrom('');
                     setTouched({ ...touched, [f.key]: true });
                   }}
-                  className={inputClass}
+                  className={`${inputClass} ${f.type === 'email' || f.type === 'tel' ? 'rtl:text-right' : ''}`}
                 />
               )}
             </label>
@@ -427,7 +435,7 @@ export default function Checkout() {
                   dir={['email', 'phone', 'number'].includes(f.type) ? 'ltr' : undefined}
                   value={value}
                   onChange={(e) => set(e.target.value)}
-                  className={inputClass}
+                  className={`${inputClass} ${['email', 'phone', 'number'].includes(f.type) ? 'rtl:text-right' : ''}`}
                 />
               )}
             </label>
@@ -575,6 +583,7 @@ export default function Checkout() {
           {submitting ? t('checkout.placingOrder') : t('checkout.placeOrder')}
         </button>
       </form>
+    </div>
     </div>
   );
 }
