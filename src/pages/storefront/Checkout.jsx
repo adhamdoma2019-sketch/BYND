@@ -13,6 +13,7 @@ import { useStorefront } from '../../context/StorefrontContext';
 import { formatPrice } from '../../utils/format';
 import { checkPhone, checkEmail, checkField } from '../../utils/contactChecks';
 import { filterTyped } from '../../utils/typingFilter';
+import { makeTokenKeeper } from '../../utils/orderToken';
 import {
   CHECKOUT_FIELDS,
   resolveFieldSettings,
@@ -70,6 +71,8 @@ export default function Checkout() {
   const [quoteFailed, setQuoteFailed] = useState(false); // the server could not be asked
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const tokenKeeper = useRef(null); // one-time order code: the same while the order content is the same (no double orders)
+  if (!tokenKeeper.current) tokenKeeper.current = makeTokenKeeper();
   const [removedFrom, setRemovedFrom] = useState(''); // box where digits / symbols were just refused (name, country, city)
   const [website, setWebsite] = useState(''); // trap for bots (kept out of sight)
   const [touched, setTouched] = useState({}); // which boxes the customer already left
@@ -196,6 +199,7 @@ export default function Checkout() {
     setSubmitting(true);
     try {
       const pictures = wallPictures(items); // (the cart is emptied right after the order)
+      const promoToSend = quote?.promo ? appliedCode : '';
       const result = await createOrder({
         tenantId: tenant.id,
         customer: form,
@@ -203,8 +207,10 @@ export default function Checkout() {
         website,
         items,
         zoneId,
-        promoCode: quote?.promo ? appliedCode : '',
+        promoCode: promoToSend,
+        orderToken: tokenKeeper.current.get({ shop: tenant.id, form, custom, items, zoneId, promo: promoToSend }),
       });
+      tokenKeeper.current.reset();
       clearCart();
       navigate(`/store/${slug}/thank-you`, {
         state: {

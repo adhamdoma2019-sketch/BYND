@@ -20,6 +20,7 @@ import { computeTotals, round2 } from './pricing.js';
 import { SAFETY_MAX_QTY, checkTotalQty, groupKeyOf, groupQuantities, tierFor, tierGroupOption, cleanPackage, packageAddition } from './quantityPrices.js';
 import { cleanSelections, selectionSignature, resolveSelections, stripHidden } from './options.js';
 import { cleanWallId, cleanWallsInput, buildWalls } from './wall.js';
+import { cleanOrderToken, tokenRef, savedResult, TOKEN_KEEP_MS } from './orderToken.js';
 import {
   isOptionCounted,
   keysForSelections,
@@ -98,10 +99,11 @@ export function validateInput(body) {
     walls: cleanWallsInput(body.walls), // the walls the customer planned (checked later against the real product)
     zoneId: cleanText(body.zoneId, 60),
     promoCode: cleanPromoCode(body.promoCode),
+    orderToken: cleanOrderToken(body.orderToken), // one-time code against double orders ('' = none)
   };
 }
 
-export async function placeOrder(db, { tenantId, customer, custom, items, walls = [], zoneId, promoCode }) {
+export async function placeOrder(db, { tenantId, customer, custom, items, walls = [], zoneId, promoCode, orderToken = '' }) {
   const tenantRef = db.collection('tenants').doc(tenantId);
   const counterRef = db.collection('counters').doc(tenantId);
   const orderRef = db.collection('orders').doc();
@@ -113,14 +115,25 @@ export async function placeOrder(db, { tenantId, customer, custom, items, walls 
   const promoRef = promoCode
     ? db.collection('promoCodes').doc(`${tenantId}__${promoCode}`)
     : null;
+  const tokenDocRef = orderToken ? tokenRef(db, tenantId, orderToken) : null;
 
   return db.runTransaction(async (tx) => {
     const refs = [tenantRef, counterRef, ...productRefs, ...costRefs];
     if (promoRef) refs.push(promoRef);
+    if (tokenDocRef) refs.push(tokenDocRef);
     const [tenantSnap, counterSnap, ...rest] = await tx.getAll(...refs);
     const productSnaps = rest.slice(0, productIds.length);
     const costSnaps = rest.slice(productIds.length, productIds.length * 2);
     const promoSnap = promoRef ? rest[productIds.length * 2] : null;
+    const tokenSnap = tokenDocRef ? rest[productIds.length * 2 + (promoRef ? 1 : 0)] : null;
+
+    // Same one-time code seen before = the customer pressed again after a lost answer (or two taps at once):
+    // give back the order that is already saved. Nothing is written, no stock is taken twice.
+    if (tokenSnap?.exists && tokenSnap.data().orderId) {
+      const savedId = tokenSnap.data().orderId;
+      const [savedSnap] = await tx.getAll(db.collection('orders').doc(savedId));
+      if (savedSnap.exists) return savedResult(savedId, savedSnap.data());
+    }
 
     if (!tenantSnap.exists || tenantSnap.data().isActive === false) {
       throw new OrderError(404, 'NO_SHOP', 'This shop is not available.');
@@ -418,6 +431,14 @@ export async function placeOrder(db, { tenantId, customer, custom, items, walls 
     tx.set(orderRef, orderDoc);
 
     tx.set(counterRef, { current: orderNumber }, { merge: true });
+    if (tokenDocRef) {
+      tx.set(tokenDocRef, {
+        tenantId,
+        orderId: orderRef.id,
+        createdAt: FieldValue.serverTimestamp(),
+        expireAt: new Date(Date.now() + TOKEN_KEEP_MS), // lets Firestore's free TTL setting clean up
+      });
+    }
 
     return {
       orderId: orderRef.id,

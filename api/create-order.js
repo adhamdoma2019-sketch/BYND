@@ -10,6 +10,7 @@ import { waitUntil } from '@vercel/functions';
 import { validateInput, placeOrder, OrderError } from './_lib/placeOrder.js';
 import { notifyNewOrder } from './_lib/notify.js';
 import { buildReceipt } from './_lib/receipt.js';
+import { findSavedOrder } from './_lib/orderToken.js';
 import { clientIp, hashKey, hasRoom, countUse, phoneDigits, LIMITS } from './_lib/rateLimit.js';
 
 export default async function handler(req, res) {
@@ -39,6 +40,13 @@ export default async function handler(req, res) {
     const input = validateInput(body);
     const db = getDb();
 
+    // Pressed again after a lost answer? Then the order already exists: return it, count nothing, alert nobody.
+    const already = await findSavedOrder(db, input.tenantId, input.orderToken);
+    if (already) {
+      const { _order: savedOrder, ...savedResult } = already;
+      return res.status(200).json({ ...savedResult, receipt: buildReceipt(savedOrder) });
+    }
+
     // Spam protection: limits per connection and per phone number.
     const ipKey = `order-ip-${hashKey(clientIp(req))}`;
     const digits = phoneDigits(input.customer.phone);
@@ -52,17 +60,20 @@ export default async function handler(req, res) {
     await countUse(db, ipKey, LIMITS.orderIp);
 
     const { _order, ...result } = await placeOrder(db, input);
-    if (phoneKey) await countUse(db, phoneKey, LIMITS.orderPhone); // only real orders count
+    // (a second tap at the very same moment can still end here with the SAME saved order: then nothing is counted or sent again)
+    if (!result.duplicate) {
+      if (phoneKey) await countUse(db, phoneKey, LIMITS.orderPhone); // only real orders count
 
-    // Tell the team on Telegram. waitUntil lets Vercel finish this in the
-    // background, so the customer isn't kept waiting.
-    waitUntil(
-      notifyNewOrder(db, {
-        tenantId: input.tenantId,
-        orderNumberLabel: result.orderNumberLabel,
-        order: _order,
-      })
-    );
+      // Tell the team on Telegram. waitUntil lets Vercel finish this in the
+      // background, so the customer isn't kept waiting.
+      waitUntil(
+        notifyNewOrder(db, {
+          tenantId: input.tenantId,
+          orderNumberLabel: result.orderNumberLabel,
+          order: _order,
+        })
+      );
+    }
 
     // The customer's receipt (built from the saved order; only this customer gets it).
     return res.status(200).json({ ...result, receipt: buildReceipt(_order) });

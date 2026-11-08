@@ -49,7 +49,7 @@ const cartLines = (items) =>
   }));
 
 // Place the order. Returns { orderId, orderNumber, orderNumberLabel, totalAmount, orderType }.
-export function createOrder({ tenantId, customer, custom, items, zoneId, promoCode, website }) {
+export function createOrder({ tenantId, customer, custom, items, zoneId, promoCode, website, orderToken }) {
   // lines of a planned wall carry their wallId; the walls themselves (pieces + colours) travel next to the lines
   const { lines, walls } = wallParts(items);
   return callApi('/api/create-order', {
@@ -61,6 +61,7 @@ export function createOrder({ tenantId, customer, custom, items, zoneId, promoCo
     walls,
     zoneId: zoneId || '',
     promoCode: promoCode || '',
+    orderToken: orderToken || '', // one-time code: pressing again after a lost answer gives back the SAME order
   });
 }
 
