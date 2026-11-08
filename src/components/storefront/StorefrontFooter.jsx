@@ -72,7 +72,7 @@ export default function StorefrontFooter({ tenant }) {
           ))}
         </nav>
         <p className="mt-8 text-sm text-ink-faint">
-          {t('storefront.footerNote')} · © {new Date().getFullYear()} {shopName}
+          {t('storefront.footerNote')} · <bdi>© {new Date().getFullYear()} {shopName}</bdi>
         </p>
       </div>
     </footer>

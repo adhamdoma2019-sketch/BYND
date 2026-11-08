@@ -110,7 +110,7 @@ export default function OptionPicker({
         <p className="text-ink-soft">
           {name}
           {mark}
-          {chosen && <span className="text-ink"> — {valueName(chosen)}{plus(chosen)}</span>}
+          {chosen && <span className="text-ink"> — <bdi>{valueName(chosen)}</bdi>{plus(chosen)}</span>}
         </p>
         <div className="mt-2 flex flex-wrap gap-3">
           {values.map((v) => (
@@ -198,7 +198,7 @@ export default function OptionPicker({
               (blocked(v) ? ' cursor-not-allowed line-through' : '')
             }
           >
-            {valueName(v)}
+            <bdi>{valueName(v)}</bdi>
             {plus(v)}
             {tag(v)}
           </button>

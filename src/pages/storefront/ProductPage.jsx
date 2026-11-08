@@ -629,7 +629,7 @@ export default function ProductPage() {
                   <p className="text-sm text-rust">
                     {t('storefront.chooseOptions', {
                       names: otherMissing
-                        .map((o) => o.label?.[language] || o.label?.en)
+                        .map((o) => `\u2068${o.label?.[language] || o.label?.en || ''}\u2069`)
                         .join(', '),
                     })}
                   </p>
