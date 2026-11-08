@@ -1,6 +1,8 @@
 // Small rules for how the shop front looks and behaves. Plain functions with no
 // screens in them, so they are easy to test (tests/storefront.mjs).
 
+import { cleanTiers, cleanPackage } from './quantityPrices.js';
+
 export const MAX_ANNOUNCEMENTS = 4; // top-bar messages (the first one + up to 3 more)
 export const MAX_HIGHLIGHTS = 4; // "why buy from us" points
 // 'about' (update 36) is written by the shop like the others and shown only when it has text.
@@ -75,3 +77,17 @@ export const isBuyable = (status) => status !== 'comingSoon' && status !== 'sold
 // Products that count in the stock reports and low-stock warnings: not preorders,
 // and not products that are only announced.
 export const tracksStock = (product) => product?.isPreorder !== true && product?.comingSoon !== true;
+
+// A small line under the price on a shop card, ONLY from what the shop really set:
+// a package price ("3 for 500") or the cheapest quantity price step ("150 each from 10+ pieces").
+// A package replaces price steps (like everywhere else). Nothing set = null (no line).
+export function cardPriceNote(product) {
+  const pkg = cleanPackage(product);
+  if (pkg) return { kind: 'package', qty: pkg.qty, price: pkg.price };
+  const tiers = cleanTiers(product?.priceTiers, product?.price);
+  if (tiers.length) {
+    const best = tiers[tiers.length - 1];
+    return { kind: 'tier', qty: best.minQty, price: best.price };
+  }
+  return null;
+}

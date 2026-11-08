@@ -9,6 +9,7 @@ import {
   availablePolicyPages,
   productStatus,
   isBuyable,
+  cardPriceNote,
   tracksStock,
   MAX_ANNOUNCEMENTS,
   MAX_HIGHLIGHTS,
@@ -160,5 +161,21 @@ const made = await placeOrder(db, mk([{ productId: 'made', quantity: 3 }]));
 assert.equal(db.store.get(`orders/${made.orderId}`).orderType, 'preorder');
 assert.equal(db.store.get('products/made').stock, 0);
 ok('server: made-to-order works like a preorder (no stock needed, stock stays 0)');
+
+// Card price note (update 39): only from what the shop really set.
+assert.equal(cardPriceNote({ price: 200 }), null, 'nothing set = no line');
+assert.deepEqual(cardPriceNote({ price: 200, packageQty: 3, packagePrice: 500 }), { kind: 'package', qty: 3, price: 500 });
+assert.equal(cardPriceNote({ price: 200, packageQty: 3, packagePrice: 600 }), null, 'a package that is not cheaper is ignored');
+assert.deepEqual(
+  cardPriceNote({ price: 200, priceTiers: [{ minQty: 5, price: 180 }, { minQty: 10, price: 150 }, { minQty: 20, price: 999 }] }),
+  { kind: 'tier', qty: 10, price: 150 },
+  'the cheapest valid step; a step that is not cheaper is ignored',
+);
+assert.equal(
+  cardPriceNote({ price: 200, packageQty: 3, packagePrice: 500, priceTiers: [{ minQty: 10, price: 150 }] }).kind,
+  'package',
+  'a package replaces price steps',
+);
+ok('card price note: package, cheapest step, nothing, invalid ignored');
 
 console.log(`ALL ${n} STOREFRONT CHECKS PASSED`);

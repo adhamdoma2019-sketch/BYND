@@ -77,7 +77,9 @@
     "pkgHintSame": "The package needs pieces of the same {{option}}. Pieces with a different {{option}} are counted separately, and pieces that do not complete a package cost the normal price each.",
     "pkgApplied": "Package price",
     "pkgHintCart": "Add {{n}} more to complete a package of {{pkg}} for {{price}}.",
-    "pkgHintCartSame": "Add {{n}} more of the same {{option}} to complete a package of {{pkg}} for {{price}}."
+    "pkgHintCartSame": "Add {{n}} more of the same {{option}} to complete a package of {{pkg}} for {{price}}.",
+    "cardPackage": "{{n}} for {{price}}",
+    "cardTier": "{{price}} each from {{n}}+ pieces"
   },
   "checkout": {
     "title": "Checkout",

@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import { hasOptions } from '../../utils/productOptions';
-import { productStatus, isBuyable } from '../../utils/storefront';
+import { productStatus, isBuyable, cardPriceNote } from '../../utils/storefront';
 
 export default function ProductCard({ product, onAddToCart }) {
   const { t } = useTranslation();
@@ -15,6 +15,7 @@ export default function ProductCard({ product, onAddToCart }) {
   const name = product.name?.[language] || product.name?.en;
   const status = productStatus(product); // comingSoon / preorder / madeToOrder / soldOut / inStock
   const buyable = isBuyable(status);
+  const note = cardPriceNote(product);
   const productUrl = `/store/${slug}/product/${product.id}`;
 
   return (
@@ -45,6 +46,13 @@ export default function ProductCard({ product, onAddToCart }) {
         </Link>
       </h3>
       <p className="mt-1 px-1 text-ink-soft">{formatPrice(product.price, language)}</p>
+      {note && (
+        <p className="mt-0.5 px-1 text-sm font-medium text-brass-dark">
+          {note.kind === 'package'
+            ? t('storefront.cardPackage', { n: note.qty, price: formatPrice(note.price, language) })
+            : t('storefront.cardTier', { n: note.qty, price: formatPrice(note.price, language) })}
+        </p>
+      )}
 
       <button
         // Products with options (color, extension...) are configured on their own page.
