@@ -53,6 +53,20 @@ export default function ProductPage() {
   const [selections, setSelections] = useState({});
   const [mainImage, setMainImage] = useState(''); // the picture shown big
   const [related, setRelated] = useState([]); // linked products (e.g. extensions)
+  // Update 40: the bottom buy bar on phones shows only while the normal buy button is out of view.
+  const [buyBtnEl, setBuyBtnEl] = useState(null);
+  const [buyBtnInView, setBuyBtnInView] = useState(false);
+  useEffect(() => {
+    if (!buyBtnEl || typeof IntersectionObserver === 'undefined') {
+      setBuyBtnInView(false); // cannot tell: keep the bar (old behaviour)
+      return undefined;
+    }
+    const io = new IntersectionObserver(([entry]) => setBuyBtnInView(entry.isIntersecting), {
+      threshold: 0.6,
+    });
+    io.observe(buyBtnEl);
+    return () => io.disconnect();
+  }, [buyBtnEl]);
   const [showMissing, setShowMissing] = useState(false);
   const [wallCells, setWallCells] = useState([]); // the pieces (with colours) the customer has planned
   // Live preview (Admin > Products): the saved product (or none for a new one) + the unsaved form on top.
@@ -377,7 +391,7 @@ export default function ProductPage() {
     <div className="min-h-screen">
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:px-6 sm:py-12 md:pb-12">
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 md:pb-12">
         <Link
           to={`/store/${slug}`}
           className="text-sm text-brass-dark hover:underline"
@@ -714,6 +728,7 @@ export default function ProductPage() {
             )}
 
             <button
+              ref={setBuyBtnEl}
               onClick={handleAdd}
               disabled={!canBuy}
               className="mt-6 w-full rounded bg-ink py-3 text-paper transition hover:bg-brass hover:text-on-brass disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
@@ -753,9 +768,11 @@ export default function ProductPage() {
       </main>
 
       <StorefrontFooter tenant={tenant} />
+      {/* Room at the very bottom so the fixed buy bar never covers the footer (phones only). */}
+      {canBuy && <div className="h-24 md:hidden" aria-hidden="true" />}
 
-      {/* Always-visible buy bar on phones (hidden on bigger screens, where the button is in view). */}
-      {canBuy && (
+      {/* Buy bar on phones: shown only while the normal buy button is out of view (hidden on bigger screens). */}
+      {canBuy && !buyBtnInView && (
         <div
           className="fixed inset-x-0 bottom-0 z-30 border-t border-ink/10 bg-paper px-4 pt-3 md:hidden"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}

@@ -192,4 +192,13 @@ v = view(typed, {}); assert.doesNotMatch(v.html, /data-picture-text-line/);
 v = view({ ...typed, options: [{ ...typed.options[0], overlay: undefined }] }, { dist: '12 KM' }); assert.doesNotMatch(v.html, /data-picture-text-line/);
 ok('product page: the typed words appear on the picture only when the shop switched it on and the customer typed something');
 
+// ---- update 40: one buy button at a time on phones, no empty gap ----
+v = view(base);
+assert.match(v.html, /fixed inset-x-0 bottom-0/);          // before the page can measure anything the bar stays (old behaviour)
+assert.match(v.html, /h-24 md:hidden/);                      // the room for the bar sits under the footer, not above it
+assert.doesNotMatch(v.html, /pb-28/);                        // the old gap above the footer is gone
+const src = fs.readFileSync(path.join(root, 'src/pages/storefront/ProductPage.jsx'), 'utf8');
+assert.match(src, /IntersectionObserver/); assert.match(src, /!buyBtnInView/);
+ok('product page: the phone buy bar hides while the normal buy button is in view; no empty gap above the footer');
+
 console.log(`\nALL ${n} PRODUCT-PAGE CHECKS PASSED`);
