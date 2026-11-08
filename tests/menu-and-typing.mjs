@@ -92,7 +92,7 @@ const draw = (tenant, pathname = '/store/bynd', language = 'en') => { globalThis
 
 const bare = draw({ slug: 'bynd', name: { en: 'BYND' } });
 assert.match(bare, /menu\.home/); assert.match(bare, /menu\.products/); assert.match(bare, /track\.footerLink/);
-assert.match(bare, /href="\/store\/bynd#products"/); assert.match(bare, /href="\/store\/bynd\/track"/);
+assert.match(bare, /href="\/store\/bynd\/products"/); assert.ok(!bare.includes("#products"), "Products opens its own page now"); assert.match(bare, /href="\/store\/bynd\/track"/);
 assert.ok(!bare.includes('policies.about'), 'no About link until the shop wrote it'); assert.ok(!bare.includes('menu.info'));
 assert.ok(!bare.includes('menu.chat'), 'no WhatsApp entry without a number');
 assert.match(bare, /aria-modal="true"/); assert.match(bare, /menu\.close/); assert.match(bare, /start-0/);       // logical side: works in Arabic too

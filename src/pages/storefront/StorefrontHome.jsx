@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { listStorefrontProducts } from '../../firebase/products.service';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -9,10 +9,11 @@ import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import Hero from '../../components/storefront/Hero';
 import Highlights from '../../components/storefront/Highlights';
-import ProductCard from '../../components/storefront/ProductCard';
+import ProductGrid, { ProductGridSkeleton } from '../../components/storefront/ProductGrid';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { highlightsOf } from '../../utils/storefront';
+import { featuredProducts, hasMoreThanFeatured } from '../../utils/productList';
 import {
   HERO_DEFAULT_SECONDS,
   HERO_MIN_SECONDS,
@@ -119,22 +120,30 @@ export default function StorefrontHome() {
         </h2>
 
         {productsLoading ? (
-          <p className="text-ink-soft">{t('common.loading')}</p>
+          <ProductGridSkeleton count={4} label={t('common.loading')} />
         ) : products.length === 0 ? (
           <p className="text-ink-soft">{t('storefront.noProducts')}</p>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                onAddToCart={(prod) => {
-                  addItem(prod, 1);
-                  setCartOpen(true);
-                }}
-              />
-            ))}
-          </div>
+          <>
+            {/* Only a few featured products here; the rest are on the Products page (update 42). */}
+            <ProductGrid
+              products={featuredProducts(products)}
+              onAddToCart={(prod) => {
+                addItem(prod, 1);
+                setCartOpen(true);
+              }}
+            />
+            {hasMoreThanFeatured(products) && (
+              <div className="mt-10 text-center">
+                <Link
+                  to={`/store/${tenant.slug}/products`}
+                  className="inline-block rounded border border-ink px-8 py-3 text-sm font-semibold uppercase tracking-wider transition hover:bg-ink hover:text-paper"
+                >
+                  {t('storefront.viewAll', { n: products.length })}
+                </Link>
+              </div>
+            )}
+          </>
         )}
 
         {/* "How it works": only when the shop hasn't written its own highlights. */}

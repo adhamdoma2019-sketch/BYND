@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import Landing from '../pages/Landing';
 import StorefrontLayout from '../pages/storefront/StorefrontLayout';
 import StorefrontHome from '../pages/storefront/StorefrontHome';
+import ProductsPage from '../pages/storefront/ProductsPage';
 import ProductPage from '../pages/storefront/ProductPage';
 import Checkout from '../pages/storefront/Checkout';
 import OrderConfirmation from '../pages/storefront/OrderConfirmation';
@@ -35,6 +36,7 @@ export default function AppRoutes() {
 
       <Route path="/store/:slug" element={<StorefrontLayout />}>
         <Route index element={<StorefrontHome />} />
+        <Route path="products" element={<ProductsPage />} />
         <Route path="product/:productId" element={<ProductPage />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="thank-you" element={<OrderConfirmation />} />

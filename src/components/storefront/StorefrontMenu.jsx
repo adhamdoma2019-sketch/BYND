@@ -30,14 +30,7 @@ export function MenuPanel({ tenant, onClose, closeRef }) {
     'block rounded px-3 py-3 text-lg font-display transition hover:bg-paper-dim ' +
     (active ? 'font-semibold text-brass-dark' : 'text-ink');
 
-  // "Products" is a place on the home page: already there = scroll, elsewhere = go there and scroll.
-  function onProducts(e) {
-    onClose();
-    if (isHome) {
-      e.preventDefault();
-      setTimeout(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }), 60);
-    }
-  }
+  const onProductsPage = pathname === `${base}/products`;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60" onClick={onClose}>
@@ -66,7 +59,12 @@ export function MenuPanel({ tenant, onClose, closeRef }) {
           <Link to={base} onClick={onClose} className={item(isHome)} aria-current={isHome ? 'page' : undefined}>
             {t('menu.home')}
           </Link>
-          <Link to={`${base}#products`} onClick={onProducts} className={item(false)}>
+          <Link
+            to={`${base}/products`}
+            onClick={onClose}
+            className={item(onProductsPage)}
+            aria-current={onProductsPage ? 'page' : undefined}
+          >
             {t('menu.products')}
           </Link>
           {hasAbout && (
