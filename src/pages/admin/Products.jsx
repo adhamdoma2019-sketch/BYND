@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import ImageField from '../../components/admin/ImageField';
 import { useAudit } from '../../hooks/useAudit';
 import { downloadFile } from '../../utils/csv';
@@ -111,6 +112,7 @@ export default function Products() {
   const [costs, setCosts] = useState({}); // private cost prices by product id
   const [optionCostsMap, setOptionCostsMap] = useState({}); // private extra cost of each choice
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -121,17 +123,22 @@ export default function Products() {
   async function refresh() {
     if (!tenant) return;
     setLoading(true);
-    const [data, costMap] = await Promise.all([
-      listProducts(tenant.id),
-      listProductCostDetails(tenant.id),
-    ]);
-    setCosts(Object.fromEntries(Object.entries(costMap).map(([id, c]) => [id, c.costPrice])));
-    setOptionCostsMap(Object.fromEntries(Object.entries(costMap).map(([id, c]) => [id, c.optionCosts])));
-    setProducts(
-      data.sort(
-        (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-      )
-    );
+    setLoadFailed(false);
+    try {
+      const [data, costMap] = await Promise.all([
+        listProducts(tenant.id),
+        listProductCostDetails(tenant.id),
+      ]);
+      setCosts(Object.fromEntries(Object.entries(costMap).map(([id, c]) => [id, c.costPrice])));
+      setOptionCostsMap(Object.fromEntries(Object.entries(costMap).map(([id, c]) => [id, c.optionCosts])));
+      setProducts(
+        data.sort(
+          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+        )
+      );
+    } catch {
+      setLoadFailed(true);
+    }
     setLoading(false);
   }
 
@@ -958,6 +965,8 @@ export default function Products() {
 
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
+      ) : loadFailed ? (
+        <LoadError onRetry={refresh} />
       ) : products.length === 0 ? (
         <p className="text-ink-soft">
           {t('products.none')}

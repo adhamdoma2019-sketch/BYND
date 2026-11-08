@@ -9,6 +9,7 @@ import { listExpenses } from '../../firebase/expenses.service';
 import { calcDashboard, daysSince } from '../../utils/stats';
 import { can, canSeeCosts } from '../../utils/roles';
 import { formatPrice } from '../../utils/format';
+import LoadError from './LoadError';
 import { statusBadgeClass } from '../../utils/orderRules';
 
 function Tile({ label, value, tone, to }) {
@@ -36,6 +37,8 @@ export default function DashboardStats() {
   const { language } = useLanguage();
   const { tenant, role } = useTenant();
   const [data, setData] = useState(null);
+  const [failed, setFailed] = useState(false); // the numbers could not be read (never show 0 instead)
+  const [reloadKey, setReloadKey] = useState(0); // bumped by "Try again"
   const [period, setPeriod] = useState('thisMonth');
 
   const showMoney = can(role, 'pnl');
@@ -45,6 +48,8 @@ export default function DashboardStats() {
   useEffect(() => {
     if (!tenant) return;
     let cancelled = false;
+    setFailed(false);
+    setData(null);
     async function load() {
       // Each person only loads what their role may see.
       const [orders, products, expenses, costs] = await Promise.all([
@@ -55,11 +60,11 @@ export default function DashboardStats() {
       ]);
       if (!cancelled) setData({ orders, products, expenses, costs });
     }
-    load().catch(() => !cancelled && setData({ orders: [], products: [], expenses: [], costs: {} }));
+    load().catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
-  }, [tenant, role, showMoney, showStock]);
+  }, [tenant, role, showMoney, showStock, reloadKey]);
 
   const stats = useMemo(
     () => (data ? calcDashboard({ ...data, period }) : null),
@@ -71,6 +76,13 @@ export default function DashboardStats() {
   const days = daysSince(lastBackup);
   const backupDue = role === 'owner' && (days === null || days >= 7);
 
+  if (failed) {
+    return (
+      <div className="mt-8">
+        <LoadError onRetry={() => setReloadKey((k) => k + 1)} />
+      </div>
+    );
+  }
   if (!stats) return <p className="mt-8 text-ink-soft">{t('common.loading')}</p>;
   const { counts, sales, inventory, recent } = stats;
   const when = (o) =>

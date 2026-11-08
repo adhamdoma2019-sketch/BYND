@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { listProducts } from '../../firebase/products.service';
 import { updateTenantSettings } from '../../firebase/tenants.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import ImageField from '../../components/admin/ImageField';
 import AppearanceFields from '../../components/admin/AppearanceFields';
 import ContactFields from '../../components/admin/ContactFields';
@@ -185,6 +186,9 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [alertsLoaded, setAlertsLoaded] = useState(false);
+  const [alertsFailed, setAlertsFailed] = useState(false);
+  const [alertsTouched, setAlertsTouched] = useState(false);
   const wide = usePreviewLayout(); // computer: preview beside the form; phone: opens full-screen
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -229,12 +233,28 @@ export default function Settings() {
     setPromoOnQty(tenant.checkout?.promoOnQuantityPrices !== false);
     setCountryCode(tenant.defaultCountryCode || '20');
     setLastBackup(localStorage.getItem(`backup:${tenant.id}`));
-    getTenantPrivate(tenant.id).then((p) => {
-      setTelegramChatId(p.telegramChatId || '');
-      setNotifyLanguage(p.notifyLanguage === 'ar' ? 'ar' : 'en');
-    });
-    listProducts(tenant.id).then(setProducts);
+    loadAlerts();
+    listProducts(tenant.id).then(setProducts).catch(() => {});
   }, [tenant]);
+
+  // The Telegram alert settings live in a private record. If it cannot be read, the
+  // boxes would be blank and Save would wipe the real setup: so a failed read blocks
+  // saving that part until it loads (or the owner types a chat id on purpose).
+  function loadAlerts() {
+    if (!tenant) return;
+    setAlertsFailed(false);
+    getTenantPrivate(tenant.id)
+      .then((p) => {
+        setTelegramChatId(p.telegramChatId || '');
+        setNotifyLanguage(p.notifyLanguage === 'ar' ? 'ar' : 'en');
+        setAlertsLoaded(true);
+      })
+      .catch(() => setAlertsFailed(true));
+  }
+  function changeChatId(value) {
+    setAlertsTouched(true);
+    setTelegramChatId(value);
+  }
 
   function updateSlide(index, field, value) {
     setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
@@ -388,7 +408,9 @@ export default function Settings() {
 
     setSaving(true);
     try {
-      await saveTenantPrivate(tenant.id, { telegramChatId, notifyLanguage });
+      if (alertsLoaded || alertsTouched) {
+        await saveTenantPrivate(tenant.id, { telegramChatId, notifyLanguage });
+      }
       await updateTenantSettings(tenant.id, {
         defaultCountryCode: String(countryCode).replace(/\D/g, '') || '20',
         theme: publicSettings.theme,
@@ -1139,6 +1161,12 @@ export default function Settings() {
           <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.alertsHelp')}</p>
           <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.alertsSteps')}</p>
 
+          {alertsFailed && !alertsLoaded && (
+            <div className="mt-3">
+              <LoadError message={t('settingsPage.privateLoadFailed')} onRetry={loadAlerts} />
+            </div>
+          )}
+
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm text-ink-soft">
               {t('settingsPage.chatId')}
@@ -1146,7 +1174,7 @@ export default function Settings() {
                 type="text"
                 dir="ltr"
                 value={telegramChatId}
-                onChange={(e) => setTelegramChatId(e.target.value)}
+                onChange={(e) => changeChatId(e.target.value)}
                 className={inputClass}
               />
             </label>
@@ -1195,7 +1223,7 @@ export default function Settings() {
                         key={c.id}
                         type="button"
                         onClick={() => {
-                          setTelegramChatId(c.id);
+                          changeChatId(c.id);
                           setChats(null);
                         }}
                         className="rounded border border-ink/15 bg-white px-3 py-1.5 hover:border-brass"

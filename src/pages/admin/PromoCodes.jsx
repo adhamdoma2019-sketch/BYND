@@ -9,6 +9,7 @@ import {
   promoDocId,
 } from '../../firebase/promos.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import { useAudit } from '../../hooks/useAudit';
 import { formatPrice } from '../../utils/format';
 
@@ -32,6 +33,7 @@ export default function PromoCodes() {
 
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,7 +41,12 @@ export default function PromoCodes() {
   async function refresh() {
     if (!tenant) return;
     setLoading(true);
-    setCodes(await listPromoCodes(tenant.id));
+    setLoadFailed(false);
+    try {
+      setCodes(await listPromoCodes(tenant.id));
+    } catch {
+      setLoadFailed(true);
+    }
     setLoading(false);
   }
 
@@ -207,6 +214,8 @@ export default function PromoCodes() {
 
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
+      ) : loadFailed ? (
+        <LoadError onRetry={refresh} />
       ) : codes.length === 0 ? (
         <p className="text-ink-soft">{t('promos.none')}</p>
       ) : (

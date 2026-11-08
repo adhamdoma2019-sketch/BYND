@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import { listMovements } from '../../firebase/stock.service';
 import { MOVEMENT_TYPES } from '../../utils/stock';
 import { formatPrice } from '../../utils/format';
@@ -22,12 +23,21 @@ export default function StockHistory() {
   const [type, setType] = useState('all');
   const productFilter = params.get('product') || 'all';
 
-  useEffect(() => {
+  async function load() {
     if (!tenant) return;
-    listMovements(tenant.id)
-      .then(setMovements)
-      .catch(() => setFailed(true))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    setFailed(false);
+    try {
+      setMovements(await listMovements(tenant.id));
+    } catch {
+      setFailed(true);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenant]);
 
   const nameOf = (m) => m.productName?.[language] || m.productName?.en || m.productId;
@@ -124,7 +134,7 @@ export default function StockHistory() {
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : failed ? (
-        <p className="text-rust">{t('stock.loadFailed')}</p>
+        <LoadError message={t('stock.loadFailed')} onRetry={load} />
       ) : shown.length === 0 ? (
         <p className="text-ink-soft">{t('stock.none')}</p>
       ) : (

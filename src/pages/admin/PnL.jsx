@@ -7,6 +7,7 @@ import { listExpenses } from '../../firebase/expenses.service';
 import { calcProfit } from '../../utils/profit';
 import { formatPrice } from '../../utils/format';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 
 // One line of the report. `strong` lines are the totals (gross / net profit).
 function Row({ label, value, tone, strong }) {
@@ -36,21 +37,28 @@ export default function PnL() {
   const [expenses, setExpenses] = useState([]);
   const [period, setPeriod] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0); // bumped by "Try again"
 
   useEffect(() => {
     async function load() {
       if (!tenant) return;
       setLoading(true);
-      const [o, e] = await Promise.all([
-        listOrders(tenant.id),
-        listExpenses(tenant.id),
-      ]);
-      setOrders(o);
-      setExpenses(e);
+      setLoadFailed(false);
+      try {
+        const [o, e] = await Promise.all([
+          listOrders(tenant.id),
+          listExpenses(tenant.id),
+        ]);
+        setOrders(o);
+        setExpenses(e);
+      } catch {
+        setLoadFailed(true);
+      }
       setLoading(false);
     }
     load();
-  }, [tenant]);
+  }, [tenant, reloadKey]);
 
   const r = useMemo(
     () => calcProfit(orders, expenses, period),
@@ -79,6 +87,8 @@ export default function PnL() {
 
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
+      ) : loadFailed ? (
+        <LoadError onRetry={() => setReloadKey((k) => k + 1)} />
       ) : (
         <>
           <div className="max-w-md space-y-4 rounded-md border border-ink/10 bg-white p-6">

@@ -8,6 +8,7 @@ import {
   deleteExpense,
 } from '../../firebase/expenses.service';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import { useAudit } from '../../hooks/useAudit';
 import { downloadFile } from '../../utils/csv';
 import { expensesToCsv } from '../../utils/exports';
@@ -40,6 +41,7 @@ export default function Expenses() {
 
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [form, setForm] = useState({
     category: 'manufacturing',
     description: '',
@@ -54,8 +56,12 @@ export default function Expenses() {
   async function refresh() {
     if (!tenant) return;
     setLoading(true);
-    const data = await listExpenses(tenant.id);
-    setExpenses(data);
+    setLoadFailed(false);
+    try {
+      setExpenses(await listExpenses(tenant.id));
+    } catch {
+      setLoadFailed(true);
+    }
     setLoading(false);
   }
 
@@ -191,6 +197,8 @@ export default function Expenses() {
 
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
+      ) : loadFailed ? (
+        <LoadError onRetry={refresh} />
       ) : (
         <>
           <div className="mb-4 flex items-center justify-between text-lg font-medium">

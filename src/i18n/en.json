@@ -136,7 +136,8 @@
       "returned": "Returned"
     },
     "settings": "Settings",
-    "backToDashboard": "← Dashboard"
+    "backToDashboard": "← Dashboard",
+    "shopMissing": "Your shop could not be found. Ask the shop owner to check the \"tenants\" and \"users\" records in Firebase."
   },
   "common": {
     "loading": "Loading...",
@@ -146,7 +147,9 @@
     "delete": "Delete",
     "saving": "Saving...",
     "remove": "Remove",
-    "back": "Back"
+    "back": "Back",
+    "loadError": "This page could not be loaded. Check your internet connection and try again. If it keeps happening, the latest security rules may not be published in Firebase (Firestore Database > Rules).",
+    "retry": "Try again"
   },
   "pnl": {
     "title": "Profit & Loss",
@@ -359,7 +362,8 @@
     "allCouriers": "All couriers",
     "noCourier": "No courier yet",
     "wallTitle": "Planned wall",
-    "wallDownload": "Download picture"
+    "wallDownload": "Download picture",
+    "advanceFailed": "The order could not be moved to the next step. The connection may have failed, or someone else changed this order. The list was refreshed: please check it and try again."
   },
   "expenses": {
     "category": "Category",
@@ -525,7 +529,8 @@
     "pageBodyAr": "Text (Arabic)",
     "promoQtyTitle": "Promo codes and quantity prices",
     "promoQtyLabel": "Promo codes also apply to items that have a quantity price",
-    "promoQtyHelp": "On: a code takes its discount from the whole order. Off: a code only takes its discount from items without a quantity price, and cannot be used when every item has one."
+    "promoQtyHelp": "On: a code takes its discount from the whole order. Off: a code only takes its discount from items without a quantity price, and cannot be used when every item has one.",
+    "privateLoadFailed": "The alert settings (Telegram) could not be loaded, so they are not shown and will NOT be saved with this page. Press Try again before you change them."
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",

@@ -12,6 +12,7 @@ import { downloadFile } from '../../utils/csv';
 import { ordersToCsv } from '../../utils/exports';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import { formatPrice } from '../../utils/format';
 import { whatsappLink } from '../../utils/phone';
 import { optimizedImage } from '../../utils/images';
@@ -46,6 +47,7 @@ export default function Orders() {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [actionError, setActionError] = useState('');
@@ -72,8 +74,12 @@ export default function Orders() {
   async function refresh() {
     if (!tenant) return;
     setLoading(true);
-    const data = await listOrders(tenant.id);
-    setOrders(data);
+    setLoadFailed(false);
+    try {
+      setOrders(await listOrders(tenant.id));
+    } catch {
+      setLoadFailed(true);
+    }
     setLoading(false);
   }
 
@@ -114,14 +120,20 @@ export default function Orders() {
     if (!next) return;
     setUpdatingId(order.id);
     setActionError('');
-    await updateOrderStatus(order.id, next);
-    log({
-      action: 'order.status',
-      entityType: 'order',
-      entityId: order.id,
-      entityLabel: orderLabel(order),
-      changes: [{ field: 'status', from: order.status, to: next }],
-    });
+    try {
+      await updateOrderStatus(order.id, next);
+      log({
+        action: 'order.status',
+        entityType: 'order',
+        entityId: order.id,
+        entityLabel: orderLabel(order),
+        changes: [{ field: 'status', from: order.status, to: next }],
+      });
+    } catch {
+      // The connection failed, or the database refused (for example someone else
+      // already moved this order). Show the real list again and say so.
+      setActionError(t('orders.advanceFailed'));
+    }
     await refresh();
     setUpdatingId(null);
   }
@@ -384,6 +396,8 @@ export default function Orders() {
 
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
+      ) : loadFailed ? (
+        <LoadError onRetry={refresh} />
       ) : filteredOrders.length === 0 ? (
         <p className="text-ink-soft">
           {orders.length === 0 ? t('orders.none') : t('orders.noMatch')}

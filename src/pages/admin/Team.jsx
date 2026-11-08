@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import { ASSIGNABLE_ROLES } from '../../utils/roles';
 import {
   listTeam,
@@ -23,6 +24,7 @@ export default function Team() {
 
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(''); // the sentence to show when the list could not be loaded
   const [form, setForm] = useState({ name: '', email: '', role: 'staff' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -34,9 +36,15 @@ export default function Team() {
 
   async function refresh() {
     setLoading(true);
-    const result = await listTeam();
-    if (result.ok) setMembers(result.members);
-    else setError(errorText(result.error));
+    setLoadFailed('');
+    try {
+      const result = await listTeam();
+      if (result.ok) setMembers(result.members);
+      else setLoadFailed(errorText(result.error));
+    } catch {
+      // no connection: show the general sentence
+      setLoadFailed(t('common.loadError'));
+    }
     setLoading(false);
   }
 
@@ -159,6 +167,8 @@ export default function Team() {
       {/* ---------- the team ---------- */}
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
+      ) : loadFailed ? (
+        <LoadError message={loadFailed} onRetry={refresh} />
       ) : (
         <div className="divide-y divide-ink/10 rounded-md border border-ink/10 bg-white">
           {members.map((m) => {

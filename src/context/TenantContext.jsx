@@ -9,6 +9,7 @@ export function TenantProvider({ children }) {
   const [tenant, setTenant] = useState(null);
   const [member, setMember] = useState(null); // this person: { role, active, name }
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false); // the shop / user record could not be read
   // Bumping this number makes the shop reload (used right after signup).
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -23,14 +24,25 @@ export function TenantProvider({ children }) {
         return;
       }
       setLoading(true);
-      const profile = await getUserProfile(user.uid);
-      // A switched-off team member gets no access at all.
-      const allowed = profile && profile.tenantId && profile.active;
-      const tenantData = allowed ? await getTenant(profile.tenantId) : null;
-      if (!cancelled) {
-        setTenant(tenantData);
-        setMember(profile);
-        setLoading(false);
+      setLoadFailed(false);
+      try {
+        const profile = await getUserProfile(user.uid);
+        // A switched-off team member gets no access at all.
+        const allowed = profile && profile.tenantId && profile.active;
+        const tenantData = allowed ? await getTenant(profile.tenantId) : null;
+        if (!cancelled) {
+          setTenant(tenantData);
+          setMember(profile);
+          setLoading(false);
+        }
+      } catch {
+        // No connection, or the database refused: say so instead of waiting for ever.
+        if (!cancelled) {
+          setTenant(null);
+          setMember(null);
+          setLoadFailed(true);
+          setLoading(false);
+        }
       }
     }
 
@@ -51,6 +63,7 @@ export function TenantProvider({ children }) {
         role: member?.role || null,
         blocked: Boolean(member && !member.active),
         loading,
+        loadFailed,
         setTenant,
         reloadTenant,
       }}>

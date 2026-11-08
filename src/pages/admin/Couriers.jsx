@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import { useAudit } from '../../hooks/useAudit';
 import { formatPrice } from '../../utils/format';
 import { listOrders } from '../../firebase/orders.service';
@@ -429,15 +430,11 @@ export default function Couriers() {
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : loadFailed ? (
-        <div className="max-w-xl rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p>{t('couriers.loadError')}</p>
-          <button
-            onClick={refresh}
-            className="mt-3 rounded border border-red-300 px-3 py-1.5 hover:bg-red-100"
-          >
-            {t('couriers.retry')}
-          </button>
-        </div>
+        <LoadError
+          message={t('couriers.loadError')}
+          retryLabel={t('couriers.retry')}
+          onRetry={refresh}
+        />
       ) : couriers.length === 0 ? (
         <p className="text-ink-soft">{t('couriers.none')}</p>
       ) : (

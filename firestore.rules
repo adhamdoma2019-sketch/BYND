@@ -37,6 +37,39 @@ service cloud.firestore {
       return request.resource.data.tenantId == resource.data.tenantId;
     }
 
+    // The status that comes right after another one in the normal flow
+    // (pending > confirmed > processing > shipped > delivered). '' = there is none
+    // (delivered, cancelled, returned): nobody on staff can move those on.
+    function nextOrderStatus(status) {
+      return status == 'pending' ? 'confirmed'
+        : status == 'confirmed' ? 'processing'
+        : status == 'processing' ? 'shipped'
+        : status == 'shipped' ? 'delivered'
+        : '';
+    }
+
+    // What a STAFF member may do to an order (they cannot cancel or return it, go
+    // backwards, skip a step, or touch items, prices, totals, courier ...):
+    //  1. fix the customer's name / phone / address / notes, and/or
+    //  2. move the status exactly ONE step forward, adding exactly ONE history line
+    //     that names the new status. (No status change = history must stay as it was.)
+    function staffMayUpdateOrder(tenantId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let changed = after.diff(before).affectedKeys();
+      let oldHistory = before.get('statusHistory', []);
+      return belongsTo(tenantId)
+        && changed.hasOnly(['status', 'statusHistory', 'updatedAt', 'customer'])
+        && (!changed.hasAny(['customer'])
+            || after.customer.diff(before.customer).affectedKeys()
+                 .hasOnly(['name', 'phone', 'address', 'notes']))
+        && (after.status == before.status
+              ? after.get('statusHistory', []) == oldHistory
+              : (after.status == nextOrderStatus(before.status)
+                 && after.statusHistory.size() == oldHistory.size() + 1
+                 && after.statusHistory[after.statusHistory.size() - 1].status == after.status));
+    }
+
     // ---------- Shops ----------
 
     match /tenants/{tenantId} {
@@ -176,14 +209,13 @@ service cloud.firestore {
 
       allow read: if belongsTo(resource.data.tenantId);
 
-      // Owners and managers can change anything on an order. Staff can only
-      // move it through its statuses and fix the customer's details: they can't
-      // touch items, prices or totals.
+      // Owners and managers can change anything on an order (cancel and return
+      // also put stock back, so they are theirs). Staff are limited by
+      // staffMayUpdateOrder (see the top of this file): one step forward in the normal
+      // flow, and fixing the customer's details. Nothing else.
       allow update: if tenantIdUnchanged()
         && (canManage(resource.data.tenantId)
-          || (belongsTo(resource.data.tenantId)
-            && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status', 'statusHistory', 'updatedAt', 'customer'])));
+          || staffMayUpdateOrder(resource.data.tenantId));
 
       allow delete: if false; // orders are permanent business records
     }

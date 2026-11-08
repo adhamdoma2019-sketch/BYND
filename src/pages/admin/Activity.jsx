@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTenant } from '../../context/TenantContext';
 import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import LoadError from '../../components/admin/LoadError';
 import { listAudit } from '../../firebase/audit.service';
 
 const TYPES = ['product', 'order', 'expense', 'promo', 'settings', 'team'];
@@ -18,12 +19,21 @@ export default function Activity() {
   const [who, setWho] = useState('all');
   const [type, setType] = useState('all');
 
-  useEffect(() => {
+  async function load() {
     if (!tenant) return;
-    listAudit(tenant.id)
-      .then(setEntries)
-      .catch(() => setFailed(true))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    setFailed(false);
+    try {
+      setEntries(await listAudit(tenant.id));
+    } catch {
+      setFailed(true);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenant]);
 
   const people = useMemo(() => {
@@ -84,7 +94,7 @@ export default function Activity() {
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : failed ? (
-        <p className="text-rust">{t('audit.loadFailed')}</p>
+        <LoadError message={t('audit.loadFailed')} onRetry={load} />
       ) : shown.length === 0 ? (
         <p className="text-ink-soft">{t('audit.none')}</p>
       ) : (
