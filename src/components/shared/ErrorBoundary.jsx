@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import i18n from 'i18next';
+import { reloadIfChunkError } from '../../utils/chunkReload';
 
 // If something on a page breaks, show a calm "reload" screen instead of a blank page.
 export default class ErrorBoundary extends Component {
@@ -15,6 +16,8 @@ export default class ErrorBoundary extends Component {
   componentDidCatch(error) {
     // Visible in the browser console / Vercel logs for debugging.
     console.error('Page error:', error?.message);
+    // A page already open while a new version was published: reload once by itself.
+    reloadIfChunkError(error);
   }
 
   render() {
