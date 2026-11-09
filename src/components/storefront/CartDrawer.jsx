@@ -108,22 +108,24 @@ export default function CartDrawer({ onClose }) {
                         </p>
                       );
                     })()}
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-2 flex items-center gap-2">
                       <button
                         onClick={() =>
                           updateQuantity(keyOf(item), item.quantity - 1)
                         }
-                        className="rounded border border-ink/15 px-2 text-sm hover:border-brass"
+                        aria-label="-"
+                        className="flex h-9 w-9 items-center justify-center rounded border border-ink/15 text-base hover:border-brass"
                       >
                         −
                       </button>
-                      <span className="text-sm">{item.quantity}</span>
+                      <span className="min-w-[1.5rem] text-center text-sm">{item.quantity}</span>
                       <button
                         onClick={() =>
                           updateQuantity(keyOf(item), item.quantity + 1)
                         }
                         disabled={item.quantity >= item.maxStock}
-                        className="rounded border border-ink/15 px-2 text-sm hover:border-brass disabled:opacity-40"
+                        aria-label="+"
+                        className="flex h-9 w-9 items-center justify-center rounded border border-ink/15 text-base hover:border-brass disabled:opacity-40"
                       >
                         +
                       </button>
@@ -132,7 +134,7 @@ export default function CartDrawer({ onClose }) {
                   </div>
                   <button
                     onClick={() => removeItem(keyOf(item))}
-                    className="text-sm text-rust hover:underline"
+                    className="px-1 py-2 text-sm text-rust hover:underline"
                   >
                     {t('storefront.remove')}
                   </button>
