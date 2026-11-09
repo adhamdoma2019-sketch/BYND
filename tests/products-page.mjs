@@ -122,6 +122,16 @@ h = draw(Home, [], 'loading');
 assert.match(h, /animate-pulse/);
 ok('home page loading: placeholders');
 
+h = draw(Home, [], 'failed');
+assert.match(h, /storefront\.productsLoadFailed/); assert.match(h, /common\.retry/); assert.match(h, /role="alert"/);
+assert.doesNotMatch(h, /storefront\.noProducts/, 'update 45: a failed read must not look like an empty shop');
+assert.doesNotMatch(h, /animate-pulse/); assert.doesNotMatch(h, /storefront\.viewAll/);
+ok('home page: a failed read shows a clear message + Try again (not "no products")');
+
+h = draw(Home, []);
+assert.match(h, /storefront\.noProducts/); assert.doesNotMatch(h, /role="alert"/);
+ok('home page: a shop that really has no products still says so');
+
 const routes = fs.readFileSync(path.join(root, 'src/routes/AppRoutes.jsx'), 'utf8');
 assert.match(routes, /path="products" element=\{<ProductsPage \/>\}/);
 assert.ok(routes.indexOf('path="products"') < routes.indexOf('path="product/:productId"') || true);

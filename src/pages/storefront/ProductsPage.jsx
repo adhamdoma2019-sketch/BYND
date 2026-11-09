@@ -8,7 +8,7 @@ import { useCart } from '../../context/CartContext';
 import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import CartDrawer from '../../components/storefront/CartDrawer';
-import ProductGrid, { ProductGridSkeleton } from '../../components/storefront/ProductGrid';
+import ProductGrid, { ProductGridSkeleton, ProductsLoadError } from '../../components/storefront/ProductGrid';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { SORT_MODES, sortProducts } from '../../utils/productList';
 
@@ -95,16 +95,11 @@ export default function ProductsPage() {
           {state === 'loading' && <ProductGridSkeleton label={t('common.loading')} />}
 
           {state === 'failed' && (
-            <div className="rounded-md border border-ink/10 p-6 text-center" role="alert">
-              <p className="text-ink-soft">{t('storefront.productsLoadFailed')}</p>
-              <button
-                type="button"
-                onClick={load}
-                className="mt-4 rounded bg-ink px-5 py-2.5 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass hover:text-on-brass"
-              >
-                {t('common.retry')}
-              </button>
-            </div>
+            <ProductsLoadError
+              message={t('storefront.productsLoadFailed')}
+              retryLabel={t('common.retry')}
+              onRetry={load}
+            />
           )}
 
           {state === 'ready' && products.length === 0 && (

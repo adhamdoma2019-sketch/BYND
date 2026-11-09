@@ -32,3 +32,20 @@ export function ProductGridSkeleton({ count = 6, label }) {
     </div>
   );
 }
+
+// Update 45: shown when the products could not be read (bad connection, shop database refusing).
+// Shared by the home page and the Products page, so a failed read is never mistaken for an empty shop.
+export function ProductsLoadError({ message, retryLabel, onRetry }) {
+  return (
+    <div className="rounded-md border border-ink/10 p-6 text-center" role="alert">
+      <p className="text-ink-soft">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-4 rounded bg-ink px-5 py-2.5 text-sm font-semibold uppercase tracking-wider text-paper transition hover:bg-brass hover:text-on-brass"
+      >
+        {retryLabel}
+      </button>
+    </div>
+  );
+}

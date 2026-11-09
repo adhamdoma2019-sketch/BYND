@@ -124,7 +124,8 @@
     "promoChecking": "Checking the code…",
     "promoCheckFailed": "We couldn't check the code. Please try again.",
     "lettersOnly": "Letters only, please: numbers and symbols are not accepted here.",
-    "madeToOrderPlacedBody": "This order is made to order. We'll contact you to confirm the delivery date."
+    "madeToOrderPlacedBody": "This order is made to order. We'll contact you to confirm the delivery date.",
+    "feeUnknown": "Could not work out the delivery fee right now. You can still place your order: the final total is confirmed when you order."
   },
   "admin": {
     "login": "Partner login",

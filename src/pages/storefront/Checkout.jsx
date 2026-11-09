@@ -252,6 +252,10 @@ export default function Checkout() {
   const money = (n) => formatPrice(n, language);
   const chosenZone = zones.find((z) => z.id === zoneId);
   const shown = quote || { subtotal, discount: 0, shippingFee: 0, total: subtotal };
+  // Update 45: with an area chosen but no answer from the server yet (or it could not be asked), the delivery fee
+  // is NOT known: never show it as "Free" and dim the totals. The order itself is always priced by the server.
+  const feeUnknown = Boolean(chosenZone) && !quote;
+  const waitingForFee = feeUnknown && !quoteFailed;
 
   return (
     <div className="min-h-screen pb-28 md:pb-12">
@@ -293,7 +297,7 @@ export default function Checkout() {
         })}
         <div className="mt-2 flex justify-between border-t border-ink/10 pt-2 text-sm font-semibold" data-checkout-top-total>
           <span>{t('checkout.total')}</span>
-          <span>{money(shown.total)}</span>
+          <span className={waitingForFee ? 'opacity-60' : undefined}>{money(shown.total)}</span>
         </div>
       </div>
 
@@ -540,7 +544,7 @@ export default function Checkout() {
             <div className="flex justify-between">
               <span className="text-ink-soft">{t('checkout.shipping')}</span>
               <span>
-                {!chosenZone
+                {!chosenZone || feeUnknown
                   ? '—'
                   : shown.shippingFee === 0
                     ? t('checkout.free')
@@ -550,8 +554,13 @@ export default function Checkout() {
           )}
           <div className="flex justify-between border-t border-ink/10 pt-2 text-base font-semibold">
             <span>{t('checkout.total')}</span>
-            <span>{money(shown.total)}</span>
+            <span className={waitingForFee ? 'opacity-60' : undefined}>{money(shown.total)}</span>
           </div>
+          {feeUnknown && quoteFailed && (
+            <p className="pt-1 text-xs text-ink-faint" role="status" data-fee-unknown>
+              {t('checkout.feeUnknown')}
+            </p>
+          )}
         </div>
 
         <div className="rounded border border-ink/15 bg-white px-3 py-2 text-sm text-ink-soft">

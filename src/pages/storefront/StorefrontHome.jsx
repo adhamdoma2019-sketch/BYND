@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { listStorefrontProducts } from '../../firebase/products.service';
@@ -9,7 +9,7 @@ import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import Hero from '../../components/storefront/Hero';
 import Highlights from '../../components/storefront/Highlights';
-import ProductGrid, { ProductGridSkeleton } from '../../components/storefront/ProductGrid';
+import ProductGrid, { ProductGridSkeleton, ProductsLoadError } from '../../components/storefront/ProductGrid';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { highlightsOf } from '../../utils/storefront';
@@ -30,23 +30,30 @@ export default function StorefrontHome() {
   const { tenant } = useStorefront();
 
   const [products, setProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsState, setProductsState] = useState('loading'); // loading | ready | failed
+  const productsLoading = productsState === 'loading';
   const [cartOpen, setCartOpen] = useState(false);
   const { hash } = useLocation();
 
-  useEffect(() => {
+  // Update 45: a failed read is shown as a message with Try again (before, it looked like an empty shop).
+  const loadProducts = useCallback(() => {
     let cancelled = false;
+    setProductsState('loading');
     listStorefrontProducts(tenant.id)
       .then((list) => {
-        if (!cancelled) setProducts(list);
+        if (cancelled) return;
+        setProducts(Array.isArray(list) ? list : []);
+        setProductsState('ready');
       })
-      .finally(() => {
-        if (!cancelled) setProductsLoading(false);
+      .catch(() => {
+        if (!cancelled) setProductsState('failed');
       });
     return () => {
       cancelled = true;
     };
   }, [tenant.id]);
+
+  useEffect(() => loadProducts(), [loadProducts]);
 
   // Coming from another page through the menu's "Products": scroll to the collection once it is there.
   useEffect(() => {
@@ -121,6 +128,12 @@ export default function StorefrontHome() {
 
         {productsLoading ? (
           <ProductGridSkeleton count={4} label={t('common.loading')} />
+        ) : productsState === 'failed' ? (
+          <ProductsLoadError
+            message={t('storefront.productsLoadFailed')}
+            retryLabel={t('common.retry')}
+            onRetry={loadProducts}
+          />
         ) : products.length === 0 ? (
           <p className="text-ink-soft">{t('storefront.noProducts')}</p>
         ) : (
