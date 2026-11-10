@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
-import { optimizedImage } from '../../utils/images';
+import { optimizedImage, imageSrcSet, pickWidth, HERO_WIDTHS } from '../../utils/images';
 
 // The big banner at the top of the shop.
 // `slides` = [{ imageUrl, headline, subtext, ctaLabel, to }]
@@ -66,7 +66,7 @@ export default function Hero({
   useEffect(() => {
     if (count < 2 || !slides[next]?.imageUrl) return;
     const img = new Image();
-    img.src = optimizedImage(slides[next].imageUrl, 1800);
+    img.src = optimizedImage(slides[next].imageUrl, pickWidth(HERO_WIDTHS));
   }, [count, next, slides]);
 
   if (count === 0) return null;
@@ -126,6 +126,9 @@ export default function Hero({
             {slide.imageUrl && (
               <img
                 src={optimizedImage(slide.imageUrl, 1800)}
+                srcSet={imageSrcSet(slide.imageUrl, HERO_WIDTHS)}
+                sizes="100vw"
+                fetchpriority={i === 0 ? 'high' : undefined}
                 alt=""
                 decoding="async"
                 className="absolute inset-0 h-full w-full object-cover"
@@ -215,7 +218,7 @@ export default function Hero({
             {chevron('M9 5l7 7-7 7')}
           </button>
 
-          <div className="absolute bottom-5 start-1/2 z-20 flex -translate-x-1/2 gap-2 rtl:translate-x-1/2">
+          <div className="absolute bottom-0 start-1/2 z-20 flex -translate-x-1/2 rtl:translate-x-1/2">
             {slides.map((_, i) => (
               <button
                 key={i}
@@ -223,11 +226,15 @@ export default function Hero({
                 onClick={() => goTo(i)}
                 aria-label={`${i + 1}`}
                 aria-current={i === current}
-                className={
-                  'h-2 rounded-full transition-all ' +
-                  (i === current ? 'w-8 bg-brass' : 'w-2 bg-[#fff]/50 hover:bg-[#fff]/80')
-                }
-              />
+                className="flex h-11 w-6 items-center justify-center"
+              >
+                <span
+                  className={
+                    'block h-2 rounded-full transition-all ' +
+                    (i === current ? 'w-8 bg-brass' : 'w-2 bg-[#fff]/50')
+                  }
+                />
+              </button>
             ))}
           </div>
         </>

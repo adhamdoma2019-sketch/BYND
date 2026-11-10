@@ -11,6 +11,7 @@ import Hero from '../../components/storefront/Hero';
 import Highlights from '../../components/storefront/Highlights';
 import ProductGrid, { ProductGridSkeleton, ProductsLoadError } from '../../components/storefront/ProductGrid';
 import CartDrawer from '../../components/storefront/CartDrawer';
+import AddedToast from '../../components/storefront/AddedToast';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { highlightsOf } from '../../utils/storefront';
 import { featuredProducts, hasMoreThanFeatured } from '../../utils/productList';
@@ -33,6 +34,7 @@ export default function StorefrontHome() {
   const [productsState, setProductsState] = useState('loading'); // loading | ready | failed
   const productsLoading = productsState === 'loading';
   const [cartOpen, setCartOpen] = useState(false);
+  const [added, setAdded] = useState(0); // counts adds: the "Added to cart" note shows after each one
   const { hash } = useLocation();
 
   // Update 45: a failed read is shown as a message with Try again (before, it looked like an empty shop).
@@ -143,7 +145,7 @@ export default function StorefrontHome() {
               products={featuredProducts(products)}
               onAddToCart={(prod) => {
                 addItem(prod, 1);
-                setCartOpen(true);
+                setAdded((n) => n + 1);
               }}
             />
             {hasMoreThanFeatured(products) && (
@@ -182,6 +184,7 @@ export default function StorefrontHome() {
       </main>
 
       <StorefrontFooter tenant={tenant} />
+      <AddedToast trigger={added} hidden={cartOpen} onView={() => setCartOpen(true)} />
       {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   );

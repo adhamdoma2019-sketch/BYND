@@ -49,7 +49,7 @@ export function MenuPanel({ tenant, onClose, closeRef }) {
             type="button"
             onClick={onClose}
             aria-label={t('menu.close')}
-            className="flex h-9 w-9 items-center justify-center rounded border border-ink/15 text-ink-soft hover:border-brass hover:text-ink"
+            className="flex h-11 w-11 items-center justify-center rounded border border-ink/15 text-ink-soft hover:border-brass hover:text-ink"
           >
             ✕
           </button>
@@ -170,7 +170,7 @@ export default function StorefrontMenu({ tenant }) {
         aria-label={t('menu.open')}
         aria-expanded={open}
         aria-controls="shop-menu"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-ink/15 hover:border-brass"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-ink/15 hover:border-brass"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M4 7h16M4 12h16M4 17h16" />

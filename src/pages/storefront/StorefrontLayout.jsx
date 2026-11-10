@@ -1,3 +1,4 @@
+import { ShopSkeleton } from '../../components/storefront/PageSkeletons';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Outlet, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -222,11 +223,7 @@ export default function StorefrontLayout() {
   );
 
   if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-ink-soft">
-        {t('common.loading')}
-      </div>
-    );
+    return <ShopSkeleton label={t('common.loading')} />;
   }
 
   if (status === 'not-found') {

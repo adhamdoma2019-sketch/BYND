@@ -94,7 +94,9 @@
     "galleryPrev": "Previous photo",
     "galleryNext": "Next photo",
     "galleryDots": "Product photos",
-    "galleryPhoto": "Photo {{n}} of {{total}}"
+    "galleryPhoto": "Photo {{n}} of {{total}}",
+    "addedToCart": "Added to cart",
+    "viewCart": "View cart"
   },
   "checkout": {
     "title": "Checkout",

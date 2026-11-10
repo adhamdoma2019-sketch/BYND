@@ -42,5 +42,28 @@ export function optimizedImage(url, width) {
   if (!url || !url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
   const [start, end] = url.split('/upload/');
   if (/^(?:[a-z]_[^/]+,?)+\//.test(end)) return url; // already has settings
-  return `${start}/upload/f_auto,q_auto,w_${width}/${end}`;
+  // c_limit = never enlarge a small original (saves bytes, no blur from upscaling)
+  return `${start}/upload/f_auto,q_auto,c_limit,w_${width}/${end}`;
 }
+
+// Design step 4: several sizes of the same picture, so a phone downloads a small one and a big
+// screen a big one (the browser picks, using the `sizes` text of the <img>). Returns undefined
+// for pictures that are not resizable Cloudinary links (then the plain src is used).
+export function imageSrcSet(url, widths) {
+  const first = optimizedImage(url, widths[0]);
+  if (!url || first === url) return undefined;
+  return widths.map((w) => `${optimizedImage(url, w)} ${w}w`).join(', ');
+}
+
+// The width (from the same list) the browser would pick on this screen: used to get the NEXT
+// banner picture ready in the cache without downloading a bigger one than the screen needs.
+export function pickWidth(widths, cssWidth) {
+  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 3) : 1;
+  const w = cssWidth || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const need = w * dpr;
+  return widths.find((x) => x >= need) || widths[widths.length - 1];
+}
+
+export const HERO_WIDTHS = [640, 960, 1400, 1800];
+export const CARD_WIDTHS = [400, 700, 1000];
+export const GALLERY_WIDTHS = [500, 800, 1000];

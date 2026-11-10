@@ -8,6 +8,7 @@ import { useCart } from '../../context/CartContext';
 import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import CartDrawer from '../../components/storefront/CartDrawer';
+import AddedToast from '../../components/storefront/AddedToast';
 import ProductGrid, { ProductGridSkeleton, ProductsLoadError } from '../../components/storefront/ProductGrid';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { SORT_MODES, sortProducts } from '../../utils/productList';
@@ -25,6 +26,7 @@ export default function ProductsPage() {
   const [state, setState] = useState('loading'); // loading | ready | failed
   const [sort, setSort] = useState('featured');
   const [cartOpen, setCartOpen] = useState(false);
+  const [added, setAdded] = useState(0); // counts adds: the "Added to cart" note shows after each one
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -111,7 +113,7 @@ export default function ProductsPage() {
               products={shown}
               onAddToCart={(prod) => {
                 addItem(prod, 1);
-                setCartOpen(true);
+                setAdded((n) => n + 1);
               }}
             />
           )}
@@ -119,6 +121,7 @@ export default function ProductsPage() {
       </main>
 
       <StorefrontFooter tenant={tenant} />
+      <AddedToast trigger={added} hidden={cartOpen} onView={() => setCartOpen(true)} />
       {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   );

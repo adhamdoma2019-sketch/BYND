@@ -2,7 +2,8 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { formatPrice } from '../../utils/format';
-import { optimizedImage } from '../../utils/images';
+import FadeImage from './FadeImage';
+import { optimizedImage, imageSrcSet, CARD_WIDTHS } from '../../utils/images';
 import { hasOptions } from '../../utils/productOptions';
 import { productStatus, isBuyable, cardPriceNote } from '../../utils/storefront';
 
@@ -20,12 +21,15 @@ export default function ProductCard({ product, onAddToCart }) {
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-md border border-ink/10 bg-white p-3 transition hover:border-brass/60">
-      <Link to={productUrl} className="relative block overflow-hidden rounded">
+      <Link to={productUrl} className="relative block overflow-hidden rounded bg-paper-dim">
         {product.imageUrl ? (
-          <img
+          <FadeImage
             src={optimizedImage(product.imageUrl, 700)}
+            srcSet={imageSrcSet(product.imageUrl, CARD_WIDTHS)}
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
             alt={name}
             loading="lazy"
+            decoding="async"
             className="mb-3 aspect-square w-full rounded object-cover transition duration-500 group-hover:scale-[1.03]"
           />
         ) : (

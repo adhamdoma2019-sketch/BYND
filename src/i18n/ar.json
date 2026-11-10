@@ -94,7 +94,9 @@
     "galleryPrev": "الصورة السابقة",
     "galleryNext": "الصورة التالية",
     "galleryDots": "صور المنتج",
-    "galleryPhoto": "صورة {{n}} من {{total}}"
+    "galleryPhoto": "صورة {{n}} من {{total}}",
+    "addedToCart": "تمت الإضافة إلى السلة",
+    "viewCart": "عرض السلة"
   },
   "checkout": {
     "title": "إتمام الطلب",

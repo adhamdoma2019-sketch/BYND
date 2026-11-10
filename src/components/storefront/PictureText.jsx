@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { fitSize } from '../../utils/pictureText';
+import FadeImage from './FadeImage';
 
 // The big product picture, with the words the customer typed drawn ON it (update 35).
 // Always centred sideways; height, size and colour come from the product settings.
-export default function PictureText({ src, alt, texts = [], className = '', eager = true }) {
+export default function PictureText({ src, alt, texts = [], className = '', eager = true, srcSet, sizes }) {
   const box = useRef(null);
   const [width, setWidth] = useState(0);
 
@@ -22,7 +23,16 @@ export default function PictureText({ src, alt, texts = [], className = '', eage
 
   return (
     <div ref={box} className="relative" data-picture-text>
-      <img src={src} alt={alt} decoding="async" loading={eager ? undefined : 'lazy'} className={className} />
+      <FadeImage
+        src={src}
+        srcSet={srcSet}
+        sizes={sizes}
+        fetchpriority={eager ? 'high' : undefined}
+        alt={alt}
+        decoding="async"
+        loading={eager ? undefined : 'lazy'}
+        className={className}
+      />
       {texts.map((x) => (
         <div
           key={x.id}

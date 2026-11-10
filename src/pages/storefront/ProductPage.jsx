@@ -8,6 +8,8 @@ import { useStorefront } from '../../context/StorefrontContext';
 import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import StorefrontHeader from '../../components/storefront/StorefrontHeader';
 import CartDrawer from '../../components/storefront/CartDrawer';
+import AddedToast from '../../components/storefront/AddedToast';
+import { ProductPageSkeleton } from '../../components/storefront/PageSkeletons';
 import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
@@ -51,6 +53,7 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [qtyDraft, setQtyDraft] = useState(null); // what the customer is typing in the quantity box
   const [cartOpen, setCartOpen] = useState(false);
+  const [added, setAdded] = useState(0); // counts adds: the "Added to cart" note shows after each one
   const [selections, setSelections] = useState({});
   const [mainImage, setMainImage] = useState(''); // the picture shown big
   const [related, setRelated] = useState([]); // linked products (e.g. extensions)
@@ -153,11 +156,7 @@ export default function ProductPage() {
   );
 
   if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-ink-soft">
-        {t('common.loading')}
-      </div>
-    );
+    return <ProductPageSkeleton label={t('common.loading')} />;
   }
 
   if (status === 'not-found') {
@@ -375,7 +374,7 @@ export default function ProductPage() {
           wallCells: idx === 0 ? picture : undefined,
         });
       });
-      setCartOpen(true);
+      setAdded((n) => n + 1);
       return;
     }
     addItem(product, qty, {
@@ -387,7 +386,7 @@ export default function ProductPage() {
       priceDelta: choice.priceDelta,
       imageUrl: choice.imageUrl || pictures[0] || '',
     });
-    setCartOpen(true);
+    setAdded((n) => n + 1);
   }
 
   return (
@@ -673,7 +672,7 @@ export default function ProductPage() {
                       setQuantity(Math.max(minAdd, qty - 1));
                     }}
                     disabled={qty <= minAdd}
-                    className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
+                    className="h-11 w-11 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
                     aria-label="-"
                   >
                     −
@@ -691,7 +690,7 @@ export default function ProductPage() {
                     }}
                     onBlur={() => setQtyDraft(null)}
                     aria-label={t('storefront.quantity')}
-                    className="h-10 w-20 rounded border border-ink/15 bg-transparent text-center text-lg outline-none focus-visible:border-brass"
+                    className="h-11 w-20 rounded border border-ink/15 bg-transparent text-center text-lg outline-none focus-visible:border-brass"
                   />
                   <button
                     onClick={() => {
@@ -699,7 +698,7 @@ export default function ProductPage() {
                       setQuantity(Math.min(maxQty, qty + 1));
                     }}
                     disabled={qty >= maxQty}
-                    className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
+                    className="h-11 w-11 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
                     aria-label="+"
                   >
                     +
@@ -788,6 +787,7 @@ export default function ProductPage() {
           </div>
         </div>
       )}
+      <AddedToast trigger={added} hidden={cartOpen} onView={() => setCartOpen(true)} />
       {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   );

@@ -6,9 +6,9 @@ const buttons = src.match(/<button[\s\S]*?className="[^"]*"\s*>/g) || [];
 const qty = buttons.filter((b) => /updateQuantity/.test(b));
 assert.equal(qty.length, 2, 'two quantity buttons');
 for (const b of qty) {
-  assert.ok(/h-9 w-9/.test(b), 'quantity button is 36 px square');
+  assert.ok(/h-11 w-11/.test(b), 'quantity button is 44 px square');
   assert.ok(/aria-label=/.test(b), 'quantity button has a screen-reader label');
   assert.ok(!/px-2 text-sm/.test(b), 'old tiny button style is gone');
 }
-assert.ok(src.includes('px-1 py-2 text-sm text-rust'), 'Remove has padding to tap');
+assert.ok(src.includes('min-h-[44px] px-2 text-sm text-rust'), 'Remove is 44 px tall');
 console.log('ALL 3 TAP-TARGET CHECKS PASSED');

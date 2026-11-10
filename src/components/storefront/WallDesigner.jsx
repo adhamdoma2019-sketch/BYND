@@ -218,7 +218,7 @@ export default function WallDesigner({
             type="button"
             onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z * 1.25).toFixed(3)))}
             disabled={zoom >= ZOOM_MAX}
-            className="h-9 w-9 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
+            className="h-11 w-11 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
             aria-label={t('wall.zoomIn')}
           >
             +
@@ -227,7 +227,7 @@ export default function WallDesigner({
             type="button"
             onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z / 1.25).toFixed(3)))}
             disabled={zoom <= ZOOM_MIN}
-            className="h-9 w-9 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
+            className="h-11 w-11 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
             aria-label={t('wall.zoomOut')}
           >
             −
@@ -235,7 +235,7 @@ export default function WallDesigner({
           <button
             type="button"
             onClick={() => setZoom(1)}
-            className="h-9 rounded border border-ink/15 px-3 text-xs hover:border-brass"
+            className="h-11 rounded border border-ink/15 px-3 text-xs hover:border-brass"
           >
             {t('wall.fit')}
           </button>
@@ -366,13 +366,13 @@ export default function WallDesigner({
             }}
             onBlur={() => setDraft(null)}
             aria-label={t('wall.count')}
-            className="h-10 min-w-0 rounded border border-ink/15 bg-transparent text-center text-lg outline-none focus-visible:border-brass"
+            className="h-11 min-w-0 rounded border border-ink/15 bg-transparent text-center text-lg outline-none focus-visible:border-brass"
           />
           <button
             type="button"
             onClick={() => setCount(cells.length - 1)}
             disabled={cells.length <= min}
-            className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
+            className="h-11 w-11 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
             aria-label={t('wall.fewer')}
           >
             −
@@ -381,7 +381,7 @@ export default function WallDesigner({
             type="button"
             onClick={() => setCount(cells.length + 1)}
             disabled={cells.length >= cap}
-            className="h-10 w-10 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
+            className="h-11 w-11 rounded border border-ink/15 text-lg hover:border-brass disabled:opacity-40"
             aria-label={t('wall.more')}
           >
             +
@@ -389,14 +389,14 @@ export default function WallDesigner({
           <button
             type="button"
             onClick={randomise}
-            className="col-span-1 h-10 rounded border border-ink/15 px-3 text-sm hover:border-brass"
+            className="col-span-1 h-11 rounded border border-ink/15 px-3 text-sm hover:border-brass"
           >
             {t('wall.random')}
           </button>
           <button
             type="button"
             onClick={() => apply(withColours(resizeLayout([], min, { min, max: cap })))}
-            className="col-span-2 h-10 rounded border border-ink/15 px-3 text-sm hover:border-brass"
+            className="col-span-2 h-11 rounded border border-ink/15 px-3 text-sm hover:border-brass"
           >
             {t('wall.clear')}
           </button>

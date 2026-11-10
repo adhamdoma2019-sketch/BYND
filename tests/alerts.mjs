@@ -57,7 +57,7 @@ assert.equal(whatsappLink('0501234567', '971'), 'https://wa.me/971501234567'); a
 ok('WhatsApp links for local, +country and 00 formats');
 
 // ---- picture optimizing ----
-assert.equal(optimizedImage('https://res.cloudinary.com/demo/image/upload/v123/a.jpg', 700), 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_700/v123/a.jpg');
+assert.equal(optimizedImage('https://res.cloudinary.com/demo/image/upload/v123/a.jpg', 700), 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_700/v123/a.jpg');
 assert.equal(optimizedImage('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v123/a.jpg', 700), 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v123/a.jpg');
 assert.equal(optimizedImage('https://example.com/a.jpg', 700), 'https://example.com/a.jpg'); assert.equal(optimizedImage('', 700), '');
 ok('Cloudinary pictures resized/compressed; other links untouched');

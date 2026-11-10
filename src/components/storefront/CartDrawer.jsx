@@ -28,11 +28,11 @@ export default function CartDrawer({ onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-end bg-black/60"
+      className="backdrop-in fixed inset-0 z-40 flex justify-end bg-black/60"
       onClick={onClose}
     >
       <div
-        className="flex h-full w-full max-w-sm flex-col bg-paper-soft p-6"
+        className="drawer-slide flex h-full w-full max-w-sm flex-col bg-paper-soft p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ export default function CartDrawer({ onClose }) {
                           updateQuantity(keyOf(item), item.quantity - 1)
                         }
                         aria-label="-"
-                        className="flex h-9 w-9 items-center justify-center rounded border border-ink/15 text-base hover:border-brass"
+                        className="flex h-11 w-11 items-center justify-center rounded border border-ink/15 text-base hover:border-brass"
                       >
                         −
                       </button>
@@ -125,7 +125,7 @@ export default function CartDrawer({ onClose }) {
                         }
                         disabled={item.quantity >= item.maxStock}
                         aria-label="+"
-                        className="flex h-9 w-9 items-center justify-center rounded border border-ink/15 text-base hover:border-brass disabled:opacity-40"
+                        className="flex h-11 w-11 items-center justify-center rounded border border-ink/15 text-base hover:border-brass disabled:opacity-40"
                       >
                         +
                       </button>
@@ -134,7 +134,7 @@ export default function CartDrawer({ onClose }) {
                   </div>
                   <button
                     onClick={() => removeItem(keyOf(item))}
-                    className="px-1 py-2 text-sm text-rust hover:underline"
+                    className="min-h-[44px] px-2 text-sm text-rust hover:underline"
                   >
                     {t('storefront.remove')}
                   </button>

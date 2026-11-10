@@ -18,15 +18,15 @@ export default function CheckoutHeader({ slug }) {
 
   return (
     <header className="flex items-center justify-between gap-3 border-b border-ink/10 bg-paper px-4 py-3 sm:px-8" data-checkout-header>
-      <Link to={`/store/${slug}`} aria-label={shopName} className="min-w-0">
+      <Link to={`/store/${slug}`} aria-label={shopName} className="flex min-h-[44px] min-w-0 items-center">
         {logoUrl ? (
           <img src={optimizedImage(logoUrl, 400)} alt={shopName} className="h-8 w-auto" />
         ) : (
           <span className="font-display block truncate text-xl font-bold uppercase tracking-[0.2em]">{shopName}</span>
         )}
       </Link>
-      <div className="flex shrink-0 items-center gap-3">
-        <Link to={`/store/${slug}`} className="text-sm text-brass-dark hover:underline">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <Link to={`/store/${slug}`} className="inline-flex min-h-[44px] items-center text-sm text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
         <LanguageSwitch />

@@ -45,7 +45,7 @@ export default function AnnouncementBar({ tenant }) {
   );
 
   const arrow =
-    'absolute top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-on-brass hover:bg-black/10';
+    'absolute top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-on-brass before:absolute before:-inset-1.5 before:content-[""] hover:bg-black/10';
   const chevron = (d) => (
     <svg
       viewBox="0 0 24 24"
