@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import PictureText from './PictureText';
-import { optimizedImage } from '../../utils/images';
+import { optimizedImage, imageSrcSet, GALLERY_WIDTHS } from '../../utils/images';
 
 // Design step 3: the product photos as a swipeable strip with dots (phones swipe natively,
 // computers use the small arrows or the dots). The picture of a picked colour/choice is
@@ -64,6 +64,8 @@ export default function ProductGallery({ pictures, shown, onShow, name, texts })
             <div key={url} className="w-full shrink-0 snap-center" data-gallery-slide>
               <PictureText
                 src={optimizedImage(url, 1000)}
+                srcSet={imageSrcSet(url, GALLERY_WIDTHS)}
+                sizes="(min-width: 768px) 480px, 100vw"
                 alt={name}
                 texts={texts}
                 className="aspect-square w-full object-cover"
