@@ -89,7 +89,12 @@
     "pkgHintCartSame": "Add {{n}} more of the same {{option}} to complete a package of {{pkg}} for {{price}}.",
     "cardPackage": "{{n}} for {{price}}",
     "cardTier": "{{price}} each from {{n}}+ pieces",
-    "madeToOrderCartNotice": "Your cart has a made-to-order item. It will ship once it's made, and we'll contact you with the date."
+    "madeToOrderCartNotice": "Your cart has a made-to-order item. It will ship once it's made, and we'll contact you with the date.",
+    "pkgNowOne": "1 piece: {{price}}",
+    "galleryPrev": "Previous photo",
+    "galleryNext": "Next photo",
+    "galleryDots": "Product photos",
+    "galleryPhoto": "Photo {{n}} of {{total}}"
   },
   "checkout": {
     "title": "Checkout",
@@ -1130,5 +1135,13 @@
     "products": "Products",
     "info": "Information",
     "chat": "Chat on WhatsApp"
+  },
+  "trust": {
+    "cash": "Cash on delivery",
+    "feeFree": "Free delivery",
+    "feeSome": "Free delivery to some areas",
+    "feeFrom": "Delivery from {{price}}",
+    "returns": "Returns & exchanges",
+    "whatsapp": "Questions? Chat on WhatsApp"
   }
 }

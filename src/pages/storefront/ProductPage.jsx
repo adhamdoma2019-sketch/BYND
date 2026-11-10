@@ -12,7 +12,8 @@ import { formatPrice } from '../../utils/format';
 import { optimizedImage } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
 import WallDesigner from '../../components/storefront/WallDesigner';
-import PictureText from '../../components/storefront/PictureText';
+import ProductGallery from '../../components/storefront/ProductGallery';
+import TrustStrip from '../../components/storefront/TrustStrip';
 import { pictureTexts } from '../../utils/pictureText';
 import { WALL_MAX } from '../../utils/wallLayout';
 import { wallColorOption, wallPalette, colourLimit, hasUnpainted, wallLines } from '../../utils/wallColors';
@@ -247,6 +248,8 @@ export default function ProductPage() {
   // (a color or choice can have its own picture).
   const pictures = [...new Set([product.imageUrl, ...(product.images || [])].filter(Boolean))];
   const shownImage = mainImage || pictures[0] || '';
+  // A picture that belongs to a picked colour/choice but is not one of the product photos is shown as one extra slide.
+  const galleryPictures = shownImage && !pictures.includes(shownImage) ? [...pictures, shownImage] : pictures;
   // Quantity price: the price of one piece depends on the total of this product (in the cart + now).
   // Package price ("every 3 pieces cost 500"): a product uses it OR price steps.
   const pkg = cleanPackage(product);
@@ -402,38 +405,16 @@ export default function ProductPage() {
         <div className="mt-6 grid gap-8 md:grid-cols-2">
           <div>
             {shownImage ? (
-              <PictureText
-                src={optimizedImage(shownImage, 1000)}
-                alt={name}
+              <ProductGallery
+                pictures={galleryPictures}
+                shown={shownImage}
+                onShow={setMainImage}
+                name={name}
                 texts={pictureTexts(product, selections)}
-                className="w-full rounded-md object-cover"
               />
             ) : (
               <div className="flex aspect-square w-full items-center justify-center rounded-md bg-paper-dim text-ink-faint">
                 {name}
-              </div>
-            )}
-            {pictures.length > 1 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {pictures.map((url) => (
-                  <button
-                    key={url}
-                    type="button"
-                    onClick={() => setMainImage(url)}
-                    aria-label={name}
-                    className={
-                      'h-16 w-16 overflow-hidden rounded border-2 ' +
-                      (url === shownImage ? 'border-brass' : 'border-ink/15')
-                    }
-                  >
-                    <img
-                      src={optimizedImage(url, 160)}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                ))}
               </div>
             )}
           </div>
@@ -450,8 +431,18 @@ export default function ProductPage() {
             </p>
 
             {pkg && (
-              <div className="mt-4 rounded-md border border-ink/10 p-3" data-package>
-                <p className="text-sm font-medium">{t('storefront.pkgTitle')}</p>
+              <details className="group mt-4 rounded-md border border-ink/10 px-3 pb-3" data-package>
+                <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{t('storefront.pkgTitle')}</span>
+                    <span className="block text-xs text-ink-soft">
+                      {groupOption
+                        ? t('storefront.pkgLineSame', { n: pkg.qty, option: groupLabel.toLowerCase(), price: formatPrice(pkg.price, language) })
+                        : t('storefront.pkgLine', { n: pkg.qty, price: formatPrice(pkg.price, language) })}
+                    </span>
+                  </span>
+                  <span aria-hidden="true" className="text-ink-faint transition group-open:rotate-180">⌄</span>
+                </summary>
                 <button
                   type="button"
                   disabled={!canBuy || pkg.qty - (groupInCart % pkg.qty) > maxQty}
@@ -475,7 +466,7 @@ export default function ProductPage() {
                     </span>
                   )}
                 </button>
-                <p className="mt-2 text-sm">{t('storefront.pkgNow', { n: qty, price: formatPrice(wall ? wallTotal : pkgTotal, language) })}</p>
+                <p className="mt-2 text-sm">{t(qty === 1 ? 'storefront.pkgNowOne' : 'storefront.pkgNow', { n: qty, price: formatPrice(wall ? wallTotal : pkgTotal, language) })}</p>
                 {pkgColourHints &&
                   pkgColourHints.map((h) => (
                     <p key={h.name} className="mt-1 text-xs text-brass-dark" data-package-hint>
@@ -501,12 +492,15 @@ export default function ProductPage() {
                       : t('storefront.qtyInCart', { n: groupInCart })}
                   </p>
                 )}
-              </div>
+              </details>
             )}
 
             {tiers.length > 0 && (
-              <div className="mt-4 rounded-md border border-ink/10 p-3">
-                <p className="text-sm font-medium">{t('storefront.qtyPricesTitle')}</p>
+              <details className="group mt-4 rounded-md border border-ink/10 px-3 pb-3" data-qty-prices>
+                <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                  <span className="text-sm font-medium">{t('storefront.qtyPricesTitle')}</span>
+                  <span aria-hidden="true" className="text-ink-faint transition group-open:rotate-180">⌄</span>
+                </summary>
                 <div className="mt-2 divide-y divide-ink/10 text-sm">
                   {[{ minQty: 1, price: Number(product.price) || 0 }, ...tiers].map((step) => {
                     const active = (activeTier?.minQty || 1) === step.minQty;
@@ -556,7 +550,7 @@ export default function ProductPage() {
                       : t('storefront.qtyInCart', { n: groupInCart })}
                   </p>
                 )}
-              </div>
+              </details>
             )}
 
             <div className="mt-4">
@@ -735,6 +729,8 @@ export default function ProductPage() {
             >
               {buttonLabel}
             </button>
+
+            <TrustStrip tenant={tenant} />
           </div>
         </div>
 

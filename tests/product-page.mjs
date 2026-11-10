@@ -169,7 +169,7 @@ ok('product page: a coloured wall paints with the picked colour, shows the mix, 
 const pk = { ...base, price: 200, options: [col], countedOptions: [], optionStock: {}, stock: 100, packageQty: 3, packagePrice: 500 };
 v = view(pk);
 assert.match(v.html, /data-package/); assert.match(v.html, /storefront\.pkgLine\[3\]/); assert.match(v.html, /storefront\.pkgSave/);
-assert.match(v.html, /storefront\.pkgNow\[1\]/); assert.match(v.html, /data-package-hint/); assert.match(v.html, /storefront\.pkgMore\[2\]/); // 1 piece: 2 more complete a package
+assert.match(v.html, /storefront\.pkgNowOne\[1\]/); assert.match(v.html, /data-package-hint/); assert.match(v.html, /storefront\.pkgMore\[2\]/); // 1 piece: 2 more complete a package
 assert.doesNotMatch(v.html, /storefront\.qtyPricesTitle/);                       // a package replaces the price table
 v = view({ ...pk, minQty: 3 });
 assert.match(v.html, /storefront\.pkgNow\[3\]/); assert.doesNotMatch(v.html, /data-package-hint/); // a full package: nothing missing

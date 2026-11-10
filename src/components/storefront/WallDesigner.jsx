@@ -252,7 +252,7 @@ export default function WallDesigner({
                 <span>{t('wall.paintingWith', { name: palette.find((p) => p.id === paint)?.label || '' })}</span>
               </>
             ) : (
-              <span className="text-rust">{t('wall.noColourYet')}</span>
+              <span className={needColour ? 'text-rust' : 'text-ink-faint'}>{t('wall.noColourYet')}</span>
             )}
           </div>
         )}

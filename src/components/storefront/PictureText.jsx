@@ -3,7 +3,7 @@ import { fitSize } from '../../utils/pictureText';
 
 // The big product picture, with the words the customer typed drawn ON it (update 35).
 // Always centred sideways; height, size and colour come from the product settings.
-export default function PictureText({ src, alt, texts = [], className = '' }) {
+export default function PictureText({ src, alt, texts = [], className = '', eager = true }) {
   const box = useRef(null);
   const [width, setWidth] = useState(0);
 
@@ -22,7 +22,7 @@ export default function PictureText({ src, alt, texts = [], className = '' }) {
 
   return (
     <div ref={box} className="relative" data-picture-text>
-      <img src={src} alt={alt} decoding="async" className={className} />
+      <img src={src} alt={alt} decoding="async" loading={eager ? undefined : 'lazy'} className={className} />
       {texts.map((x) => (
         <div
           key={x.id}

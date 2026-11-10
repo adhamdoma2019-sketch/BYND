@@ -124,7 +124,7 @@ export default function OptionPicker({
               disabled={blocked(v)}
               onClick={() => onChange(value === v.id && !option.required ? '' : v.id)}
               className={
-                'relative h-9 w-9 overflow-hidden rounded-full border-2 transition ' +
+                'relative h-11 w-11 overflow-hidden rounded-full border-2 transition ' +
                 (value === v.id ? 'border-brass ring-2 ring-brass/40' : 'border-ink/25') +
                 (gone(v) ? ' opacity-40' : '') +
                 (blocked(v) ? ' cursor-not-allowed' : '')
@@ -190,7 +190,7 @@ export default function OptionPicker({
             disabled={blocked(v)}
             onClick={() => onChange(value === v.id && !option.required ? '' : v.id)}
             className={
-              'rounded border px-3 py-1.5 transition ' +
+              'min-h-[44px] rounded border px-4 py-2 transition ' +
               (value === v.id
                 ? 'border-brass bg-brass/15 text-ink'
                 : 'border-ink/20 text-ink-soft hover:border-brass') +

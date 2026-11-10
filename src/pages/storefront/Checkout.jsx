@@ -269,14 +269,14 @@ export default function Checkout() {
         {groupCartRows(items).map((row) => {
           if (row.wallId) {
             return (
-              <div key={row.wallId} className="py-2">
+              <div key={row.wallId} className="border-b border-ink/10 py-3 first:pt-0">
                 <WallCartCard lines={row.lines} />
               </div>
             );
           }
           const { item } = row;
           return (
-          <div key={keyOf(item)} className="flex justify-between py-1 text-sm">
+          <div key={keyOf(item)} className="flex justify-between gap-3 border-b border-ink/10 py-3 text-sm first:pt-0">
             <span>
               {item.name?.[language] || item.name?.en} × {item.quantity}
               {item.isPreorder && (
