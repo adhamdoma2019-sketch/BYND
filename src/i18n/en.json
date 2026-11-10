@@ -108,6 +108,8 @@
     "optional": "optional",
     "deliveryArea": "Delivery area",
     "freeAbove": "Free shipping above {{amount}}",
+    "promoLink": "Have a promo code?",
+    "chooseAreaForFee": "Choose your delivery area below to see the delivery fee.",
     "promoLabel": "Promo code",
     "promoApply": "Apply",
     "promoRemove": "Remove",

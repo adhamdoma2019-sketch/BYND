@@ -19,7 +19,7 @@ Dark-first, one accent colour (brass), big calm photos, fewer boxes and lines, l
 
 ## 3. Steps (do in this order; each = one new chat; owner sends only the screens named)
 Each step: assistant reads this file + only the files it touches, builds, runs tests, gives update-N.zip + test list. Owner tests, then next chat.
-1. CHECKOUT FRICTION (high impact, small): phone box opens the number keyboard; browser auto-fill hints (name, phone, email, address) so fields fill in one tap; promo code hidden behind a "Have a promo code?" link; show the delivery fee / "choose your area to see the fee" near the top total; "Place order" stays one calm button. Ask owner: is email really required? (suggest optional). Send: checkout screenshots EN + AR.
+1. DONE (update 48, Nov 10, 2026; waits for the owner's phone test) CHECKOUT FRICTION (high impact, small): phone box opens the number keyboard; browser auto-fill hints (name, phone, email, address) so fields fill in one tap; promo code hidden behind a "Have a promo code?" link; show the delivery fee / "choose your area to see the fee" near the top total; "Place order" stays one calm button. Ask owner: is email really required? (suggest optional). Send: checkout screenshots EN + AR.
 2. TAP SIZE + TOP BAR (small): all header buttons at least 44 px; check the narrow-phone top bar. Can join step 1.
 3. PRODUCT PAGE: swipeable gallery with dots, "Package details" folded, chips bigger, trust strip (NEEDS owner's real facts: made-to-order days, delivery fee/time, returns, WhatsApp number). Send: hexagon + My PRs product pages EN + AR, light + dark, plus the facts.
 4. PICTURE SPEED (check first): Cloudinary pictures resized and auto-format (f_auto, q_auto, width) in cards/gallery so pages load fast on mobile data. Assistant checks what exists, then fixes. Send: nothing (or a Lighthouse score).
@@ -42,4 +42,4 @@ Each step: assistant reads this file + only the files it touches, builds, runs t
 - End each chat after the zip + test list; the assistant updates PROJECT_NOTES (changelog) and ticks the step here ("DONE").
 
 ## 6. Progress
-- Steps done: none yet (updates 43-47 were small fixes before this plan).
+- Steps done: step 1 (update 48, built Nov 10, 2026; owner still to test; email decision: optional, set in Admin > Settings > Checkout). Updates 43-47 were small fixes before this plan.

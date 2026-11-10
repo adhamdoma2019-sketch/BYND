@@ -108,6 +108,8 @@
     "optional": "اختياري",
     "deliveryArea": "منطقة التوصيل",
     "freeAbove": "شحن مجاني للطلبات فوق {{amount}}",
+    "promoLink": "عندك كود خصم؟",
+    "chooseAreaForFee": "اختر منطقة التوصيل بالأسفل لتعرف رسوم التوصيل.",
     "promoLabel": "كود الخصم",
     "promoApply": "تطبيق",
     "promoRemove": "إزالة",

@@ -139,4 +139,18 @@ h = draw([line()], { id: 'bynd', slug: 'bynd' });                      // a shop
 assert.doesNotMatch(h, /checkout\.shipping|class="opacity-60"/);
 ok('delivery fee: waiting or failed = a dash (never "Free") + dimmed totals / an honest note; known = real fee or a real "Free"');
 
+
+// 13. design step 1: the promo box is folded behind a link; the fee hint appears only while no area is chosen
+h = draw([line()]);
+assert.match(h, /data-promo-link/); assert.match(h, /checkout\.promoLink/); assert.doesNotMatch(h, /id="promo"/);
+h = draw([line()], shop(), 'en', { subtotal: 400, discount: 40, shippingFee: 50, total: 410, promo: { code: 'WELCOME' } });
+assert.doesNotMatch(h, /data-promo-link/); assert.match(h, /checkout\.promoApplied/);   // a working code stays visible (can be removed)
+h = draw([line()], shop({ shipping: { zones: [zone('z1'), zone('z2')] } }));
+assert.match(h, /data-fee-hint/); assert.match(h, /checkout\.chooseAreaForFee/);
+h = draw([line()]);                                                    // the only area is pre-selected: no hint
+assert.doesNotMatch(h, /data-fee-hint/);
+h = draw([line()], { id: 'bynd', slug: 'bynd' });                      // no delivery areas: no hint
+assert.doesNotMatch(h, /data-fee-hint/);
+ok('design step 1: promo folded behind "Have a promo code?" (an applied code stays visible); fee hint only while no area is chosen');
+
 console.log('ALL ' + n + ' CHECKOUT-PAGE CHECKS PASSED');

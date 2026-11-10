@@ -67,6 +67,7 @@ export default function Checkout() {
   const [custom, setCustom] = useState({});
   const [zoneId, setZoneId] = useState(() => (zones.length === 1 ? zones[0].id : ''));
   const [promoInput, setPromoInput] = useState('');
+  const [promoOpen, setPromoOpen] = useState(false); // the promo box stays folded behind a link until tapped
   const [appliedCode, setAppliedCode] = useState('');
   const [quote, setQuote] = useState(null);
   const [quoteBusy, setQuoteBusy] = useState(false); // waiting for the server's answer
@@ -299,6 +300,11 @@ export default function Checkout() {
           <span>{t('checkout.total')}</span>
           <span className={waitingForFee ? 'opacity-60' : undefined}>{money(shown.total)}</span>
         </div>
+        {zones.length > 0 && !chosenZone && (
+          <p className="mt-1 text-xs text-ink-faint" data-fee-hint>
+            {t('checkout.chooseAreaForFee')}
+          </p>
+        )}
       </div>
 
       {items.some((i) => i.isPreorder) && (
@@ -473,7 +479,19 @@ export default function Checkout() {
           </div>
         )}
 
-        {/* ----- promo code ----- */}
+        {/* ----- promo code (folded behind a link until the customer wants it) ----- */}
+        {!promoOpen && !appliedCode && !promoInput && !quote?.promo ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setPromoOpen(true)}
+              className="py-2 text-sm text-ink-soft underline"
+              data-promo-link
+            >
+              {t('checkout.promoLink')}
+            </button>
+          </div>
+        ) : (
         <div>
           <label className="block text-sm text-ink-soft" htmlFor="promo">
             {t('checkout.promoLabel')}
@@ -527,6 +545,8 @@ export default function Checkout() {
             </p>
           )}
         </div>
+
+        )}
 
         {/* ----- totals (calculated by the server) ----- */}
         <div className="space-y-1 rounded-md border border-ink/10 bg-paper-soft p-4 text-sm">
