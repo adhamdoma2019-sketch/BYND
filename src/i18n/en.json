@@ -99,7 +99,8 @@
     "viewCart": "View cart",
     "priceFrom": "From {{price}}",
     "shopNotFound": "Shop not found",
-    "shopNotFoundBody": "There's no shop at this address. Double-check the link."
+    "shopNotFoundBody": "There's no shop at this address. Double-check the link.",
+    "shopAll": "Shop all products"
   },
   "checkout": {
     "title": "Checkout",
@@ -565,7 +566,11 @@
     "storyTitleAr": "Story title (Arabic)",
     "storyTextEn": "Story text (English)",
     "storyTextAr": "Story text (Arabic)",
-    "storyPhotoN": "Photo {{n}}"
+    "storyPhotoN": "Photo {{n}}",
+    "homeProductsTitle": "Products on the home page",
+    "homeProductsHelp": "How many products the home page shows. The rest are always on the Products page, one tap away. Choose \"None\" if you want the home page to be only about your brand.",
+    "homeProductsNone": "None: only a \"Shop all products\" button",
+    "homeProductsOption": "{{n}} products"
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",

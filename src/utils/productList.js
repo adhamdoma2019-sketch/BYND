@@ -6,6 +6,19 @@ import { productStatus } from './storefront.js';
 // How many products the home page shows before "View all products".
 export const FEATURED_COUNT = 4;
 
+// Update 57: the shop chooses how many products the home page shows (Admin > Settings > Banner).
+// 0 = none (only a "Shop all products" button), otherwise 2 / 4 / 6 / 8; a shop that never chose gets 4 (as before).
+export const HOME_COUNT_CHOICES = [0, 2, 4, 6, 8];
+export const MAX_HOME_COUNT = 12;
+export function cleanHomeCount(value) {
+  if (value === '' || value === null || value === undefined) return FEATURED_COUNT;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 && n <= MAX_HOME_COUNT ? n : FEATURED_COUNT;
+}
+export function homeProductCount(tenant) {
+  return cleanHomeCount(tenant?.homeProductCount);
+}
+
 // The shop's normal order, with one premium touch: products a customer cannot buy right now
 // (sold out) go to the END, so the first things a visitor sees are things they can order.
 // Everything else keeps the order it came in (a stable sort, nothing is re-arranged).

@@ -15,7 +15,7 @@ import AddedToast from '../../components/storefront/AddedToast';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { highlightsOf, storyOf } from '../../utils/storefront';
 import StoryStrip from '../../components/storefront/StoryStrip';
-import { featuredProducts, hasMoreThanFeatured } from '../../utils/productList';
+import { featuredProducts, hasMoreThanFeatured, homeProductCount } from '../../utils/productList';
 import {
   HERO_DEFAULT_SECONDS,
   HERO_MIN_SECONDS,
@@ -37,10 +37,18 @@ export default function StorefrontHome() {
   const [cartOpen, setCartOpen] = useState(false);
   const [added, setAdded] = useState(0); // counts adds: the "Added to cart" note shows after each one
   const { hash } = useLocation();
+  // How many products the shop wants on the home page (0 = none: only a "Shop all products" button).
+  const homeCount = homeProductCount(tenant);
+  const productsPage = `/store/${tenant.slug}/products`;
 
   // Update 45: a failed read is shown as a message with Try again (before, it looked like an empty shop).
   const loadProducts = useCallback(() => {
     let cancelled = false;
+    if (homeCount === 0) {
+      setProducts([]);
+      setProductsState('ready'); // nothing to load: the home page shows no products
+      return () => {};
+    }
     setProductsState('loading');
     listStorefrontProducts(tenant.id)
       .then((list) => {
@@ -54,7 +62,7 @@ export default function StorefrontHome() {
     return () => {
       cancelled = true;
     };
-  }, [tenant.id]);
+  }, [tenant.id, homeCount]);
 
   useEffect(() => loadProducts(), [loadProducts]);
 
@@ -80,7 +88,7 @@ export default function StorefrontHome() {
         headline: pick(s.headline),
         subtext: pick(s.subtext),
         ctaLabel: pick(s.cta) || t('storefront.shopNow'),
-        to: s.productId ? `/store/${tenant.slug}/product/${s.productId}` : '#products',
+        to: s.productId ? `/store/${tenant.slug}/product/${s.productId}` : homeCount === 0 ? productsPage : '#products',
       }));
     if (configured.length > 0) return configured;
 
@@ -91,10 +99,10 @@ export default function StorefrontHome() {
         headline: t('storefront.heroDefaultHeadline'),
         subtext: '',
         ctaLabel: t('storefront.shopNow'),
-        to: '#products',
+        to: homeCount === 0 ? productsPage : '#products',
       },
     ];
-  }, [tenant, products, language, t]);
+  }, [tenant, products, language, t, homeCount, productsPage]);
 
   // Slideshow timing chosen in Admin > Settings (with safe limits).
   const seconds = Math.min(
@@ -129,8 +137,17 @@ export default function StorefrontHome() {
           {t('storefront.collection')}
         </h2>
 
-        {productsLoading ? (
-          <ProductGridSkeleton count={4} label={t('common.loading')} />
+        {homeCount === 0 ? (
+          <div className="text-center" data-home-no-products>
+            <Link
+              to={productsPage}
+              className="inline-flex min-h-[44px] items-center rounded border border-ink px-8 py-3 text-sm font-semibold uppercase tracking-wider transition hover:bg-ink hover:text-paper"
+            >
+              {t('storefront.shopAll')}
+            </Link>
+          </div>
+        ) : productsLoading ? (
+          <ProductGridSkeleton count={homeCount} label={t('common.loading')} />
         ) : productsState === 'failed' ? (
           <ProductsLoadError
             message={t('storefront.productsLoadFailed')}
@@ -143,13 +160,13 @@ export default function StorefrontHome() {
           <>
             {/* Only a few featured products here; the rest are on the Products page (update 42). */}
             <ProductGrid
-              products={featuredProducts(products)}
+              products={featuredProducts(products, homeCount)}
               onAddToCart={(prod) => {
                 addItem(prod, 1);
                 setAdded((n) => n + 1);
               }}
             />
-            {hasMoreThanFeatured(products) && (
+            {hasMoreThanFeatured(products, homeCount) && (
               <div className="mt-10 text-center">
                 <Link
                   to={`/store/${tenant.slug}/products`}

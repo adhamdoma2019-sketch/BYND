@@ -132,7 +132,7 @@ ok('the banner is shorter (58% of a phone screen, 66% of a big one)');
 const settings = read('pages/admin/Settings.jsx');
 assert.ok(/data-story-form/.test(settings) && /\.\.\.story\.images\]/.test(settings) && /story: publicSettings\.story/.test(settings) && /changed\.push\('story'\)/.test(settings));
 assert.equal((settings.match(/storyPhotoN/g) || []).length, 1);
-assert.ok(/'highlights', 'story', 'pages'/.test(read('utils/preview.js')));
+assert.ok(/'highlights', 'story', 'homeProductCount', 'pages'/.test(read('utils/preview.js')));
 ok('Settings > Content has the story form (4 photo boxes, https check, saved, logged, live preview)');
 
 // ----- 5. the Arrange button in the designer -----

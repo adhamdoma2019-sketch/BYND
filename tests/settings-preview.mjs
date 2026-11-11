@@ -79,6 +79,7 @@ const saved = {
   hero: { slides: [{ imageUrl: 'https://a/s.png', headline: { en: 'H', ar: 'ع' }, subtext: { en: 'S', ar: 'ن' }, cta: { en: 'C', ar: 'ك' }, productId: 'p1' }], intervalSeconds: 7, fade: 'slow', autoplay: false, textStyle: 'plain' },
   highlights: [{ title: { en: 'T', ar: 'ت' }, text: { en: 'U', ar: 'ث' } }],
   story: { title: { en: 'S', ar: 'ق' }, text: { en: 'Our story', ar: 'قصتنا' }, images: ['https://a/p1.png'] },
+  homeProductCount: 6,
   pages: m.formToPages(m.pagesToForm({ privacy: { body: { en: 'P', ar: 'ب' } } })),
 };
 const form = {
@@ -87,7 +88,7 @@ const form = {
   contact: { whatsapp: '010', phone: '', email: '', instagram: '', facebook: '', tiktok: '', addressEn: 'X', addressAr: 'س', floatingWhatsapp: true },
   logoUrl: 'https://a/1.png', logoDarkUrl: 'https://a/2.png',
   slides: saved.hero.slides.map(m.slideToForm), seconds: 7, fade: 'slow', autoplay: false, heroTextStyle: 'plain',
-  highlights: saved.highlights.map(m.highlightToForm), story: m.storyToForm(saved.story), pages: m.pagesToForm(saved.pages),
+  highlights: saved.highlights.map(m.highlightToForm), story: m.storyToForm(saved.story), homeProducts: String(saved.homeProductCount), pages: m.pagesToForm(saved.pages),
 };
 assert.deepEqual(m.buildPublicSettings(form), saved);
 ok('saved shop -> form -> shop: identical (opening Settings and saving without a change changes nothing)');

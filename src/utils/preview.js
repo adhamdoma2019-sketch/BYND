@@ -5,12 +5,14 @@
 // and (c) the message comes from the page around it on the SAME site. A draft only changes what
 // is shown in that one frame: nothing is saved and nothing is written anywhere.
 
+import { cleanHomeCount } from './productList.js';
+
 export const PREVIEW_DRAFT = 'shop-preview-draft';
 export const PREVIEW_READY = 'shop-preview-ready';
 export const PREVIEW_PRODUCT = 'shop-preview-product';
 
 // Only these parts of the shop record can be replaced by a draft.
-export const DRAFT_KEYS = ['theme', 'appearance', 'contact', 'brand', 'hero', 'highlights', 'story', 'pages'];
+export const DRAFT_KEYS = ['theme', 'appearance', 'contact', 'brand', 'hero', 'highlights', 'story', 'homeProductCount', 'pages'];
 
 // Is this shop page the preview frame? (opened with ?preview AND inside another page)
 export function isPreviewMode(search, inFrame) {
@@ -70,6 +72,7 @@ export function cleanDraft(draft) {
       slides: out.hero.slides.map((s) => ({ ...s, imageUrl: isHttps(s.imageUrl) ? s.imageUrl : '' })),
     };
   }
+  if ('homeProductCount' in out) out.homeProductCount = cleanHomeCount(out.homeProductCount);
   if (out.story && Array.isArray(out.story.images)) {
     out.story = { ...out.story, images: out.story.images.filter(isHttps) };
   }

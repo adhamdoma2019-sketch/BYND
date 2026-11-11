@@ -10,6 +10,7 @@ import ImageField from '../../components/admin/ImageField';
 import AppearanceFields from '../../components/admin/AppearanceFields';
 import ContactFields from '../../components/admin/ContactFields';
 import { DEFAULT_ACCENT, DEFAULT_FONT, DEFAULT_RADIUS } from '../../utils/theme';
+import { homeProductCount, HOME_COUNT_CHOICES } from '../../utils/productList';
 import { MAX_ANNOUNCEMENTS, MAX_HIGHLIGHTS, MAX_PAGE_CHARS, POLICY_PAGES } from '../../utils/storefront';
 import {
   slideToForm,
@@ -168,6 +169,7 @@ export default function Settings() {
   const [logoUrl, setLogoUrl] = useState('');
   const [logoDarkUrl, setLogoDarkUrl] = useState('');
   const [heroTextStyle, setHeroTextStyle] = useState('card');
+  const [homeProducts, setHomeProducts] = useState('4');
   const [highlights, setHighlights] = useState([]);
   const [story, setStory] = useState(emptyStory);
   const [pages, setPages] = useState(() => pagesToForm(undefined));
@@ -227,6 +229,7 @@ export default function Settings() {
     setLogoDarkUrl(tenant.brand?.logoDarkUrl || '');
     setHeroTextStyle(tenant.hero?.textStyle === 'plain' ? 'plain' : 'card');
     setHighlights((tenant.highlights || []).slice(0, MAX_HIGHLIGHTS).map(highlightToForm));
+    setHomeProducts(String(homeProductCount(tenant)));
     setStory(storyToForm(tenant.story));
     setPages(pagesToForm(tenant.pages));
     setSlides((tenant.hero?.slides || []).map(slideToForm));
@@ -366,6 +369,7 @@ export default function Settings() {
     fade,
     autoplay,
     heroTextStyle,
+    homeProducts,
     highlights,
     story,
     pages,
@@ -427,6 +431,7 @@ export default function Settings() {
         hero: publicSettings.hero,
         highlights: publicSettings.highlights,
         story: publicSettings.story,
+        homeProductCount: publicSettings.homeProductCount,
         pages: publicSettings.pages,
         checkout: {
           fields: fieldSettings,
@@ -465,6 +470,7 @@ export default function Settings() {
       ) changed.push('logo');
       if (saved(tenant.highlights || []) !== saved(highlightsToSave)) changed.push('highlights');
       if (saved(tenant.story || {}) !== saved(publicSettings.story)) changed.push('story');
+      if (homeProductCount(tenant) !== publicSettings.homeProductCount && !changed.includes('banner')) changed.push('banner');
       if (saved(tenant.pages || {}) !== saved(pagesToSave)) changed.push('pages');
       if (saved(tenant.hero?.slides || []) !== saved(slides.map(formToSlide)) ||
           (tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS) !== safeSeconds ||
@@ -788,6 +794,24 @@ export default function Settings() {
               {t('settingsPage.addSlide')}
             </button>
           )}
+
+          {/* How many products the home page shows (update 57) */}
+          <div className="mt-8 rounded-md border border-ink/10 bg-paper-soft p-4" data-home-products>
+            <p className="text-sm font-medium">{t('settingsPage.homeProductsTitle')}</p>
+            <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.homeProductsHelp')}</p>
+            <select
+              value={homeProducts}
+              onChange={(e) => setHomeProducts(e.target.value)}
+              className={inputClass + ' sm:max-w-xs'}
+              aria-label={t('settingsPage.homeProductsTitle')}
+            >
+              {HOME_COUNT_CHOICES.map((c) => (
+                <option key={c} value={String(c)}>
+                  {c === 0 ? t('settingsPage.homeProductsNone') : t('settingsPage.homeProductsOption', { n: c })}
+                </option>
+              ))}
+            </select>
+          </div>
         </section>
 
         {/* ---------- Shop content: highlights + text pages ---------- */}

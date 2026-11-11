@@ -56,7 +56,7 @@ async function load(file) {
         const p = a.path; let c = 'export default ()=>null;';
         if (/CartContext/.test(p)) c = 'export const useCart=()=>({addItem(){},items:[]}); export default ()=>null;';
         if (/LanguageContext/.test(p)) c = "export const useLanguage=()=>({language:'en'});";
-        if (/StorefrontContext/.test(p)) c = "export const useStorefront=()=>({tenant:{id:'bynd',slug:'bynd',name:{en:'BYND'}}});";
+        if (/StorefrontContext/.test(p)) c = "export const useStorefront=()=>({tenant:{id:'bynd',slug:'bynd',name:{en:'BYND'},...(globalThis.__tenantExtra||{})}});";
         if (/usePageMeta/.test(p)) c = 'export const usePageMeta=()=>{};';
         if (/products\.service/.test(p)) c = 'export const listStorefrontProducts=async()=>[];';
         return { contents: c, loader: 'js' };
@@ -131,6 +131,38 @@ ok('home page: a failed read shows a clear message + Try again (not "no products
 h = draw(Home, []);
 assert.match(h, /storefront\.noProducts/); assert.doesNotMatch(h, /role="alert"/);
 ok('home page: a shop that really has no products still says so');
+
+// ----- update 57: the shop chooses how many products the home page shows -----
+const withCount = (c, products, state = 'ready') => { globalThis.__tenantExtra = { homeProductCount: c }; try { return draw(Home, products, state); } finally { globalThis.__tenantExtra = undefined; } };
+h = withCount(2, six);
+assert.deepEqual(names(h), ['a', 'b']); assert.match(h, /storefront\.viewAll\[6\]/);
+ok('home page set to 2 products: 2 cards + "View all (6)"');
+h = withCount(8, six);
+assert.deepEqual(names(h), ['a', 'b', 'c', 'd', 'e', 'f']); assert.doesNotMatch(h, /storefront\.viewAll/);
+ok('home page set to 8 products with 6 in the shop: all 6, no "View all"');
+h = withCount(0, six, 'loading');
+assert.doesNotMatch(h, /animate-pulse/); assert.deepEqual(names(h), []);
+assert.match(h, /data-home-no-products/); assert.match(h, /storefront\.shopAll/); assert.match(h, /href="\/store\/bynd\/products"/); assert.match(h, /id="products"/);
+assert.doesNotMatch(h, /storefront\.noProducts/); assert.doesNotMatch(h, /storefront\.viewAll/);
+ok('home page set to NONE: no cards and no placeholders, one "Shop all products" button to the Products page (the #products anchor stays)');
+h = withCount('abc', six);
+assert.deepEqual(names(h), ['a', 'b', 'c', 'd']);
+h = withCount(undefined, six);
+assert.deepEqual(names(h), ['a', 'b', 'c', 'd']);
+ok('an unset or unreadable setting keeps the old behaviour (4 products)');
+const home = fs.readFileSync(path.join(root, 'src/pages/storefront/StorefrontHome.jsx'), 'utf8');
+assert.ok(/if \(homeCount === 0\) \{\n\s+setProducts\(\[\]\);\n\s+setProductsState\('ready'\);/.test(home), 'with NONE the home page does not even read the products');
+assert.ok(/homeCount === 0 \? productsPage : '#products'/.test(home), 'the banner button goes to the Products page when the home page shows none');
+ok('with NONE the home page skips loading the products and the banner button opens the Products page');
+const { homeProductCount, cleanHomeCount, HOME_COUNT_CHOICES, MAX_HOME_COUNT } = await import('../src/utils/productList.js');
+assert.deepEqual(HOME_COUNT_CHOICES, [0, 2, 4, 6, 8]);
+assert.equal(homeProductCount({}), 4); assert.equal(homeProductCount(null), 4); assert.equal(homeProductCount({ homeProductCount: 0 }), 0);
+assert.equal(homeProductCount({ homeProductCount: '6' }), 6); assert.equal(cleanHomeCount(-1), 4); assert.equal(cleanHomeCount(2.5), 4); assert.equal(cleanHomeCount(MAX_HOME_COUNT + 1), 4); assert.equal(cleanHomeCount(MAX_HOME_COUNT), MAX_HOME_COUNT);
+ok('the setting is cleaned: whole numbers 0-12, anything else = 4');
+const settings = fs.readFileSync(path.join(root, 'src/pages/admin/Settings.jsx'), 'utf8');
+assert.ok(/data-home-products/.test(settings) && /homeProductCount: publicSettings\.homeProductCount/.test(settings) && /setHomeProducts\(String\(homeProductCount\(tenant\)\)\)/.test(settings));
+assert.ok(/'homeProductCount', 'pages'/.test(fs.readFileSync(path.join(root, 'src/utils/preview.js'), 'utf8')));
+ok('Settings > Banner has the choice; it is saved, loaded back and part of the live preview');
 
 const routes = fs.readFileSync(path.join(root, 'src/routes/AppRoutes.jsx'), 'utf8');
 assert.match(routes, /path="products" element=\{<ProductsPage \/>\}/);

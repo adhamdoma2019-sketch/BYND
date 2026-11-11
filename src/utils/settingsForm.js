@@ -2,6 +2,7 @@
 // no screens in them, so they can be tested (tests/settings-preview.mjs).
 // The "Save settings" button AND the live preview both use buildPublicSettings, so what you
 // see in the preview is exactly what will be saved.
+import { cleanHomeCount } from './productList.js';
 import { safeBarLink } from './contact';
 import { MAX_ANNOUNCEMENTS, MAX_HIGHLIGHTS, POLICY_PAGES } from './storefront';
 import { HERO_DEFAULT_SECONDS, HERO_MIN_SECONDS, HERO_MAX_SECONDS } from './constants';
@@ -133,6 +134,7 @@ export function buildPublicSettings(f) {
     },
     highlights,
     story: formToStory(f.story || emptyStory()),
+    homeProductCount: cleanHomeCount(f.homeProducts),
     pages: formToPages(f.pages),
   };
 }
