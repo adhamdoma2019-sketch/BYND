@@ -11,7 +11,7 @@ import CartDrawer from '../../components/storefront/CartDrawer';
 import AddedToast from '../../components/storefront/AddedToast';
 import { ProductPageSkeleton } from '../../components/storefront/PageSkeletons';
 import { formatPrice } from '../../utils/format';
-import { optimizedImage } from '../../utils/images';
+import { optimizedImage, optimizedVideo, videoPoster } from '../../utils/images';
 import OptionPicker from '../../components/storefront/OptionPicker';
 import WallDesigner from '../../components/storefront/WallDesigner';
 import ProductGallery from '../../components/storefront/ProductGallery';
@@ -248,6 +248,11 @@ export default function ProductPage() {
   const pictures = [...new Set([product.imageUrl, ...(product.images || [])].filter(Boolean))];
   const shownImage = mainImage || pictures[0] || '';
   // A picture that belongs to a picked colour/choice but is not one of the product photos is shown as one extra slide.
+  // Step 10: an optional short video is the first item of the photo strip (https links only).
+  const videoSrc = /^https:\/\//i.test(String(product.videoUrl || '')) ? product.videoUrl : '';
+  const galleryVideo = videoSrc
+    ? { src: optimizedVideo(videoSrc), poster: videoPoster(videoSrc) || optimizedImage(pictures[0] || '', 900) }
+    : null;
   const galleryPictures = shownImage && !pictures.includes(shownImage) ? [...pictures, shownImage] : pictures;
   // Quantity price: the price of one piece depends on the total of this product (in the cart + now).
   // Package price ("every 3 pieces cost 500"): a product uses it OR price steps.
@@ -403,9 +408,10 @@ export default function ProductPage() {
 
         <div className="mt-6 grid gap-8 md:grid-cols-2">
           <div>
-            {shownImage ? (
+            {shownImage || galleryVideo ? (
               <ProductGallery
                 pictures={galleryPictures}
+                video={galleryVideo}
                 shown={shownImage}
                 onShow={setMainImage}
                 name={name}

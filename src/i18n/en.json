@@ -100,7 +100,8 @@
     "priceFrom": "From {{price}}",
     "shopNotFound": "Shop not found",
     "shopNotFoundBody": "There's no shop at this address. Double-check the link.",
-    "shopAll": "Shop all products"
+    "shopAll": "Shop all products",
+    "galleryVideo": "Product video"
   },
   "checkout": {
     "title": "Checkout",
@@ -342,7 +343,9 @@
     "packageErr_qty": "The pieces in a package must be a whole number of 2 or more.",
     "packageErr_price": "The package price must be a number, not below 0.",
     "packageErr_notCheaper": "The package price must be lower than buying the same number of pieces one by one at the normal price.",
-    "packageErr_both": "Use a package price OR quantity prices, not both. Remove the price steps or empty the package boxes."
+    "packageErr_both": "Use a package price OR quantity prices, not both. Remove the price steps or empty the package boxes.",
+    "videoUrl": "Product video (optional)",
+    "videoHelp": "A short video (10-20 seconds, under {{mb}} MB), filmed on your phone. It is shown first in the photo strip. Leave empty for no video."
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -650,7 +653,12 @@
     "failed": "Upload failed. Try again or paste a link.",
     "tooBig": "This picture is too large (the limit is 8 MB).",
     "notImage": "Please choose a picture file.",
-    "notSetUp": "Picture upload isn't switched on yet. Paste a picture link instead."
+    "notSetUp": "Picture upload isn't switched on yet. Paste a picture link instead.",
+    "chooseVideo": "Upload video",
+    "notVideo": "Please choose a video file.",
+    "videoTooBig": "This video is too large (the limit is {{mb}} MB). Film a shorter one (10-20 seconds).",
+    "videoFailed": "Video upload failed. Try again or paste a link.",
+    "videoNotSetUp": "Video upload isn't switched on yet. Paste a video link instead."
   },
   "options": {
     "title": "Options (colors, activity, extensions...)",

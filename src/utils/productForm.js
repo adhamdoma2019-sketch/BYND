@@ -75,6 +75,8 @@ export function productFields(data) {
         ? 0
         : Number(data.shippingExtra),
     imageUrl: data.imageUrl || '',
+    // Step 10: an optional short video, shown FIRST in the photo strip (https links only).
+    videoUrl: /^https:\/\//i.test(String(data.videoUrl || '').trim()) ? String(data.videoUrl).trim().slice(0, 500) : '',
     // More pictures of the product (shown as thumbnails on the product page).
     images: (data.images || [])
       .map((u) => String(u || '').trim())

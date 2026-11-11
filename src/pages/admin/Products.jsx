@@ -5,6 +5,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import LoadError from '../../components/admin/LoadError';
 import ImageField from '../../components/admin/ImageField';
+import VideoField from '../../components/admin/VideoField';
+import { MAX_VIDEO_MB } from '../../utils/images';
 import { useAudit } from '../../hooks/useAudit';
 import { downloadFile } from '../../utils/csv';
 import { productsToCsv } from '../../utils/exports';
@@ -52,6 +54,7 @@ const emptyForm = {
   sku: '',
   shippingExtra: '',
   imageUrl: '',
+  videoUrl: '',
   isActive: true,
   isPreorder: false,
   backorder: false, // stock first, then made to order
@@ -175,6 +178,7 @@ export default function Products() {
       sku: p.sku || '',
       shippingExtra: p.shippingExtra ?? '',
       imageUrl: p.imageUrl || '',
+      videoUrl: p.videoUrl || '',
       isActive: p.isActive,
       isPreorder: p.isPreorder === true,
       backorder: p.backorder === true,
@@ -710,6 +714,13 @@ export default function Products() {
             label={t('products.imageUrl')}
             value={form.imageUrl}
             onChange={(url) => setForm({ ...form, imageUrl: url })}
+          />
+
+          <VideoField
+            label={t('products.videoUrl')}
+            help={t('products.videoHelp', { mb: MAX_VIDEO_MB })}
+            value={form.videoUrl}
+            onChange={(url) => setForm({ ...form, videoUrl: url })}
           />
 
           {/* more pictures (gallery) */}

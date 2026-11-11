@@ -90,7 +90,7 @@ export function applyDraft(tenant, draft) {
 // Only these parts of a product can come from a draft. Stock numbers, id, shop and "active" always
 // stay as saved, and private costs are never part of a product record at all.
 export const PRODUCT_DRAFT_KEYS = [
-  'name', 'description', 'price', 'priceTiers', 'packageQty', 'packagePrice', 'tierGroupOption', 'minQty', 'maxQty', 'shippingExtra', 'imageUrl', 'images',
+  'name', 'description', 'price', 'priceTiers', 'packageQty', 'packagePrice', 'tierGroupOption', 'minQty', 'maxQty', 'shippingExtra', 'imageUrl', 'videoUrl', 'images',
   'relatedIds', 'isPreorder', 'backorder', 'countedOptions', 'preorderStyle', 'comingSoon', 'wallDesigner', 'options',
   'preorderMessage',
 ];
@@ -101,6 +101,7 @@ export function cleanProductDraft(draft) {
     if (draft[k] !== undefined) out[k] = draft[k];
   });
   out.imageUrl = isHttps(out.imageUrl) ? out.imageUrl : '';
+  out.videoUrl = isHttps(out.videoUrl) ? out.videoUrl : '';
   out.images = (Array.isArray(out.images) ? out.images : []).filter(isHttps);
   out.options = (Array.isArray(out.options) ? out.options : []).map((o) => ({
     ...o,
