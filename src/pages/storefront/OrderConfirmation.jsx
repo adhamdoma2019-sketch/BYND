@@ -7,6 +7,8 @@ import ReceiptCard from '../../components/storefront/ReceiptCard';
 import CheckoutHeader from '../../components/storefront/CheckoutHeader';
 import { useStorefront } from '../../context/StorefrontContext';
 import { madeWording } from '../../utils/storefront';
+import OrderProgress from '../../components/storefront/OrderProgress';
+import WhatsAppOrderButton from '../../components/storefront/WhatsAppOrderButton';
 
 export default function OrderConfirmation() {
   const { slug } = useParams();
@@ -35,6 +37,22 @@ export default function OrderConfirmation() {
             {t(orderNote)}
           </p>
         )}
+        <div className="mt-6 w-full max-w-md" data-thankyou-progress>
+          <OrderProgress status="pending" />
+        </div>
+        <section className="mt-6 w-full max-w-md rounded-md border border-ink/10 bg-paper-soft p-4 text-start" data-whats-next>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-soft">{t('next.title')}</h2>
+          <ol className="mt-3 space-y-3 text-sm">
+            {['step1', state?.orderType === 'preorder' ? 'step2Made' : 'step2', 'step3'].map((k, i) => (
+              <li key={k} className="flex gap-3">
+                <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brass/15 text-xs font-bold text-brass-dark">
+                  {i + 1}
+                </span>
+                <span className="pt-0.5 text-ink-soft">{t(`next.${k}`)}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
         {!hasReceipt && state?.orderNumberLabel && (
           <p className="mt-4 text-lg font-medium text-ink">
             {t('checkout.orderNumber')}: {state.orderNumberLabel}
@@ -58,11 +76,12 @@ export default function OrderConfirmation() {
         <Link
           to={`/store/${slug}/track`}
           state={{ orderNumberLabel: state?.orderNumberLabel }}
-          className="mt-6 w-full max-w-md rounded bg-ink px-4 py-3 text-center text-sm font-semibold text-paper transition hover:bg-brass hover:text-on-brass"
+          className="mt-6 flex min-h-[44px] w-full max-w-md items-center justify-center rounded bg-ink px-4 py-3 text-center text-sm font-semibold text-paper transition hover:bg-brass hover:text-on-brass"
         >
           {t('track.linkAfterOrder')}
         </Link>
-        <Link to={`/store/${slug}`} className="mt-5 text-brass-dark hover:underline">
+        <WhatsAppOrderButton tenant={tenant} orderNumber={state?.orderNumberLabel} className="mt-3" />
+        <Link to={`/store/${slug}`} className="mt-4 inline-flex min-h-[44px] items-center text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
       </div>

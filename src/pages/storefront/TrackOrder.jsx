@@ -8,18 +8,10 @@ import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { trackOrder } from '../../firebase/orders.service';
+import TrackResult from '../../components/storefront/TrackResult';
 
 const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
-
-function formatWhen(timestamp, language) {
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
 
 // "Track my order": the customer enters the order number and the phone number used on
 // the order. They only ever see the status and the dates (never names, addresses or prices).
@@ -57,8 +49,6 @@ export default function TrackOrder() {
       setBusy(false);
     }
   }
-
-  const history = result?.history || [];
 
   return (
     <div className="min-h-screen">
@@ -110,38 +100,7 @@ export default function TrackOrder() {
           </button>
         </form>
 
-        {result && (
-          <section aria-live="polite" className="mt-10 rounded-md border border-ink/10 bg-paper-soft p-5">
-            <p className="text-sm text-ink-soft">
-              {t('track.orderNumber')}: <span dir="ltr">{result.orderNumberLabel}</span>
-            </p>
-            <h2 className="font-display mt-2 text-2xl font-semibold">
-              {t(`track.status.${result.status}`)}
-            </h2>
-            <p className="mt-2 text-ink-soft">{t(`track.desc.${result.status}`)}</p>
-            {result.orderType === 'preorder' && (
-              <p className="mt-3 rounded border border-brass/30 bg-brass/10 px-3 py-2 text-sm text-brass-dark">
-                {t('track.preorderNote')}
-              </p>
-            )}
-
-            {history.length > 0 && (
-              <>
-                <h3 className="mt-6 text-sm font-semibold uppercase tracking-wider text-ink-soft">
-                  {t('track.timeline')}
-                </h3>
-                <ol className="mt-3 space-y-3 border-s border-ink/15 ps-4">
-                  {history.map((h, i) => (
-                    <li key={`${h.status}-${i}`} className="text-sm">
-                      <span className="font-medium text-ink">{t(`track.status.${h.status}`)}</span>
-                      <span className="block text-ink-faint">{formatWhen(h.timestamp, language)}</span>
-                    </li>
-                  ))}
-                </ol>
-              </>
-            )}
-          </section>
-        )}
+        {result && <TrackResult result={result} tenant={tenant} language={language} />}
       </main>
 
       <StorefrontFooter tenant={tenant} />

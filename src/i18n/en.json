@@ -997,7 +997,9 @@
     "floatingHint": "Customers can message you in one tap. It uses the WhatsApp number above.",
     "whatsapp": "WhatsApp",
     "whatsappHello": "Hello {{shop}}, I have a question.",
-    "whatsappLabel": "Chat on WhatsApp"
+    "whatsappLabel": "Chat on WhatsApp",
+    "whatsappOrder": "Hello {{shop}}, I have a question about my order {{order}}.",
+    "whatsappOrderButton": "Message us about this order on WhatsApp"
   },
   "policies": {
     "about": "About us",
@@ -1037,6 +1039,12 @@
       "delivered": "Your order was delivered. Thank you!",
       "cancelled": "This order was cancelled. Please contact us if you have questions.",
       "returned": "This order was returned. Please contact us if you have questions."
+    },
+    "next": {
+      "pending": "Next: we contact you to confirm your order.",
+      "confirmed": "Next: we prepare your order.",
+      "processing": "Next: we hand it over for delivery.",
+      "shipped": "Next: the courier delivers it to you. Please have the cash ready."
     }
   },
   "couriers": {
@@ -1166,5 +1174,19 @@
     "feeFrom": "Delivery from {{price}}",
     "returns": "Returns & exchanges",
     "whatsapp": "Questions? Chat on WhatsApp"
+  },
+  "progress": {
+    "label": "Order progress",
+    "received": "Received",
+    "confirmed": "Confirmed",
+    "shipped": "On the way",
+    "delivered": "Delivered"
+  },
+  "next": {
+    "title": "What happens next",
+    "step1": "We contact you to confirm your order and the delivery details.",
+    "step2": "We prepare your order.",
+    "step2Made": "We make your order for you and tell you when it will be ready.",
+    "step3": "We deliver it to your door and you pay cash on delivery."
   }
 }

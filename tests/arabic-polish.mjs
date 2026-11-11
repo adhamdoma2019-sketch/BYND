@@ -21,7 +21,7 @@ ok('every English text and its Arabic text use exactly the same {{placeholders}}
 const glued = Object.entries(A).filter(([, v]) => /الـ\{\{/.test(v)).map(([k]) => k);
 assert.deepEqual(glued, [], 'الـ + {{variable}} breaks when the name already starts with ال: ' + glued.join(', '));
 ok('no Arabic text glues "الـ" onto a variable (the name may already start with ال)');
-for (const g of ['storefront', 'checkout', 'wall', 'receipt', 'trust', 'menu', 'track', 'errors', 'checkoutFields']) {
+for (const g of ['storefront', 'checkout', 'wall', 'receipt', 'trust', 'menu', 'track', 'errors', 'checkoutFields', 'progress', 'next']) {
   for (const [k, v] of Object.entries(A).filter(([key]) => key.startsWith(g + '.'))) {
     const stripped = v.replace(/\{\{[^}]+\}\}/g, '').replace(/\b(PDF|WhatsApp)\b/g, '');
     if (['track.orderNumberExample'].includes(k)) continue;
