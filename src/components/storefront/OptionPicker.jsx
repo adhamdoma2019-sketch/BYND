@@ -15,6 +15,8 @@ export default function OptionPicker({
   backorder = false,
   textValue = '',
   onTextChange = () => {},
+  // true = colours as chips WITH their names (the wall designer's paint box); false = round swatches
+  named = false,
 }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
@@ -112,6 +114,37 @@ export default function OptionPicker({
           {mark}
           {chosen && <span className="text-ink"> — <bdi>{valueName(chosen)}</bdi>{plus(chosen)}</span>}
         </p>
+        {named ? (
+          <div className="mt-2 flex flex-wrap gap-2" data-colour-chips>
+            {values.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                role="radio"
+                aria-checked={value === v.id}
+                disabled={blocked(v)}
+                onClick={() => onChange(value === v.id && !option.required ? '' : v.id)}
+                className={
+                  'flex min-h-[44px] items-center gap-2 rounded-full border py-1.5 ps-2 pe-4 transition ' +
+                  (value === v.id ? 'border-brass bg-brass/15 text-ink' : 'border-ink/20 text-ink-soft hover:border-brass') +
+                  (gone(v) ? ' opacity-60' : '') +
+                  (blocked(v) ? ' cursor-not-allowed' : '')
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-6 w-6 shrink-0 rounded-full border border-ink/30"
+                  style={{ backgroundColor: v.color || '#999999' }}
+                />
+                <span className={blocked(v) ? 'line-through' : ''}>
+                  <bdi>{valueName(v)}</bdi>
+                  {plus(v)}
+                  {tag(v)}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
         <div className="mt-2 flex flex-wrap gap-3">
           {values.map((v) => (
             <button
@@ -140,6 +173,7 @@ export default function OptionPicker({
             </button>
           ))}
         </div>
+        )}
         {values.some(gone) && (
           <p className="mt-2 text-xs text-ink-faint">
             {t(backorder ? 'storefront.crossedMade' : 'storefront.crossedSoldOut')}

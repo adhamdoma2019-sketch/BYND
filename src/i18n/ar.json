@@ -1112,7 +1112,14 @@
     "paintingWith": "الطلاء بلون: {{name}}",
     "noColourYet": "لم تختر لونًا بعد. اختر لونًا من الأعلى ثم اضغط على الجدار.",
     "pickColourToAdd": "من فضلك اختر لونًا لجدارك قبل إضافته إلى السلة.",
-    "cartTitleOne": "جدار من قطعة واحدة"
+    "cartTitleOne": "جدار من قطعة واحدة",
+    "samples": "ابدأ من مثال جاهز",
+    "sample_starter": "بداية",
+    "sample_flower": "زهرة كبيرة",
+    "sample_row": "صف عريض",
+    "undo": "تراجع",
+    "pieces": "{{n}} قطع",
+    "piecesOne": "قطعة واحدة"
   },
   "receipt": {
     "title": "إيصال الطلب",

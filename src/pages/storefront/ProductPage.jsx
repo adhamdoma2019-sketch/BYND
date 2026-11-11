@@ -651,6 +651,7 @@ export default function ProductPage() {
                       wallColorOpt ? (
                         <OptionPicker
                           option={{ ...wallColorOpt, required: true }}
+                          named
                           value={selections[wallColorOpt.id]}
                           onChange={(v) => pickOption(wallColorOpt, v)}
                           leftOf={leftOfValue(wallColorOpt)}

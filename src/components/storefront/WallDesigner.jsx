@@ -15,6 +15,7 @@ import {
   viewBoxFor,
 } from '../../utils/wallLayout';
 import { assignColours, shuffleColours } from '../../utils/wallColors';
+import { availableSamples } from '../../utils/wallSamples';
 import { pinchZoom, fingerDistance, fingerMiddle, scrollAfterZoom } from '../../utils/pinch';
 
 // "Plan your wall" (update 27, step 1). The number of pieces IS the quantity of the order:
@@ -55,6 +56,9 @@ export default function WallDesigner({
   const [zoom, setZoom] = useState(1);
   const [draft, setDraft] = useState(null); // what the customer is typing in the count box
   const [notice, setNotice] = useState('');
+  // Undo (design step 6): the walls before the last changes, newest last (at most 30).
+  const [history, setHistory] = useState([]);
+  const record = (cur) => setHistory((h) => [...h.slice(-29), cur]);
   const noticeTimer = useRef(null);
 
   // ----- two-finger zoom (phones): the box scrolls by itself with one finger, two fingers zoom -----
@@ -118,7 +122,10 @@ export default function WallDesigner({
 
   // The quantity can also change from outside (a click in the price table): the wall follows it.
   useEffect(() => {
-    if (cells.length !== quantity) setCells((cur) => withColours(resizeLayout(cur, quantity, { min, max: cap })));
+    if (cells.length !== quantity) {
+      record(cells);
+      setCells((cur) => withColours(resizeLayout(cur, quantity, { min, max: cap })));
+    }
   }, [quantity, min, cap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The first colour the customer picks paints the pieces that have no colour yet (later picks only affect new taps).
@@ -140,10 +147,25 @@ export default function WallDesigner({
     noticeTimer.current = setTimeout(() => setNotice(''), 2500);
   };
 
-  const apply = (next) => {
+  // a change by the customer: remember the wall before it (for Undo)
+  const change = (next) => {
+    record(cells);
     setCells(next);
+  };
+  const apply = (next) => {
+    change(next);
     onQuantity(next.length);
   };
+  const undo = () => {
+    if (history.length === 0) return;
+    const prev = history[history.length - 1];
+    setHistory((h) => h.slice(0, -1));
+    setCells(prev);
+    setDraft(null);
+    onQuantity(prev.length);
+  };
+  const samples = availableSamples(min, cap);
+  const useSample = (s) => apply(withColours(s.cells.map((c) => ({ ...c }))));
 
   const spots = cells.length < cap ? freeSpots(cells) : [];
   const vb = viewBoxFor(cells, spots, SIZE);
@@ -176,7 +198,7 @@ export default function WallDesigner({
     if (colored && !paintOk) return say('wall.pickColour'); // pick a colour first (no accidental removals)
     if (colored && c.c !== paint) {
       if (countOf(cells, paint) >= limitOf(paint)) return say('wall.colourLimit', { n: limitOf(paint) });
-      setCells(cells.map((x) => (keyOf(x) === keyOf(c) ? { ...x, c: paint } : x)));
+      change(cells.map((x) => (keyOf(x) === keyOf(c) ? { ...x, c: paint } : x)));
       return;
     }
     if (canRemove(cells, c, min)) apply(removeCell(cells, c, min));
@@ -185,9 +207,9 @@ export default function WallDesigner({
 
   const randomise = () => {
     const shape = randomLayout(cells.length, Math.random, { max: cap });
-    if (!colored) return setCells(shape);
+    if (!colored) return change(shape);
     const mixed = shuffleColours(cells.map((c) => c.c));
-    setCells(shape.map((c, i) => ({ ...c, c: mixed[i] })));
+    change(shape.map((c, i) => ({ ...c, c: mixed[i] })));
   };
 
   const used = colored ? palette.map((p) => ({ ...p, n: countOf(cells, p.id) })).filter((p) => p.n > 0) : [];
@@ -254,6 +276,24 @@ export default function WallDesigner({
             ) : (
               <span className={needColour ? 'text-rust' : 'text-ink-faint'}>{t('wall.noColourYet')}</span>
             )}
+          </div>
+        )}
+
+        {samples.length > 0 && (
+          <div className="border-b border-ink/10 px-3 py-2" data-wall-samples>
+            <p className="text-xs text-ink-soft">{t('wall.samples')}</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {samples.map((x) => (
+                <button
+                  key={x.id}
+                  type="button"
+                  onClick={() => useSample(x)}
+                  className="min-h-[44px] rounded-full border border-ink/20 px-4 text-sm text-ink-soft transition hover:border-brass hover:text-ink"
+                >
+                  {t(`wall.sample_${x.id}`)} · {x.n}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -360,9 +400,14 @@ export default function WallDesigner({
             max={cap}
             value={draft ?? cells.length}
             onChange={(e) => {
-              setDraft(e.target.value);
               const n = parseInt(e.target.value, 10);
-              if (Number.isInteger(n) && n >= min) apply(withColours(resizeLayout(cells, n, { min, max: cap })));
+              const next = Number.isInteger(n) && n >= min ? withColours(resizeLayout(cells, n, { min, max: cap })) : null;
+              if (next) {
+                if (draft === null) record(cells); // the whole typing counts as ONE step to undo
+                setCells(next);
+                onQuantity(next.length);
+              }
+              setDraft(e.target.value);
             }}
             onBlur={() => setDraft(null)}
             aria-label={t('wall.count')}
@@ -386,33 +431,53 @@ export default function WallDesigner({
           >
             +
           </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 border-t border-ink/10 p-2">
           <button
             type="button"
             onClick={randomise}
-            className="col-span-1 h-11 rounded border border-ink/15 px-3 text-sm hover:border-brass"
+            className="h-11 rounded border border-ink/15 px-2 text-sm hover:border-brass"
           >
             {t('wall.random')}
           </button>
           <button
             type="button"
+            onClick={undo}
+            disabled={history.length === 0}
+            className="h-11 rounded border border-ink/15 px-2 text-sm hover:border-brass disabled:opacity-40"
+            data-wall-undo
+          >
+            {t('wall.undo')}
+          </button>
+          <button
+            type="button"
             onClick={() => apply(withColours(resizeLayout([], min, { min, max: cap })))}
-            className="col-span-2 h-11 rounded border border-ink/15 px-3 text-sm hover:border-brass"
+            className="h-11 rounded border border-ink/15 px-2 text-sm hover:border-brass"
           >
             {t('wall.clear')}
           </button>
         </div>
       </div>
-      {used.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm" data-wall-legend>
-          {used.map((p) => (
-            <li key={p.id} className="flex items-center gap-1.5">
-              <span className="inline-block h-3.5 w-3.5 rounded-sm border border-ink/30" style={{ backgroundColor: p.color }} />
-              {t('wall.legendItem', { n: p.n, name: p.label })}
-            </li>
-          ))}
-        </ul>
-      )}
-      {totalText && <p className="mt-2 text-sm font-medium">{t('wall.total', { price: totalText })}</p>}
+      {/* one clear price line: how many pieces, what mix, what it costs */}
+      <div className="mt-3 rounded border border-ink/15 bg-paper-soft p-3" data-wall-summary>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <span className="text-sm text-ink-soft">
+            {t(cells.length === 1 ? 'wall.piecesOne' : 'wall.pieces', { n: cells.length })}
+          </span>
+          {totalText && <span className="text-lg font-semibold">{t('wall.total', { price: totalText })}</span>}
+        </div>
+        {used.length > 0 && (
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm" data-wall-legend>
+            {used.map((p) => (
+              <li key={p.id} className="flex items-center gap-1.5">
+                <span className="inline-block h-3.5 w-3.5 rounded-sm border border-ink/30" style={{ backgroundColor: p.color }} />
+                {t('wall.legendItem', { n: p.n, name: p.label })}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <p className="mt-2 text-xs text-ink-soft">{t('wall.maxNote', { n: cap })}</p>
     </div>
   );

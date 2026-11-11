@@ -1112,7 +1112,14 @@
     "paintingWith": "Painting with: {{name}}",
     "noColourYet": "No colour picked yet. Pick one above, then tap the wall.",
     "pickColourToAdd": "Please pick a colour for your wall before adding it to the cart.",
-    "cartTitleOne": "Wall of 1 piece"
+    "cartTitleOne": "Wall of 1 piece",
+    "samples": "Start from an example",
+    "sample_starter": "Starter",
+    "sample_flower": "Big flower",
+    "sample_row": "Wide row",
+    "undo": "Undo",
+    "pieces": "{{n}} pieces",
+    "piecesOne": "1 piece"
   },
   "receipt": {
     "title": "Order receipt",
