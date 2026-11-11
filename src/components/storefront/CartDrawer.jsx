@@ -41,8 +41,8 @@ export default function CartDrawer({ onClose }) {
           </h2>
           <button
             onClick={onClose}
-            className="text-ink-soft hover:text-ink"
-            aria-label="Close"
+            className="flex h-11 w-11 items-center justify-center text-ink-soft hover:text-ink"
+            aria-label={t('common.close')}
           >
             ✕
           </button>

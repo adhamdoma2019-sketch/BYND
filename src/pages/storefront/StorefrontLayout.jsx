@@ -229,12 +229,10 @@ export default function StorefrontLayout() {
   if (status === 'not-found') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-        <h1 className="font-display text-2xl font-semibold">Shop not found</h1>
-        <p className="mt-2 max-w-sm text-ink-soft">
-          There's no shop at this address. Double-check the link.
-        </p>
-        <Link to="/" className="mt-4 text-brass-dark hover:underline">
-          ←
+        <h1 className="font-display text-2xl font-semibold">{t('storefront.shopNotFound')}</h1>
+        <p className="mt-2 max-w-sm text-ink-soft">{t('storefront.shopNotFoundBody')}</p>
+        <Link to="/" className="mt-4 inline-flex min-h-[44px] items-center text-brass-dark hover:underline">
+          {t('common.back')}
         </Link>
       </div>
     );
