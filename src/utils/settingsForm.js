@@ -42,6 +42,25 @@ export const formToHighlight = (f) => ({
   text: { en: f.textEn.trim() || f.textAr.trim(), ar: f.textAr.trim() || f.textEn.trim() },
 });
 
+// ----- Brand story (design step 7): a title, a few lines and up to 4 real photos -----
+export const MAX_STORY_IMAGES = 4;
+export const MAX_STORY_TITLE = 60;
+export const MAX_STORY_TEXT = 400;
+export const emptyStory = () => ({ titleEn: '', titleAr: '', textEn: '', textAr: '', images: Array(MAX_STORY_IMAGES).fill('') });
+export const storyToForm = (s) => ({
+  titleEn: s?.title?.en || '',
+  titleAr: s?.title?.ar || '',
+  textEn: s?.text?.en || '',
+  textAr: s?.text?.ar || '',
+  images: Array.from({ length: MAX_STORY_IMAGES }, (_, i) => (Array.isArray(s?.images) ? s.images[i] || '' : '')),
+});
+export const formToStory = (f) => ({
+  title: { en: (f.titleEn || '').trim() || (f.titleAr || '').trim(), ar: (f.titleAr || '').trim() || (f.titleEn || '').trim() },
+  text: { en: (f.textEn || '').trim() || (f.textAr || '').trim(), ar: (f.textAr || '').trim() || (f.textEn || '').trim() },
+  // only picture links the page can really show (https), empty boxes dropped
+  images: (f.images || []).map((u) => String(u || '').trim()).filter((u) => /^https:\/\//i.test(u)).slice(0, MAX_STORY_IMAGES),
+});
+
 export const pagesToForm = (pages) =>
   Object.fromEntries(
     POLICY_PAGES.map((id) => [id, { en: pages?.[id]?.body?.en || '', ar: pages?.[id]?.body?.ar || '' }])
@@ -113,6 +132,7 @@ export function buildPublicSettings(f) {
       textStyle: f.heroTextStyle,
     },
     highlights,
+    story: formToStory(f.story || emptyStory()),
     pages: formToPages(f.pages),
   };
 }

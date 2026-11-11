@@ -13,7 +13,8 @@ import ProductGrid, { ProductGridSkeleton, ProductsLoadError } from '../../compo
 import CartDrawer from '../../components/storefront/CartDrawer';
 import AddedToast from '../../components/storefront/AddedToast';
 import { usePageMeta } from '../../utils/usePageMeta';
-import { highlightsOf } from '../../utils/storefront';
+import { highlightsOf, storyOf } from '../../utils/storefront';
+import StoryStrip from '../../components/storefront/StoryStrip';
 import { featuredProducts, hasMoreThanFeatured } from '../../utils/productList';
 import {
   HERO_DEFAULT_SECONDS,
@@ -160,6 +161,8 @@ export default function StorefrontHome() {
             )}
           </>
         )}
+
+        <StoryStrip story={storyOf(tenant, language)} />
 
         {/* "How it works": only when the shop hasn't written its own highlights. */}
         {highlights.length === 0 && (

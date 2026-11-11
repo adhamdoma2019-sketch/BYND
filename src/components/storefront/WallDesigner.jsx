@@ -15,7 +15,7 @@ import {
   viewBoxFor,
 } from '../../utils/wallLayout';
 import { assignColours, shuffleColours } from '../../utils/wallColors';
-import { availableSamples } from '../../utils/wallSamples';
+import { availableSamples, nextArrangement, groupedColours } from '../../utils/wallSamples';
 import { pinchZoom, fingerDistance, fingerMiddle, scrollAfterZoom } from '../../utils/pinch';
 
 // "Plan your wall" (update 27, step 1). The number of pieces IS the quantity of the order:
@@ -210,6 +210,18 @@ export default function WallDesigner({
     if (!colored) return change(shape);
     const mixed = shuffleColours(cells.map((c) => c.c));
     change(shape.map((c, i) => ({ ...c, c: mixed[i] })));
+  };
+
+  // "Arrange": a tidy, different arrangement of the same pieces on every tap (colours kept as tidy bands).
+  const lastArrangement = useRef('');
+  const nextTidy = nextArrangement(cells, lastArrangement.current);
+  const arrange = () => {
+    const pick = nextArrangement(cells, lastArrangement.current);
+    if (!pick) return;
+    lastArrangement.current = pick.id;
+    if (!colored) return change(pick.cells.map((c) => ({ ...c })));
+    const bands = groupedColours(cells.map((c) => c.c), palette.map((p) => p.id));
+    change(pick.cells.map((c, i) => ({ ...c, c: bands[i] })));
   };
 
   const used = colored ? palette.map((p) => ({ ...p, n: countOf(cells, p.id) })).filter((p) => p.n > 0) : [];
@@ -433,13 +445,22 @@ export default function WallDesigner({
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 border-t border-ink/10 p-2">
+        <div className="grid grid-cols-2 gap-2 border-t border-ink/10 p-2 sm:grid-cols-4">
           <button
             type="button"
             onClick={randomise}
             className="h-11 rounded border border-ink/15 px-2 text-sm hover:border-brass"
           >
             {t('wall.random')}
+          </button>
+          <button
+            type="button"
+            onClick={arrange}
+            disabled={!nextTidy}
+            className="h-11 rounded border border-ink/15 px-2 text-sm hover:border-brass disabled:opacity-40"
+            data-wall-arrange
+          >
+            {t('wall.arrange')}
           </button>
           <button
             type="button"

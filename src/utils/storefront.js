@@ -43,6 +43,38 @@ export function highlightsOf(tenant, language) {
     .filter((h) => h.title);
 }
 
+// The shop's own brand story (design step 7). Returns null when the shop wrote nothing
+// (no title, no text, no photo): then the home page shows no story strip at all.
+export function storyOf(tenant, language) {
+  const s = tenant?.story;
+  if (!s || typeof s !== 'object') return null;
+  const title = pick(s.title, language).slice(0, 60);
+  const text = pick(s.text, language).slice(0, 400);
+  const images = (Array.isArray(s.images) ? s.images : [])
+    .map((u) => String(u || '').trim())
+    .filter((u) => /^https:\/\//i.test(u))
+    .slice(0, 4);
+  if (!title && !text && images.length === 0) return null;
+  return { title, text, images };
+}
+
+// What the card shows as THE price. The base price is the lowest the customer can pay for the product
+// itself; when some choices or add-ons cost extra (priceDelta above 0) the card says "From": the price
+// with the cheapest required choices. Nothing set = the plain price, no "From".
+export function cardPrice(product) {
+  const base = Number(product?.price) || 0;
+  const options = Array.isArray(product?.options) ? product.options : [];
+  const anyExtra = options.some((o) => (o?.values || []).some((v) => Number(v?.priceDelta) > 0));
+  if (!anyExtra) return { amount: base, from: false };
+  let start = base;
+  for (const o of options) {
+    if (o?.required && !o?.showWhen && Array.isArray(o.values) && o.values.length > 0) {
+      start += Math.max(0, Math.min(...o.values.map((v) => Number(v?.priceDelta) || 0)));
+    }
+  }
+  return { amount: start, from: true };
+}
+
 // Policy pages (privacy, returns, ...). A page exists only when the shop wrote text for it.
 export function policyBody(tenant, pageId, language) {
   if (!POLICY_PAGES.includes(pageId)) return '';

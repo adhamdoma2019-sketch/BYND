@@ -10,7 +10,7 @@ export const PREVIEW_READY = 'shop-preview-ready';
 export const PREVIEW_PRODUCT = 'shop-preview-product';
 
 // Only these parts of the shop record can be replaced by a draft.
-export const DRAFT_KEYS = ['theme', 'appearance', 'contact', 'brand', 'hero', 'highlights', 'pages'];
+export const DRAFT_KEYS = ['theme', 'appearance', 'contact', 'brand', 'hero', 'highlights', 'story', 'pages'];
 
 // Is this shop page the preview frame? (opened with ?preview AND inside another page)
 export function isPreviewMode(search, inFrame) {
@@ -69,6 +69,9 @@ export function cleanDraft(draft) {
       ...out.hero,
       slides: out.hero.slides.map((s) => ({ ...s, imageUrl: isHttps(s.imageUrl) ? s.imageUrl : '' })),
     };
+  }
+  if (out.story && Array.isArray(out.story.images)) {
+    out.story = { ...out.story, images: out.story.images.filter(isHttps) };
   }
   return out;
 }

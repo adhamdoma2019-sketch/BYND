@@ -18,6 +18,10 @@ import {
   pagesToForm,
   moreToForm,
   buildPublicSettings,
+  emptyStory,
+  storyToForm,
+  MAX_STORY_TITLE,
+  MAX_STORY_TEXT,
 } from '../../utils/settingsForm';
 import PreviewPane from '../../components/admin/PreviewPane';
 import { usePreviewLayout } from '../../hooks/usePreviewLayout';
@@ -165,6 +169,7 @@ export default function Settings() {
   const [logoDarkUrl, setLogoDarkUrl] = useState('');
   const [heroTextStyle, setHeroTextStyle] = useState('card');
   const [highlights, setHighlights] = useState([]);
+  const [story, setStory] = useState(emptyStory);
   const [pages, setPages] = useState(() => pagesToForm(undefined));
   const [slides, setSlides] = useState([]);
   const [seconds, setSeconds] = useState(HERO_DEFAULT_SECONDS);
@@ -222,6 +227,7 @@ export default function Settings() {
     setLogoDarkUrl(tenant.brand?.logoDarkUrl || '');
     setHeroTextStyle(tenant.hero?.textStyle === 'plain' ? 'plain' : 'card');
     setHighlights((tenant.highlights || []).slice(0, MAX_HIGHLIGHTS).map(highlightToForm));
+    setStory(storyToForm(tenant.story));
     setPages(pagesToForm(tenant.pages));
     setSlides((tenant.hero?.slides || []).map(slideToForm));
     setSeconds(tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS);
@@ -361,6 +367,7 @@ export default function Settings() {
     autoplay,
     heroTextStyle,
     highlights,
+    story,
     pages,
   };
 
@@ -369,7 +376,7 @@ export default function Settings() {
     setError('');
     setMessage('');
 
-    const urls = [logoUrl, logoDarkUrl, ...slides.map((s) => s.imageUrl)].filter((u) => u.trim());
+    const urls = [logoUrl, logoDarkUrl, ...slides.map((s) => s.imageUrl), ...story.images].filter((u) => u.trim());
     if (urls.some((u) => !/^https:\/\//i.test(u.trim()))) {
       setError(t('settingsPage.errHttps'));
       return;
@@ -419,6 +426,7 @@ export default function Settings() {
         brand: publicSettings.brand,
         hero: publicSettings.hero,
         highlights: publicSettings.highlights,
+        story: publicSettings.story,
         pages: publicSettings.pages,
         checkout: {
           fields: fieldSettings,
@@ -456,6 +464,7 @@ export default function Settings() {
         (tenant.brand?.logoDarkUrl || '') !== logoDarkUrl.trim()
       ) changed.push('logo');
       if (saved(tenant.highlights || []) !== saved(highlightsToSave)) changed.push('highlights');
+      if (saved(tenant.story || {}) !== saved(publicSettings.story)) changed.push('story');
       if (saved(tenant.pages || {}) !== saved(pagesToSave)) changed.push('pages');
       if (saved(tenant.hero?.slides || []) !== saved(slides.map(formToSlide)) ||
           (tenant.hero?.intervalSeconds || HERO_DEFAULT_SECONDS) !== safeSeconds ||
@@ -837,6 +846,55 @@ export default function Settings() {
                 {t('settingsPage.addHighlight')}
               </button>
             )}
+          </div>
+
+          <div>
+            <h2 className="font-display text-lg font-medium">{t('settingsPage.storyTitle')}</h2>
+            <p className="mt-1 text-sm text-ink-soft">{t('settingsPage.storyHelp')}</p>
+            <div className="mt-4 rounded-md border border-ink/10 bg-paper-soft p-4" data-story-form>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  ['titleEn', 'storyTitleEn', 'ltr', MAX_STORY_TITLE, false],
+                  ['titleAr', 'storyTitleAr', 'rtl', MAX_STORY_TITLE, false],
+                  ['textEn', 'storyTextEn', 'ltr', MAX_STORY_TEXT, true],
+                  ['textAr', 'storyTextAr', 'rtl', MAX_STORY_TEXT, true],
+                ].map(([field, label, dir, max, multi]) => (
+                  <label key={field} className="text-sm text-ink-soft">
+                    {t(`settingsPage.${label}`)}
+                    {multi ? (
+                      <textarea
+                        dir={dir}
+                        rows={4}
+                        maxLength={max}
+                        value={story[field]}
+                        onChange={(e) => setStory((prev) => ({ ...prev, [field]: e.target.value }))}
+                        className={inputClass}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        dir={dir}
+                        maxLength={max}
+                        value={story[field]}
+                        onChange={(e) => setStory((prev) => ({ ...prev, [field]: e.target.value }))}
+                        className={inputClass}
+                      />
+                    )}
+                    <span className="mt-1 block text-xs text-ink-faint">{story[field].length} / {max}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {story.images.map((url, i) => (
+                  <ImageField
+                    key={i}
+                    label={t('settingsPage.storyPhotoN', { n: i + 1 })}
+                    value={url}
+                    onChange={(v) => setStory((prev) => ({ ...prev, images: prev.images.map((x, idx) => (idx === i ? v : x)) }))}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
 
           <div>

@@ -96,7 +96,8 @@
     "galleryDots": "Product photos",
     "galleryPhoto": "Photo {{n}} of {{total}}",
     "addedToCart": "Added to cart",
-    "viewCart": "View cart"
+    "viewCart": "View cart",
+    "priceFrom": "From {{price}}"
   },
   "checkout": {
     "title": "Checkout",
@@ -553,7 +554,14 @@
     "promoQtyTitle": "Promo codes and quantity prices",
     "promoQtyLabel": "Promo codes also apply to items that have a quantity price",
     "promoQtyHelp": "On: a code takes its discount from the whole order. Off: a code only takes its discount from items without a quantity price, and cannot be used when every item has one.",
-    "privateLoadFailed": "The alert settings (Telegram) could not be loaded, so they are not shown and will NOT be saved with this page. Press Try again before you change them."
+    "privateLoadFailed": "The alert settings (Telegram) could not be loaded, so they are not shown and will NOT be saved with this page. Press Try again before you change them.",
+    "storyTitle": "Brand story",
+    "storyHelp": "A short story about your brand, shown on the home page under the products, with up to 4 real photos. Leave everything empty to show nothing. Write only what is true.",
+    "storyTitleEn": "Story title (English)",
+    "storyTitleAr": "Story title (Arabic)",
+    "storyTextEn": "Story text (English)",
+    "storyTextAr": "Story text (Arabic)",
+    "storyPhotoN": "Photo {{n}}"
   },
   "errors": {
     "generic": "Something went wrong placing your order. Please try again.",
@@ -804,7 +812,8 @@
       "pages": "Text pages",
       "comingSoon": "Coming soon",
       "backorder": "Stock first, then made to order",
-      "countedBy": "Stock counted per"
+      "countedBy": "Stock counted per",
+      "story": "Brand story"
     }
   },
   "stats": {
@@ -1119,7 +1128,8 @@
     "sample_row": "Wide row",
     "undo": "Undo",
     "pieces": "{{n}} pieces",
-    "piecesOne": "1 piece"
+    "piecesOne": "1 piece",
+    "arrange": "Arrange"
   },
   "receipt": {
     "title": "Order receipt",

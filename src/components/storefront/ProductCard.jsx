@@ -5,7 +5,7 @@ import { formatPrice } from '../../utils/format';
 import FadeImage from './FadeImage';
 import { optimizedImage, imageSrcSet, CARD_WIDTHS } from '../../utils/images';
 import { hasOptions } from '../../utils/productOptions';
-import { productStatus, isBuyable, cardPriceNote } from '../../utils/storefront';
+import { productStatus, isBuyable, cardPriceNote, cardPrice } from '../../utils/storefront';
 
 export default function ProductCard({ product, onAddToCart }) {
   const { t } = useTranslation();
@@ -17,6 +17,7 @@ export default function ProductCard({ product, onAddToCart }) {
   const status = productStatus(product); // comingSoon / preorder / madeToOrder / soldOut / inStock
   const buyable = isBuyable(status);
   const note = cardPriceNote(product);
+  const shown = cardPrice(product);
   const productUrl = `/store/${slug}/product/${product.id}`;
 
   return (
@@ -49,7 +50,11 @@ export default function ProductCard({ product, onAddToCart }) {
           {name}
         </Link>
       </h3>
-      <p className="mt-1 px-1 text-ink-soft">{formatPrice(product.price, language)}</p>
+      <p className="mt-1 px-1 text-ink-soft" data-card-price>
+        {shown.from
+          ? t('storefront.priceFrom', { price: formatPrice(shown.amount, language) })
+          : formatPrice(shown.amount, language)}
+      </p>
       {note && (
         <p className="mt-0.5 px-1 text-sm font-medium text-brass-dark">
           {note.kind === 'package'

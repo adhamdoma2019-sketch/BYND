@@ -78,6 +78,7 @@ const saved = {
   brand: { logoUrl: 'https://a/1.png', logoDarkUrl: 'https://a/2.png' },
   hero: { slides: [{ imageUrl: 'https://a/s.png', headline: { en: 'H', ar: 'ع' }, subtext: { en: 'S', ar: 'ن' }, cta: { en: 'C', ar: 'ك' }, productId: 'p1' }], intervalSeconds: 7, fade: 'slow', autoplay: false, textStyle: 'plain' },
   highlights: [{ title: { en: 'T', ar: 'ت' }, text: { en: 'U', ar: 'ث' } }],
+  story: { title: { en: 'S', ar: 'ق' }, text: { en: 'Our story', ar: 'قصتنا' }, images: ['https://a/p1.png'] },
   pages: m.formToPages(m.pagesToForm({ privacy: { body: { en: 'P', ar: 'ب' } } })),
 };
 const form = {
@@ -86,10 +87,12 @@ const form = {
   contact: { whatsapp: '010', phone: '', email: '', instagram: '', facebook: '', tiktok: '', addressEn: 'X', addressAr: 'س', floatingWhatsapp: true },
   logoUrl: 'https://a/1.png', logoDarkUrl: 'https://a/2.png',
   slides: saved.hero.slides.map(m.slideToForm), seconds: 7, fade: 'slow', autoplay: false, heroTextStyle: 'plain',
-  highlights: saved.highlights.map(m.highlightToForm), pages: m.pagesToForm(saved.pages),
+  highlights: saved.highlights.map(m.highlightToForm), story: m.storyToForm(saved.story), pages: m.pagesToForm(saved.pages),
 };
 assert.deepEqual(m.buildPublicSettings(form), saved);
 ok('saved shop -> form -> shop: identical (opening Settings and saving without a change changes nothing)');
+assert.deepEqual(m.buildPublicSettings({ ...form, story: undefined }).story, { title: { en: '', ar: '' }, text: { en: '', ar: '' }, images: [] });
+ok('a form without a story saves an empty story (the home page then shows no story strip)');
 
 // ===== 3. Is this the preview frame? =====
 assert.equal(m.isPreviewMode('?preview=1', true), true);
@@ -131,7 +134,7 @@ assert.equal(shown.id, 'bynd'); assert.equal(shown.slug, 'bynd'); assert.equal(s
 assert.deepEqual(shown.checkout, { a: 1 });
 assert.equal(shown.theme.accent, 'copper'); assert.equal(tenant.theme.accent, 'copper'); // original untouched
 assert.equal(m.applyDraft(null, s), null); assert.equal(m.applyDraft(tenant, null), tenant);
-ok('draft: only look/banner/top bar/logo/highlights/pages/contact can change; id, owner, checkout, shipping and non-https pictures cannot');
+ok('draft: only look/banner/top bar/logo/highlights/story/pages/contact can change; id, owner, checkout, shipping and non-https pictures cannot');
 
 // ===== 6. The preview pane (server render) =====
 const html = renderToString(React.createElement(m.PreviewPane, { slug: 'bynd', draft: s }));

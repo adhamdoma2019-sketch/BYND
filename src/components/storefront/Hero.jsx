@@ -104,7 +104,7 @@ export default function Hero({
 
   return (
     <section
-      className="relative isolate min-h-[72svh] overflow-hidden bg-paper-soft sm:min-h-[80vh]"
+      className="relative isolate min-h-[58svh] overflow-hidden bg-paper-soft sm:min-h-[66vh]"
       aria-roledescription="carousel"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -137,7 +137,7 @@ export default function Hero({
             {/* dark gradient so the text is readable on any photo */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
 
-            <div className="relative mx-auto flex h-full min-h-[72svh] max-w-6xl flex-col justify-end px-5 pb-16 pt-24 sm:min-h-[80vh] sm:px-8 sm:pb-24">
+            <div className="relative mx-auto flex h-full min-h-[58svh] max-w-6xl flex-col justify-end px-5 pb-12 pt-20 sm:min-h-[66vh] sm:px-8 sm:pb-20">
               {/* The card has a plain dark background (no blur: blur is heavy for phones). */}
               <div className={card ? 'max-w-2xl rounded-lg bg-black/60 p-5 sm:p-8' : ''}>
                 {slide.headline && (
