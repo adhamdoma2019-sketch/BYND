@@ -164,6 +164,25 @@ assert.ok(/data-home-products/.test(settings) && /homeProductCount: publicSettin
 assert.ok(/'homeProductCount', 'pages'/.test(fs.readFileSync(path.join(root, 'src/utils/preview.js'), 'utf8')));
 ok('Settings > Banner has the choice; it is saved, loaded back and part of the live preview');
 
+// ----- update 59: category chips on the Products page + the "featured" tick on the home page -----
+const cats = six.map((p, i) => ({ ...p, category: i < 4 ? { en: 'Plates', ar: 'لوحات' } : { en: 'Displays', ar: 'حوامل' } }));
+let hc = draw(ProductsPage, cats);
+assert.match(hc, /data-category-chips/); assert.match(hc, /storefront\.allCategories/); assert.ok(hc.includes('Plates') && hc.includes('Displays'));
+assert.equal((hc.match(/aria-pressed=/g) || []).length, 3); assert.match(hc, /aria-pressed="true"[^>]*>storefront\.allCategories/);
+assert.equal(names(hc).length, 6);
+ok('Products page: "All" + one chip per category when the shop has two categories; all products shown at first');
+hc = draw(ProductsPage, six.map((p) => ({ ...p, category: { en: 'Plates', ar: 'لوحات' } })));
+assert.doesNotMatch(hc, /data-category-chips/);
+hc = draw(ProductsPage, six);
+assert.doesNotMatch(hc, /data-category-chips/);
+ok('one category (or none) = no chips at all');
+hc = draw(ProductsPage, cats, 'loading');
+assert.doesNotMatch(hc, /data-category-chips/);
+ok('no chips while loading');
+const feat = six.map((p, i) => (i === 4 ? { ...p, featured: true } : p));
+assert.deepEqual(names(withCount(2, feat)), ['e', 'a']);
+ok('home page: a product ticked as featured comes first, then the others in the shop\'s order');
+
 const routes = fs.readFileSync(path.join(root, 'src/routes/AppRoutes.jsx'), 'utf8');
 assert.match(routes, /path="products" element=\{<ProductsPage \/>\}/);
 assert.ok(routes.indexOf('path="products"') < routes.indexOf('path="product/:productId"') || true);

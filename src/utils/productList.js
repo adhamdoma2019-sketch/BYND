@@ -31,8 +31,44 @@ export function displayOrder(products) {
 }
 
 // Home page: the first FEATURED_COUNT products of the display order.
+// The home page picks: the products the shop ticked as "featured" first (if they can be bought), then the
+// others in the shop's order, sold-out ones last. Nothing ticked = the first ones, as before.
 export function featuredProducts(products, count = FEATURED_COUNT) {
-  return displayOrder(products).slice(0, count);
+  const list = Array.isArray(products) ? products.filter(Boolean) : [];
+  const ticked = list.filter((p) => p.featured === true && productStatus(p) !== 'soldOut');
+  const rest = list.filter((p) => !(p.featured === true && productStatus(p) !== 'soldOut'));
+  return [...ticked, ...displayOrder(rest)].slice(0, count);
+}
+
+// ----- categories (update 59): the shop writes a category on each product; the Products page shows
+// one chip per category that exists (and "All") when there are at least two. -----
+export function categoryKey(product) {
+  return String(product?.category?.en || product?.category?.ar || '').trim().toLowerCase();
+}
+export function categoryLabel(product, language) {
+  const c = product?.category || {};
+  const pick = language === 'ar' ? c.ar || c.en : c.en || c.ar;
+  return String(pick || '').trim();
+}
+export function categoriesOf(products, language) {
+  const out = [];
+  const seen = new Map();
+  for (const p of Array.isArray(products) ? products : []) {
+    const key = categoryKey(p);
+    if (!key) continue;
+    if (seen.has(key)) {
+      seen.get(key).count += 1;
+    } else {
+      const entry = { key, label: categoryLabel(p, language), count: 1 };
+      seen.set(key, entry);
+      out.push(entry);
+    }
+  }
+  return out;
+}
+export function filterByCategory(products, key) {
+  const list = Array.isArray(products) ? products : [];
+  return key ? list.filter((p) => categoryKey(p) === key) : list;
 }
 
 // The "View all products" button only exists when there is more than the home page shows

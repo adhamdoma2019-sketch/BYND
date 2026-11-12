@@ -55,6 +55,9 @@ const emptyForm = {
   shippingExtra: '',
   imageUrl: '',
   videoUrl: '',
+  categoryEn: '',
+  categoryAr: '',
+  featured: false,
   isActive: true,
   isPreorder: false,
   backorder: false, // stock first, then made to order
@@ -179,6 +182,9 @@ export default function Products() {
       shippingExtra: p.shippingExtra ?? '',
       imageUrl: p.imageUrl || '',
       videoUrl: p.videoUrl || '',
+      categoryEn: p.category?.en || '',
+      categoryAr: p.category?.ar || '',
+      featured: p.featured === true,
       isActive: p.isActive,
       isPreorder: p.isPreorder === true,
       backorder: p.backorder === true,
@@ -898,6 +904,42 @@ export default function Products() {
                 </label>
               </div>
             )}
+          </div>
+
+          <div className="col-span-full rounded border border-ink/10 bg-white p-3" data-category-featured>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm text-ink-soft">
+                {t('products.categoryEn')}
+                <input
+                  type="text"
+                  maxLength={40}
+                  value={form.categoryEn}
+                  onChange={(e) => setForm({ ...form, categoryEn: e.target.value })}
+                  className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                />
+              </label>
+              <label className="text-sm text-ink-soft">
+                {t('products.categoryAr')}
+                <input
+                  type="text"
+                  dir="rtl"
+                  maxLength={40}
+                  value={form.categoryAr}
+                  onChange={(e) => setForm({ ...form, categoryAr: e.target.value })}
+                  className="mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass"
+                />
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-ink-faint">{t('products.categoryHelp')}</p>
+            <label className="mt-3 flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={form.featured}
+                onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+              />
+              {t('products.featuredCheck')}
+            </label>
+            <p className="mt-1 text-xs text-ink-faint">{t('products.featuredHelp')}</p>
           </div>
 
           <div className="col-span-full rounded border border-ink/10 bg-white p-3">

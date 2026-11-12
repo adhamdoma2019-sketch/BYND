@@ -16,6 +16,7 @@ import {
 } from '../../utils/wallLayout';
 import { assignColours, shuffleColours } from '../../utils/wallColors';
 import { availableSamples, nextArrangement, groupedColours } from '../../utils/wallSamples';
+import { wallPictureSvg, svgToPngBlob, downloadBlob } from '../../utils/wallPicture';
 import { pinchZoom, fingerDistance, fingerMiddle, scrollAfterZoom } from '../../utils/pinch';
 
 // "Plan your wall" (update 27, step 1). The number of pieces IS the quantity of the order:
@@ -145,6 +146,16 @@ export default function WallDesigner({
     setNotice(t(key, vars));
     clearTimeout(noticeTimer.current);
     noticeTimer.current = setTimeout(() => setNotice(''), 2500);
+  };
+
+  // Save the wall as a picture (PNG), made in the phone.
+  const savePicture = async () => {
+    try {
+      const blob = await svgToPngBlob(wallPictureSvg(cells, palette));
+      downloadBlob(blob, 'my-wall.png');
+    } catch {
+      say('wall.pictureFailed');
+    }
   };
 
   // a change by the customer: remember the wall before it (for Undo)
@@ -499,6 +510,15 @@ export default function WallDesigner({
           </ul>
         )}
       </div>
+      <button
+        type="button"
+        onClick={savePicture}
+        disabled={cells.length === 0}
+        className="mt-2 min-h-[44px] w-full rounded border border-ink/15 px-3 text-sm text-ink-soft transition hover:border-brass hover:text-ink disabled:opacity-40"
+        data-wall-save-picture
+      >
+        {t('wall.savePicture')}
+      </button>
       <p className="mt-2 text-xs text-ink-soft">{t('wall.maxNote', { n: cap })}</p>
     </div>
   );

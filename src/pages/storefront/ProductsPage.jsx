@@ -11,7 +11,7 @@ import CartDrawer from '../../components/storefront/CartDrawer';
 import AddedToast from '../../components/storefront/AddedToast';
 import ProductGrid, { ProductGridSkeleton, ProductsLoadError } from '../../components/storefront/ProductGrid';
 import { usePageMeta } from '../../utils/usePageMeta';
-import { SORT_MODES, sortProducts } from '../../utils/productList';
+import { SORT_MODES, sortProducts, categoriesOf, filterByCategory } from '../../utils/productList';
 
 // Update 42: ALL the shop's products on their own page (/store/<shop>/products).
 // The home page only shows a few featured ones. A sort box (normal order / price) is shown
@@ -25,6 +25,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [state, setState] = useState('loading'); // loading | ready | failed
   const [sort, setSort] = useState('featured');
+  const [category, setCategory] = useState(''); // '' = all
   const [cartOpen, setCartOpen] = useState(false);
   const [added, setAdded] = useState(0); // counts adds: the "Added to cart" note shows after each one
 
@@ -50,7 +51,11 @@ export default function ProductsPage() {
   const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
   usePageMeta(`${t('storefront.allProducts')} — ${shopName}`, undefined);
 
-  const shown = useMemo(() => sortProducts(products, sort), [products, sort]);
+  const categories = useMemo(() => categoriesOf(products, language), [products, language]);
+  // Chips only when the shop really uses at least two categories; a stale choice falls back to "All".
+  const activeCategory = categories.length > 1 && categories.some((c) => c.key === category) ? category : '';
+  const filtered = useMemo(() => filterByCategory(products, activeCategory), [products, activeCategory]);
+  const shown = useMemo(() => sortProducts(filtered, sort), [filtered, sort]);
 
   return (
     <div className="min-h-screen">
@@ -68,9 +73,9 @@ export default function ProductsPage() {
             </h1>
             {state === 'ready' && products.length > 0 && (
               <p className="mt-2 text-ink-soft">
-                {products.length === 1
+                {filtered.length === 1
                   ? t('storefront.productCountOne')
-                  : t('storefront.productCount', { n: products.length })}
+                  : t('storefront.productCount', { n: filtered.length })}
               </p>
             )}
           </div>
@@ -92,6 +97,27 @@ export default function ProductsPage() {
             </label>
           )}
         </div>
+
+        {state === 'ready' && categories.length > 1 && (
+          <div className="mt-6 flex flex-wrap gap-2" role="group" aria-label={t('storefront.categories')} data-category-chips>
+            {[{ key: '', label: t('storefront.allCategories') }, ...categories].map((c) => (
+              <button
+                key={c.key || 'all'}
+                type="button"
+                aria-pressed={activeCategory === c.key}
+                onClick={() => setCategory(c.key)}
+                className={
+                  'min-h-[44px] rounded-full border px-4 text-sm transition ' +
+                  (activeCategory === c.key
+                    ? 'border-brass bg-brass/15 text-ink'
+                    : 'border-ink/20 text-ink-soft hover:border-brass hover:text-ink')
+                }
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="mt-8 min-h-[40vh]">
           {state === 'loading' && <ProductGridSkeleton label={t('common.loading')} />}

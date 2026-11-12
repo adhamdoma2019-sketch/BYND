@@ -75,6 +75,13 @@ export function productFields(data) {
         ? 0
         : Number(data.shippingExtra),
     imageUrl: data.imageUrl || '',
+    // Update 59: the shop's own product category (free text, both languages; the Products page makes filter chips
+    // from the categories that exist) and a "featured" tick (featured products come first on the home page).
+    category: {
+      en: String(data.categoryEn || '').trim().slice(0, 40) || String(data.categoryAr || '').trim().slice(0, 40),
+      ar: String(data.categoryAr || '').trim().slice(0, 40) || String(data.categoryEn || '').trim().slice(0, 40),
+    },
+    featured: data.featured === true,
     // Step 10: an optional short video, shown FIRST in the photo strip (https links only).
     videoUrl: /^https:\/\//i.test(String(data.videoUrl || '').trim()) ? String(data.videoUrl).trim().slice(0, 500) : '',
     // More pictures of the product (shown as thumbnails on the product page).

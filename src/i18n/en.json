@@ -101,7 +101,9 @@
     "shopNotFound": "Shop not found",
     "shopNotFoundBody": "There's no shop at this address. Double-check the link.",
     "shopAll": "Shop all products",
-    "galleryVideo": "Product video"
+    "galleryVideo": "Product video",
+    "allCategories": "All",
+    "categories": "Categories"
   },
   "checkout": {
     "title": "Checkout",
@@ -345,7 +347,12 @@
     "packageErr_notCheaper": "The package price must be lower than buying the same number of pieces one by one at the normal price.",
     "packageErr_both": "Use a package price OR quantity prices, not both. Remove the price steps or empty the package boxes.",
     "videoUrl": "Product video (optional)",
-    "videoHelp": "A short video (10-20 seconds, under {{mb}} MB), filmed on your phone. It is shown first in the photo strip. Leave empty for no video."
+    "videoHelp": "A short video (10-20 seconds, under {{mb}} MB), filmed on your phone. It is shown first in the photo strip. Leave empty for no video.",
+    "categoryEn": "Category (English)",
+    "categoryAr": "Category (Arabic)",
+    "categoryHelp": "Optional, for example \"Medal displays\" or \"Plates\". When your shop has two or more categories, customers get filter buttons on the Products page.",
+    "featuredCheck": "Featured: show this product first on the home page",
+    "featuredHelp": "Featured products come first on the home page (sold-out ones never do). The home page still shows only as many products as you chose in Settings > Banner."
   },
   "orders": {
     "allStatuses": "All statuses",
@@ -1154,7 +1161,9 @@
     "undo": "Undo",
     "pieces": "{{n}} pieces",
     "piecesOne": "1 piece",
-    "arrange": "Arrange"
+    "arrange": "Arrange",
+    "savePicture": "Save this wall as a picture",
+    "pictureFailed": "Could not make the picture. Please try again."
   },
   "receipt": {
     "title": "Order receipt",
