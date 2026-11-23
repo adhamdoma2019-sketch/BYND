@@ -46,6 +46,7 @@ import {
   parseOptions,
   optionsToText,
 } from '../../utils/checkoutFields';
+import { shopPath } from '../../utils/shopPaths';
 
 const MAX_SLIDES = 5;
 const PREVIEW_TABS = ['appearance', 'banner', 'content', 'contact']; // tabs that change the home page
@@ -1363,7 +1364,7 @@ export default function Settings() {
           <p className="text-sm text-sage-dark">
             {message}{' '}
             <a
-              href={`/store/${tenant.slug}`}
+              href={shopPath(tenant.slug, ``)}
               target="_blank"
               rel="noreferrer"
               className="underline"

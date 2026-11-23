@@ -9,6 +9,8 @@ import CartDrawer from '../../components/storefront/CartDrawer';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { trackOrder } from '../../firebase/orders.service';
 import TrackResult from '../../components/storefront/TrackResult';
+import { shopPath } from '../../utils/shopPaths';
+import { useShopSlug } from '../../hooks/useShopSlug';
 
 const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
@@ -16,7 +18,7 @@ const inputClass =
 // "Track my order": the customer enters the order number and the phone number used on
 // the order. They only ever see the status and the dates (never names, addresses or prices).
 export default function TrackOrder() {
-  const { slug } = useParams();
+  const slug = useShopSlug();
   const { state } = useLocation();
   const { t } = useTranslation();
   const { language } = useLanguage();
@@ -55,7 +57,7 @@ export default function TrackOrder() {
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
       <main className="mx-auto max-w-xl px-5 py-10 sm:px-8 sm:py-14">
-        <Link to={`/store/${slug}`} className="text-sm text-brass-dark hover:underline">
+        <Link to={shopPath(slug, ``)} className="text-sm text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
         <h1 className="font-display mt-6 text-3xl font-bold tracking-tight">{t('track.title')}</h1>

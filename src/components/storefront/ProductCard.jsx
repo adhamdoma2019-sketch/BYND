@@ -6,11 +6,13 @@ import FadeImage from './FadeImage';
 import { optimizedImage, imageSrcSet, CARD_WIDTHS } from '../../utils/images';
 import { hasOptions } from '../../utils/productOptions';
 import { productStatus, isBuyable, cardPriceNote, cardPrice } from '../../utils/storefront';
+import { shopPath } from '../../utils/shopPaths';
+import { useShopSlug } from '../../hooks/useShopSlug';
 
 export default function ProductCard({ product, onAddToCart }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const { slug } = useParams();
+  const slug = useShopSlug();
   const navigate = useNavigate();
 
   const name = product.name?.[language] || product.name?.en;
@@ -18,7 +20,7 @@ export default function ProductCard({ product, onAddToCart }) {
   const buyable = isBuyable(status);
   const note = cardPriceNote(product);
   const shown = cardPrice(product);
-  const productUrl = `/store/${slug}/product/${product.id}`;
+  const productUrl = shopPath(slug, `/product/${product.id}`);
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-md border border-ink/10 bg-white p-3 transition hover:border-brass/60">

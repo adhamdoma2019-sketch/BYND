@@ -6,6 +6,7 @@ import { useTenant } from '../../context/TenantContext';
 import LanguageSwitch from '../../components/shared/LanguageSwitch';
 import { can } from '../../utils/roles';
 import DashboardStats from '../../components/admin/DashboardStats';
+import { shopPath } from '../../utils/shopPaths';
 
 
 export default function Dashboard() {
@@ -13,7 +14,7 @@ export default function Dashboard() {
   const { language } = useLanguage();
   const { logout } = useAuth();
   const { tenant, role, loading } = useTenant();
-  const storefrontUrl = tenant ? '/store/' + tenant.slug : '';
+  const storefrontUrl = tenant ? shopPath(tenant.slug) : '';
 
   return (
     <div className="min-h-screen">
@@ -25,7 +26,7 @@ export default function Dashboard() {
           {tenant && (
             <p className="text-xs text-ink-faint">
               {tenant.name?.[language] || tenant.name?.en} ·{' '}
-              <span dir="ltr">{window.location.host}/store/{tenant.slug}</span>
+              <span dir="ltr">{window.location.host}{shopPath(tenant.slug)}</span>
             </p>
           )}
         </div>

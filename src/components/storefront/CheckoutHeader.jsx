@@ -5,6 +5,7 @@ import { useStorefront } from '../../context/StorefrontContext';
 import LanguageSwitch from '../shared/LanguageSwitch';
 import { optimizedImage } from '../../utils/images';
 import { pickLogo } from '../../utils/storefront';
+import { shopPath } from '../../utils/shopPaths';
 
 // A slim top bar for the checkout and the thank-you page. These pages are on purpose
 // "focused" (no menu, no cart: nothing pulls the customer away), but they still show whose
@@ -18,7 +19,7 @@ export default function CheckoutHeader({ slug }) {
 
   return (
     <header className="flex items-center justify-between gap-3 border-b border-ink/10 bg-paper px-4 py-3 sm:px-8" data-checkout-header>
-      <Link to={`/store/${slug}`} aria-label={shopName} className="flex min-h-[44px] min-w-0 items-center">
+      <Link to={shopPath(slug, ``)} aria-label={shopName} className="flex min-h-[44px] min-w-0 items-center">
         {logoUrl ? (
           <img src={optimizedImage(logoUrl, 400)} alt={shopName} className="h-8 w-auto" />
         ) : (
@@ -26,7 +27,7 @@ export default function CheckoutHeader({ slug }) {
         )}
       </Link>
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <Link to={`/store/${slug}`} className="inline-flex min-h-[44px] items-center text-sm text-brass-dark hover:underline">
+        <Link to={shopPath(slug, ``)} className="inline-flex min-h-[44px] items-center text-sm text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
         <LanguageSwitch />

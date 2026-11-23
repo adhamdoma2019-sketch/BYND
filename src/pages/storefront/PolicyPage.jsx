@@ -8,11 +8,14 @@ import StorefrontFooter from '../../components/storefront/StorefrontFooter';
 import CartDrawer from '../../components/storefront/CartDrawer';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { policyBody } from '../../utils/storefront';
+import { shopPath } from '../../utils/shopPaths';
+import { useShopSlug } from '../../hooks/useShopSlug';
 
 // A text page the shop wrote itself (privacy, returns, shipping, terms).
 // The text is shown as plain text (never as HTML), so nothing in it can run as code.
 export default function PolicyPage() {
-  const { slug, pageId } = useParams();
+  const { pageId } = useParams();
+  const slug = useShopSlug();
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { tenant } = useStorefront();
@@ -28,7 +31,7 @@ export default function PolicyPage() {
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
       <main className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-        <Link to={`/store/${slug}`} className="text-sm text-brass-dark hover:underline">
+        <Link to={shopPath(slug, ``)} className="text-sm text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
 

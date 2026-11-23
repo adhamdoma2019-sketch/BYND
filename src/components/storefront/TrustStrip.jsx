@@ -5,6 +5,7 @@ import { contactLinks } from '../../utils/contact';
 import { availablePolicyPages } from '../../utils/storefront';
 import { formatPrice } from '../../utils/format';
 import { trustItems } from '../../utils/trust';
+import { shopBase } from '../../utils/shopPaths';
 
 const ICONS = {
   cash: 'M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
@@ -36,7 +37,7 @@ function Icon({ name }) {
 export default function TrustStrip({ tenant }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const base = `/store/${tenant.slug}`;
+  const base = shopBase(tenant.slug);
   const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
   const links = contactLinks(tenant.contact, {
     countryCode: tenant.defaultCountryCode || '20',

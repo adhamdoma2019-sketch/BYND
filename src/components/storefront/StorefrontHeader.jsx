@@ -8,6 +8,7 @@ import StorefrontMenu from './StorefrontMenu';
 import { useStorefront } from '../../context/StorefrontContext';
 import { optimizedImage } from '../../utils/images';
 import { pickLogo } from '../../utils/storefront';
+import { shopPath } from '../../utils/shopPaths';
 
 // Top bar shared by the shop pages: logo / shop name, language switch, cart.
 // The logo comes from Admin > Settings (one for light screens, optionally another for
@@ -32,7 +33,7 @@ export default function StorefrontHeader({ tenant, onCartClick }) {
     <header className="sticky top-0 z-30 flex items-center justify-between gap-1 border-b border-ink/10 bg-paper px-3 py-2 sm:gap-3 sm:px-8 sm:py-3">
       <div className="flex min-w-0 items-center gap-1 sm:gap-3">
         <StorefrontMenu tenant={tenant} />
-        <Link to={`/store/${tenant.slug}`} aria-label={shopName} className="flex min-h-[44px] min-w-0 items-center px-1">
+        <Link to={shopPath(tenant.slug, ``)} aria-label={shopName} className="flex min-h-[44px] min-w-0 items-center px-1">
           {logoUrl ? (
             <img src={optimizedImage(logoUrl, 400)} alt={shopName} className="h-8 w-auto max-w-full object-contain" />
           ) : (

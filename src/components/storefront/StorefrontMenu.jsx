@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { contactLinks } from '../../utils/contact';
 import { availablePolicyPages } from '../../utils/storefront';
+import { shopBase, shopPath } from '../../utils/shopPaths';
 
 // Update 36: the shop's menu. A button in the top bar opens a panel with the places a visitor
 // looks for: Home, Products, About (only when the shop wrote it), Track my order, the other
@@ -14,7 +15,7 @@ export function MenuPanel({ tenant, onClose, closeRef }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { pathname } = useLocation();
-  const base = `/store/${tenant.slug}`;
+  const base = shopBase(tenant.slug);
   const shopName = tenant.name?.[language] || tenant.name?.en || tenant.slug;
 
   const pages = availablePolicyPages(tenant, language);
@@ -56,7 +57,7 @@ export function MenuPanel({ tenant, onClose, closeRef }) {
         </div>
 
         <nav aria-label={t('menu.title')} className="mt-6 flex-1 space-y-1 overflow-y-auto">
-          <Link to={base} onClick={onClose} className={item(isHome)} aria-current={isHome ? 'page' : undefined}>
+          <Link to={shopPath(tenant.slug)} onClick={onClose} className={item(isHome)} aria-current={isHome ? 'page' : undefined}>
             {t('menu.home')}
           </Link>
           <Link

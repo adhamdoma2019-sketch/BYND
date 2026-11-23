@@ -10,11 +10,13 @@ import { formatPrice } from '../../utils/format';
 import { lineAmount } from '../../utils/quantityPrices';
 import { packageHintFor } from '../../utils/cartPricing';
 import { madeWording } from '../../utils/storefront';
+import { shopPath } from '../../utils/shopPaths';
+import { useShopSlug } from '../../hooks/useShopSlug';
 
 export default function CartDrawer({ onClose }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
-  const { slug } = useParams();
+  const slug = useShopSlug();
   const navigate = useNavigate();
   const { items, updateQuantity, removeItem, removeWall, subtotal } = useCart();
 
@@ -23,7 +25,7 @@ export default function CartDrawer({ onClose }) {
 
   function goToCheckout() {
     onClose();
-    navigate('/store/' + slug + '/checkout');
+    navigate(shopPath(slug, '/checkout'));
   }
 
   return (

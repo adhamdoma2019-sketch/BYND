@@ -22,6 +22,8 @@ import {
   CUSTOM_FIELD_TYPES,
   MAX_CUSTOM_FIELDS,
 } from '../../utils/checkoutFields';
+import { shopPath } from '../../utils/shopPaths';
+import { useShopSlug } from '../../hooks/useShopSlug';
 
 const inputClass =
   'mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-ink outline-none focus-visible:border-brass';
@@ -42,7 +44,7 @@ function useErrorText() {
 }
 
 export default function Checkout() {
-  const { slug } = useParams();
+  const slug = useShopSlug();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { language } = useLanguage();
@@ -215,7 +217,7 @@ export default function Checkout() {
       });
       tokenKeeper.current.reset();
       clearCart();
-      navigate(`/store/${slug}/thank-you`, {
+      navigate(shopPath(slug, `/thank-you`), {
         state: {
           orderId: result.orderId,
           orderNumberLabel: result.orderNumberLabel,
@@ -242,7 +244,7 @@ export default function Checkout() {
         <CheckoutHeader slug={slug} />
         <div className="flex flex-col items-center px-4 pt-24 text-center">
           <p className="text-ink-soft">{t('storefront.emptyCart')}</p>
-          <Link to={`/store/${slug}`} className="mt-4 text-brass-dark hover:underline">
+          <Link to={shopPath(slug, ``)} className="mt-4 text-brass-dark hover:underline">
             {t('storefront.backToShop')}
           </Link>
         </div>

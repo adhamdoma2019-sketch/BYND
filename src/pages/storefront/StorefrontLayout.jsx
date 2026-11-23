@@ -1,6 +1,7 @@
 import { ShopSkeleton } from '../../components/storefront/PageSkeletons';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useParams, Outlet, Link } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
+import { useShopSlug } from '../../hooks/useShopSlug';
 import { useTranslation } from 'react-i18next';
 import i18n from 'i18next';
 import { CartProvider } from '../../context/CartContext';
@@ -83,7 +84,7 @@ const THEME_VARS = ['--brass', '--brass-dark', '--brass-light', '--on-brass', '-
 
 // Wraps every shop page: loads the shop once and gives the page its look.
 export default function StorefrontLayout() {
-  const { slug } = useParams();
+  const slug = useShopSlug();
   const { t } = useTranslation();
   const { language, setLanguage } = useLanguage();
   // Live preview (Admin > Settings): the page shows unsaved values sent by the admin page and

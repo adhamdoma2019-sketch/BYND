@@ -22,6 +22,7 @@ import {
   HERO_MAX_SECONDS,
   HERO_FADE_MS,
 } from '../../utils/constants';
+import { shopPath } from '../../utils/shopPaths';
 
 const MAX_SLIDES = 5;
 
@@ -39,7 +40,7 @@ export default function StorefrontHome() {
   const { hash } = useLocation();
   // How many products the shop wants on the home page (0 = none: only a "Shop all products" button).
   const homeCount = homeProductCount(tenant);
-  const productsPage = `/store/${tenant.slug}/products`;
+  const productsPage = shopPath(tenant.slug, `/products`);
 
   // Update 45: a failed read is shown as a message with Try again (before, it looked like an empty shop).
   const loadProducts = useCallback(() => {
@@ -88,7 +89,7 @@ export default function StorefrontHome() {
         headline: pick(s.headline),
         subtext: pick(s.subtext),
         ctaLabel: pick(s.cta) || t('storefront.shopNow'),
-        to: s.productId ? `/store/${tenant.slug}/product/${s.productId}` : homeCount === 0 ? productsPage : '#products',
+        to: s.productId ? shopPath(tenant.slug, `/product/${s.productId}`) : homeCount === 0 ? productsPage : '#products',
       }));
     if (configured.length > 0) return configured;
 
@@ -169,7 +170,7 @@ export default function StorefrontHome() {
             {hasMoreThanFeatured(products, homeCount) && (
               <div className="mt-10 text-center">
                 <Link
-                  to={`/store/${tenant.slug}/products`}
+                  to={shopPath(tenant.slug, `/products`)}
                   className="inline-block rounded border border-ink px-8 py-3 text-sm font-semibold uppercase tracking-wider transition hover:bg-ink hover:text-paper"
                 >
                   {t('storefront.viewAll', { n: products.length })}

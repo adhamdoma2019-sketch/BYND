@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { PREVIEW_DRAFT, PREVIEW_PRODUCT, acceptReadyMessage } from '../../utils/preview';
+import { shopPath } from '../../utils/shopPaths';
 
 // The live preview: a phone-shaped frame showing the REAL shop.
 //   Settings:  the shop home page with the unsaved settings  -> <PreviewPane slug draft />
@@ -20,8 +21,8 @@ export default function PreviewPane({ slug, draft, product, productId, onClose }
   const [mode, setMode] = useState(null); // null = what the shop's Look setting says
   const [view, setView] = useState('page'); // product preview: 'page' or 'card' (in the shop list)
   const src = isProduct
-    ? `/store/${encodeURIComponent(slug)}/product/${encodeURIComponent(productId || 'new')}?preview=1`
-    : `/store/${encodeURIComponent(slug)}?preview=1`;
+    ? shopPath(encodeURIComponent(slug), `/product/${encodeURIComponent(productId || 'new')}?preview=1`)
+    : shopPath(encodeURIComponent(slug), `?preview=1`);
 
   // Always the newest values, so a message never sends old ones.
   const latest = useRef({});

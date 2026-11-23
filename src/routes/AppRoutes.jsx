@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { singleShop } from '../utils/shopPaths';
 import Landing from '../pages/Landing';
 import StorefrontLayout from '../pages/storefront/StorefrontLayout';
 import StorefrontHome from '../pages/storefront/StorefrontHome';
@@ -28,21 +29,47 @@ const Activity = lazy(() => import('../pages/admin/Activity'));
 const StockHistory = lazy(() => import('../pages/admin/StockHistory'));
 const Couriers = lazy(() => import('../pages/admin/Couriers'));
 
+
+const SINGLE = !!singleShop();
+
+// The shop's pages (the same list in both modes).
+const shopRoutes = [
+  <Route key="home" index element={<StorefrontHome />} />,
+  <Route key="products" path="products" element={<ProductsPage />} />,
+  <Route key="product" path="product/:productId" element={<ProductPage />} />,
+  <Route key="checkout" path="checkout" element={<Checkout />} />,
+  <Route key="thanks" path="thank-you" element={<OrderConfirmation />} />,
+  <Route key="page" path="page/:pageId" element={<PolicyPage />} />,
+  <Route key="track" path="track" element={<TrackOrder />} />,
+];
+
+// An old saved link /store/<shop>/... goes to the same page without /store/<shop> (single-shop mode only).
+function OldShopLink() {
+  const { pathname, search, hash } = useLocation();
+  const rest = pathname.replace(/^\/store\/[^/]+/, '') || '/';
+  return <Navigate to={rest + search + hash} replace />;
+}
+
 export default function AppRoutes() {
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-ink-soft">…</div>}>
     <Routes>
-      <Route path="/" element={<Landing />} />
-
-      <Route path="/store/:slug" element={<StorefrontLayout />}>
-        <Route index element={<StorefrontHome />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="product/:productId" element={<ProductPage />} />
-        <Route path="checkout" element={<Checkout />} />
-        <Route path="thank-you" element={<OrderConfirmation />} />
-        <Route path="page/:pageId" element={<PolicyPage />} />
-        <Route path="track" element={<TrackOrder />} />
-      </Route>
+      {SINGLE ? (
+        <>
+          {/* Single-shop mode (VITE_SINGLE_SHOP): the shop is the whole site, no /store/<name> in the address. */}
+          <Route path="/" element={<StorefrontLayout />}>
+            {shopRoutes}
+          </Route>
+          <Route path="/store/:slug/*" element={<OldShopLink />} />
+        </>
+      ) : (
+        <>
+          <Route path="/" element={<Landing />} />
+          <Route path="/store/:slug" element={<StorefrontLayout />}>
+            {shopRoutes}
+          </Route>
+        </>
+      )}
 
       <Route path="/admin/signup" element={<Signup />} />
       <Route path="/admin/login" element={<Login />} />

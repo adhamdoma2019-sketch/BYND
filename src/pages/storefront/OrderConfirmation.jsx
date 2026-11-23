@@ -9,16 +9,18 @@ import { useStorefront } from '../../context/StorefrontContext';
 import { madeWording } from '../../utils/storefront';
 import OrderProgress from '../../components/storefront/OrderProgress';
 import WhatsAppOrderButton from '../../components/storefront/WhatsAppOrderButton';
+import { shopPath } from '../../utils/shopPaths';
+import { useShopSlug } from '../../hooks/useShopSlug';
 
 export default function OrderConfirmation() {
-  const { slug } = useParams();
+  const slug = useShopSlug();
   const { state } = useLocation();
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { tenant } = useStorefront();
   const accent = /^#[0-9a-fA-F]{6}$/.test(tenant?.theme?.accent || '') ? tenant.theme.accent : '';
   const shopName = tenant?.name?.[language] || tenant?.name?.en || '';
-  const trackUrl = typeof window !== 'undefined' ? `${window.location.origin}/store/${slug}/track` : '';
+  const trackUrl = typeof window !== 'undefined' ? `${window.location.origin}${shopPath(slug, '/track')}` : '';
   // The receipt already shows the order number and the total: show them above it only when there is no receipt.
   const hasReceipt = Boolean(state?.receipt);
   // "Preorder" or "Made to order" wording, as the shop set it on the products (same as the cart and the receipt).
@@ -74,14 +76,14 @@ export default function OrderConfirmation() {
           <ReceiptCard receipt={state.receipt} shopName={shopName} accent={accent} trackUrl={trackUrl} />
         )}
         <Link
-          to={`/store/${slug}/track`}
+          to={shopPath(slug, `/track`)}
           state={{ orderNumberLabel: state?.orderNumberLabel }}
           className="mt-6 flex min-h-[44px] w-full max-w-md items-center justify-center rounded bg-ink px-4 py-3 text-center text-sm font-semibold text-paper transition hover:bg-brass hover:text-on-brass"
         >
           {t('track.linkAfterOrder')}
         </Link>
         <WhatsAppOrderButton tenant={tenant} orderNumber={state?.orderNumberLabel} className="mt-3" />
-        <Link to={`/store/${slug}`} className="mt-4 inline-flex min-h-[44px] items-center text-brass-dark hover:underline">
+        <Link to={shopPath(slug, ``)} className="mt-4 inline-flex min-h-[44px] items-center text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
       </div>

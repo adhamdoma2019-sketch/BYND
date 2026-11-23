@@ -40,9 +40,12 @@ import {
 import { groupCountInCart, productCountInCart } from '../../utils/cartPricing';
 import { applyProductDraft } from '../../utils/preview';
 import ProductCard from '../../components/storefront/ProductCard';
+import { shopPath } from '../../utils/shopPaths';
+import { useShopSlug } from '../../hooks/useShopSlug';
 
 export default function ProductPage() {
-  const { slug, productId } = useParams();
+  const { productId } = useParams();
+  const slug = useShopSlug();
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { addItem, items: cartItems } = useCart();
@@ -165,7 +168,7 @@ export default function ProductPage() {
         <h1 className="font-display text-2xl font-semibold">
           {t('storefront.productNotFound')}
         </h1>
-        <Link to={`/store/${slug}`} className="mt-4 text-brass-dark hover:underline">
+        <Link to={shopPath(slug, ``)} className="mt-4 text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
       </div>
@@ -400,7 +403,7 @@ export default function ProductPage() {
 
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 md:pb-12">
         <Link
-          to={`/store/${slug}`}
+          to={shopPath(slug, ``)}
           className="text-sm text-brass-dark hover:underline"
         >
           {t('storefront.backToShop')}
@@ -747,7 +750,7 @@ export default function ProductPage() {
               {related.map((p) => (
                 <Link
                   key={p.id}
-                  to={`/store/${slug}/product/${p.id}`}
+                  to={shopPath(slug, `/product/${p.id}`)}
                   className="flex items-center gap-4 rounded-md border border-ink/10 bg-white p-3 transition hover:border-brass/60"
                 >
                   {p.imageUrl && (

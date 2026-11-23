@@ -12,6 +12,7 @@ import AddedToast from '../../components/storefront/AddedToast';
 import ProductGrid, { ProductGridSkeleton, ProductsLoadError } from '../../components/storefront/ProductGrid';
 import { usePageMeta } from '../../utils/usePageMeta';
 import { SORT_MODES, sortProducts, categoriesOf, filterByCategory } from '../../utils/productList';
+import { shopPath } from '../../utils/shopPaths';
 
 // Update 42: ALL the shop's products on their own page (/store/<shop>/products).
 // The home page only shows a few featured ones. A sort box (normal order / price) is shown
@@ -62,7 +63,7 @@ export default function ProductsPage() {
       <StorefrontHeader tenant={tenant} onCartClick={() => setCartOpen(true)} />
 
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
-        <Link to={`/store/${tenant.slug}`} className="text-sm text-brass-dark hover:underline">
+        <Link to={shopPath(tenant.slug, ``)} className="text-sm text-brass-dark hover:underline">
           {t('storefront.backToShop')}
         </Link>
 

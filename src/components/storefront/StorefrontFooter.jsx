@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { contactLinks } from '../../utils/contact';
 import { availablePolicyPages } from '../../utils/storefront';
+import { shopPath } from '../../utils/shopPaths';
 
 export default function StorefrontFooter({ tenant }) {
   const { t } = useTranslation();
@@ -56,7 +57,7 @@ export default function StorefrontFooter({ tenant }) {
           className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-ink/10 pt-6 text-sm"
         >
           <Link
-            to={`/store/${tenant.slug}/track`}
+            to={shopPath(tenant.slug, `/track`)}
             className="text-ink-soft underline-offset-4 transition hover:text-brass-dark hover:underline"
           >
             {t('track.footerLink')}
@@ -64,7 +65,7 @@ export default function StorefrontFooter({ tenant }) {
           {policies.map((id) => (
             <Link
               key={id}
-              to={`/store/${tenant.slug}/page/${id}`}
+              to={shopPath(tenant.slug, `/page/${id}`)}
               className="text-ink-soft underline-offset-4 transition hover:text-brass-dark hover:underline"
             >
               {t(`policies.${id}`)}
